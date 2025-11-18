@@ -1,8 +1,6 @@
 // define log levels
-
-const { level } = require("winston");
-const winston = require("winston/lib/winston/config");
-
+const winston = require("winston");
+const config = require('../config');
 const logLevels = {
     error: 0,
     warn: 1,
@@ -30,6 +28,17 @@ const logger = winston.createLogger({
     format: winston.format.combine(
         winston.format.colorize({ all: true }),
         winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
-        winston.format.printf((info => `${info.timestamp} ${info.level}: ${info.message}`))
-    )
+        winston.format.printf((info => `${info.timestamp} [${config.serviceName}] ${info.level}: ${info.message}`))
+    ),
+    transports: [
+        //write all logs to console
+        new winston.transports.Console(),
+        // write all logs with level 'error' to erro.log file
+        new winston.transports.File({ filename: 'logs/error.log', level :'error'}),
+        //write all logs to combined.log file
+        new winston.transports.File({filename: 'logs/combined.log'}),
+    ]
 });
+
+
+module.exports = logger;

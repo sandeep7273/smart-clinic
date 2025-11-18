@@ -1,6 +1,10 @@
 //import module
 const express = require('express');
 const config = require('./config');
+
+const logger = require('./utils/logger');
+const {errorHandler, notFoundHandler} = require('./middlewares/error.middleware')
+
 const authRouter = require('./routes/auth.route');
 // connect with database
 const connectDatabase = require('./config/database');
@@ -16,6 +20,12 @@ app.use(express.urlencoded({ extended: true }));
 // routes
 app.use('/api/auth', authRouter);
 
+// 404 not found handler
+app.use(notFoundHandler);
+
+// global error handler
+app.use(errorHandler);
+
 // start server
 const startServer = async () => {
     try {
@@ -25,11 +35,26 @@ const startServer = async () => {
         // start listening
         const PORT = config.port;
         app.listen(PORT, () => {
-            console.log(`Server is running on port ${PORT}`);
+            logger.info(`${config.serviceName} is running on the port ${PORT}`);
+            // console.log(`Server is running on port ${PORT}`);
         });
     } catch (error) {
-        console.error('Error starting server:', error);
+        logger.error(`Failed to start server: ${error.mesage}`);
+        process.exit(1);
+        // console.error('Error starting server:', error);
     }
 };
+
+// hanled unhandled promise rejection
+process.on('unhandledRejection', (error) => {
+    logger.error(`unhandled Promise Rejection: ${error.message}`);
+    process.exit(1);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error)=> {
+    logger.error(`Uncaught Exception: ${error.message}`);
+    process.exit(1);
+})
 
 startServer();
