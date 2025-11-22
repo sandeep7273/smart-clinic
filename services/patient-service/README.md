@@ -92,3 +92,65 @@ Create `src/models/Patient.js`:
  
  
 ----
+
+### Phase 3: Core Service Layer
+
+#### Step 3.1: Create Utility Function
+- `src/utils/logger.js` - Winston logger configuration
+- `src/utils/error.js` - Custom error classes (ValidationError, NotFoundError etc)
+- `src/utils.auth.js` - Auth service integration for token validation
+
+
+#### 3.2 Create Patient Service
+Create `src/services/patient.service.js`:
+
+- Implement `createPatient()` - Create new patient
+- Implement `getPatientById` - Get Patient by ID
+- Implement `getPatientByUserId` - Get Patient by User ID
+- Implement `getAllPatients` - list patients with pagination and filters
+- Implement `updatePatient` - Update Patient information
+- Implement `deletePatient` - Soft delete Patient
+- Implement `addMedicalHistory()` - Add Medical history item
+- Implement `addAllergy()` - Add Allergy
+- Implement `addMedication` - Add medication
+
+-----
+
+
+### Phose 4: REST API implementation
+
+#### Step 4.1: Create Middleware
+- `src/middleware/auth.middleware.js` - JWT authentication middleware
+- `src/middleware/rbac.middleware.js` - Role-based access control middleware
+- `src/middleware/validator.middleware.js` - Input validation middleware
+- `src/middleware/error.middleware.js` - Error handling middleware
+
+#### Step 4.2 Create Patient Controller
+Create `src/controller/patient.controller.js`:
+- Implement controller method that call service layer
+- Handle request/response formatting
+- Apply error handling
+
+
+#### Step 4.3: Create Routes
+Create `src/route/patient.route.js`:
+- Define REST endpoints
+- Apply authentication middleware
+- Apply RBAC middleware
+- Apply validation middleware
+- Connect routes to controller
+
+Create `src/route/health.route.js`:
+- Health check endpoint
+- Readiness check endpoint
+
+#### Step 4.4: Setup Express app
+Create `src/index.js`
+
+- Initialize Express app
+- Configure middleware (helmet, cors, body-parser)
+- Setup Swagger UI
+- Register routes
+- Setup error handling
+- Connect to database
+- Start server
