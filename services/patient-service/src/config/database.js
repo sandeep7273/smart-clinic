@@ -8,8 +8,8 @@ const connectDatabase = async () => {
     try{
         const mongodbUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/patient_db';
         const options = {
-            useNewUrlParser: true,  
-            useUnifiedTopology: true
+            // useNewUrlParser: true,  
+            // useUnifiedTopology: true
         }
         await mongoose.connect(mongodbUri, options);
 

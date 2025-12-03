@@ -1,54 +1,50 @@
-/***
- * Role-Based Access Control (RBAC) Middleware
- * This middleware checks if the user has the required roles to access a specific route.
- * @param { ...string } roles - roles required to access the route
- * @return {Function} - middleware function
+/**
+ * RBAC Middleware - check if user has required role(s)
+ * @param {...String} roles - Required roles
+ * @returns {Function} Middleware function
  */
-const requireRoles = (...roles) => {
+const requireRole = (...roles) => {
     return (req, res, next) => {
-        if(!req.user) {
+        if(!req.user){
             return res.status(401).json({
-                message: 'Unauthorized: No user information found',
-                success: false
-            });
+                success: false,
+                message: 'Authentication required'
+            })
         }
 
-        // Check if user has required roles
         const userRoles = req.user.roles || [];
-        const hasRole = roles.some(role => userRoles.includes(role));
-        if (!hasRole) {
+        const hasRole = roles.some(role => userRoles.includes(role));   
+
+        if(!hasRole){
             return res.status(403).json({
-                message: 'Access Denied: Insufficient role',
                 success: false,
+                message: 'Access denied, Insufficint permissions',
                 required: roles,
                 current: userRoles
-            });
+            })
         }
-
         next();
-    };
-};
-
-
-/**
- * Required patient or clinician/admin roles
- */
-
-const requiredPatientOrClinicianRoles = requireRoles['patient', 'doctor', 'clinician', 'admin'];
-/**
- * Required clinician/admin roles (health care providers)
- */
-const requiredClinicianOrAdminRoles = requireRoles['doctor', 'clinician', 'admin'];
+    }
+}
 
 /**
- * Required Admin roles
+ * Required patient or clinician / admin roles
  */
+const requiredPateintOrClinicianRole = requireRole('patient', 'doctor', 'clinician', 'admin');
 
-const requiredAdminRoles = requireRoles['admin'];
+/**
+ * Required clinician or admin roles (healthcase providers only)
+ */
+const requiredClinician = requireRole('doctor', 'clinician', 'admin');
+
+/**
+ * Required admin role
+ */
+const requireAdminRole = requireRole('admin');  
 
 module.exports = {
-    requireRoles,
-    requiredPatientOrClinicianRoles,
-    requiredClinicianOrAdminRoles,
-    requiredAdminRoles
-};
+    requireRole,
+    requiredPateintOrClinicianRole,
+    requiredClinician,
+    requireAdminRole
+}

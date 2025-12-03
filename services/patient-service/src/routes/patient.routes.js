@@ -1,16 +1,33 @@
 const express = require('express');
 const router = express.Router();
 const patientController = require('../controllers/patient.controller');
-const { validateCreatePatient, validateUpdatePatient } = require('../middlewares/validator.middleware');
-const { authenticate } = require('../middlewares/authenticate.middleware');
-const { requiredPatientOrClinicianRoles } = require ('../middlewares/rbac.middleware');
+const { authenticate } = require('../middlewares/auth.middleware');
+const { validateCreatePatient } = require('../middlewares/validator.middleware');
+const { requiredPateintOrClinicianRole, requiredClinician } = require('../middlewares/rbac.middleware');
 
 router
-    .post('/', 
-        authenticate,
-        requiredPatientOrClinicianRoles,
-        validateCreatePatient,
-        patientController.createPatient
-    );
+    .post('/',
+         authenticate,
+         requiredPateintOrClinicianRole,
+         validateCreatePatient,
+        patientController.createPatient);
 
-module.exports = router; 
+router
+    .get('/:id',
+        authenticate,
+        requiredPateintOrClinicianRole,
+        patientController.getPatientById);
+
+router
+    .get('/user/:userId',
+        authenticate,
+        requiredClinician,
+        patientController.getPatientsByUserId);
+
+router
+    .get('/',
+        authenticate,
+        requiredClinician,
+        patientController.getAllPatients);
+
+module.exports = router;

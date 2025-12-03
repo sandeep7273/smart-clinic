@@ -82,9 +82,53 @@ const getPatientByEmail = async (email) => {
     return patient;
 }
 
+/**
+ * Get all patients with pagination and filters
+ * @param { Object} filters - filter options
+ * @param {Number} page - page number for pagination
+ * @param {Number} limit - number of records per page
+ * @returns {Object} - paginated list of patients
+*/
+
+const getAllPatients = async (filters = {}, page =1, limit = 10) => {
+    const query = {};
+
+    // Apply filters to query
+    if(filters.status) {
+        query.status = filters.status;
+    }
+    if(filters.city) {
+        query.city = new RegExp(filters.city, 'i');  // case-insensitive match
+    }
+
+    if(filters.search) {
+        // convert all text sentences as string array
+        // ignore language stop words
+        // consider unique string
+        // run running runner
+
+        // use text search on read for better performance
+        query.$text = { $search: filters.search };
+
+        query.$or = [
+            { firstName: new RegExp(filters.search, 'i') },
+            { lastName: new RegExp(filters.search, 'i') },
+            { email: new RegExp(filters.search, 'i') },
+        ];
+
+        const skip = (page - 1) * limit;
+       return  await Patient.find(query)
+        .sort({ registrationDate: -1 }) // most recent first
+        .skip(skip)
+        .limit(limit);
+    }
+}
+
+
 module.exports = {
     createPatient,
     getPatientById,
     getPatientByUserId,
     getPatientByEmail,
+    getAllPatients,
 };

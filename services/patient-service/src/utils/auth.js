@@ -1,6 +1,6 @@
 const axios = require('axios');
 const config = require('../config');
-const {AuthenticationError} = require('../errors');
+const {AuthenticationError} = require('../utils/errors');
 
 
 /** * Verify JWT token by calling the Auth Service
@@ -17,7 +17,7 @@ const validateToken = async (token) => {
             }
         });
         if(response.data.success) {
-            return response.data;
+            return response.data.data;
         }
         throw new AuthenticationError('Invalid token');
     } catch (error) {
