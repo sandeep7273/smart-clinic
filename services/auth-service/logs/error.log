@@ -1,0 +1,7 @@
+2025-12-07 23:21:30:2130 [auth-service] [31merror[39m: [31mError: Invalid email or password[39m
+2025-12-07 23:23:54:2354 [auth-service] [31merror[39m: [31mError: User not found[39m
+2025-12-10 08:40:35:4035 [auth-service] [31merror[39m: [31mError: User with this email already exists[39m
+2025-12-10 08:40:42:4042 [auth-service] [31merror[39m: [31mError: User with this email already exists[39m
+2025-12-10 08:46:17:4617 [auth-service] [31merror[39m: [31mError: Invalid email or password[39m
+2025-12-10 08:46:36:4636 [auth-service] [31merror[39m: [31mError: Invalid email or password[39m
+2025-12-10 08:46:41:4641 [auth-service] [31merror[39m: [31mError: Invalid email or password[39m

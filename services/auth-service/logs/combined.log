@@ -1,3 +1,26 @@
 2025-11-18 21:46:21:4621 [auth-service] [32minfo[39m: [32mauth-service is running on the port 3001[39m
 2025-11-18 21:46:46:4646 [auth-service] [32minfo[39m: [32mauth-service is running on the port 3001[39m
 2025-11-18 21:47:02:472 [auth-service] [32minfo[39m: [32mauth-service is running on the port 3001[39m
+2025-12-07 23:17:19:1719 [auth-service] [32minfo[39m: [32mauth-service is running on the port 3001[39m
+2025-12-07 23:17:26:1726 [auth-service] [32minfo[39m: [32mauth-service is running on the port 3001[39m
+2025-12-07 23:18:32:1832 [auth-service] [32minfo[39m: [32mauth-service is running on the port 3001[39m
+2025-12-07 23:18:34:1834 [auth-service] [32minfo[39m: [32mauth-service is running on the port 3001[39m
+2025-12-07 23:18:38:1838 [auth-service] [32minfo[39m: [32mauth-service is running on the port 3001[39m
+2025-12-07 23:19:15:1915 [auth-service] [32minfo[39m: [32mauth-service is running on the port 3001[39m
+2025-12-07 23:19:19:1919 [auth-service] [32minfo[39m: [32mauth-service is running on the port 3001[39m
+2025-12-07 23:19:27:1927 [auth-service] [32minfo[39m: [32mauth-service is running on the port 3001[39m
+2025-12-07 23:19:29:1929 [auth-service] [32minfo[39m: [32mauth-service is running on the port 3001[39m
+2025-12-07 23:19:35:1935 [auth-service] [32minfo[39m: [32mauth-service is running on the port 3001[39m
+2025-12-07 23:19:45:1945 [auth-service] [32minfo[39m: [32mauth-service is running on the port 3001[39m
+2025-12-07 23:19:48:1948 [auth-service] [32minfo[39m: [32mauth-service is running on the port 3001[39m
+2025-12-07 23:19:49:1949 [auth-service] [32minfo[39m: [32mauth-service is running on the port 3001[39m
+2025-12-07 23:19:52:1952 [auth-service] [32minfo[39m: [32mauth-service is running on the port 3001[39m
+2025-12-07 23:20:25:2025 [auth-service] [32minfo[39m: [32mauth-service is running on the port 3001[39m
+2025-12-07 23:21:30:2130 [auth-service] [31merror[39m: [31mError: Invalid email or password[39m
+2025-12-07 23:23:54:2354 [auth-service] [31merror[39m: [31mError: User not found[39m
+2025-12-10 08:40:35:4035 [auth-service] [31merror[39m: [31mError: User with this email already exists[39m
+2025-12-10 08:40:42:4042 [auth-service] [31merror[39m: [31mError: User with this email already exists[39m
+2025-12-10 08:40:53:4053 [auth-service] [32minfo[39m: [32mNew user registered: john@email.com[39m
+2025-12-10 08:46:17:4617 [auth-service] [31merror[39m: [31mError: Invalid email or password[39m
+2025-12-10 08:46:36:4636 [auth-service] [31merror[39m: [31mError: Invalid email or password[39m
+2025-12-10 08:46:41:4641 [auth-service] [31merror[39m: [31mError: Invalid email or password[39m

@@ -25,13 +25,13 @@ const register = async (userData) => {
         password,
         firstName,
         lastName,
-        role: userRoles,
+        roles: userRoles,
         status: USER_STATUS.ACTIVE
     })
 
     // save the user
     await user.save();
-
+console.log('User registered:', user);
      // generate tokens
     const tokenPayload = {
         userId: user._id.toString(),
@@ -54,7 +54,7 @@ const register = async (userData) => {
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
-            role: user.role,
+            roles: user.roles,
             status: user.status
         },
         accessToken,
@@ -103,7 +103,7 @@ const login = async (email, password) => {
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
-            role: user.role,
+            roles: user.roles,
             status: user.status
         },
         accessToken,
@@ -168,7 +168,7 @@ const getProfile = async (userId) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        role: user.role,
+        roles: user.roles,
         status: user.status,
         lastLogin: user.lastLogin,
         createdAt: user.createdAt,

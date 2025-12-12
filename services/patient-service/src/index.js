@@ -4,10 +4,12 @@ const helmet = require('helmet');
 require('express-async-errors');
 require('dotenv').config();
 
+// config and logger
 const config = require('./config');
 const connectToDatabase = require('./config/database');
 const logger = require('./utils/logger');
 
+const{ shutdownProducer, initializeProducer} = require('../src/utils/eventProducer');
 // import routes
 const patientRoutes = require('./routes/patient.routes');
 const healthRoutes = require('./routes/health.routes');
@@ -39,11 +41,14 @@ const startServer = async () => {
         // connect to database
         await connectToDatabase();
 
+        // initialize Kafka producer for evevent driven architecture
+        await initializeProducer();
         // start listening
         const PORT = config.port;
         app.listen(PORT, () => {
             logger.info(`patient service running on port ${PORT}`);
             logger.info(`Environment: ${config.nodeEnv}`);
+            logger.info(`Kafka: ${process.env.kafkaBrokers}|| localhost:9092`);
             
         })
     }catch(error){
@@ -54,4 +59,10 @@ const startServer = async () => {
 
 startServer();
 
+// graceful shutdown
+process.on('SIGNTERM', async () => {
+    logger.info('SIGNTERM signal received: shutting down gracefully');
+    await shutdownProducer();
+    process.exit(0);
+});
 module.exports = app;

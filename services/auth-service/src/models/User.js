@@ -41,7 +41,7 @@ const userSchema = new mongoose.Schema({
         required: [true, 'Last name is required'],
         trim: true
     },
-    role: {
+    roles: {
         type: [String],
         enum: Object.values(USER_ROLES),
         default: [USER_ROLES.PATIENT],
@@ -102,12 +102,12 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 
 // Instance method to check if user has a specific role
 userSchema.methods.hasRole = function (role) {
-    return this.role.includes(role);
+    return this.roles.includes(role);
 }
 
 // Instance method to check if user has any specific roles
 userSchema.methods.hasAnyRole = function (roles) {
-    return this.role.some(r => roles.includes(r));
+    return this.roles.some(r => roles.includes(r));
 }
 
 // Static method to find user by email
