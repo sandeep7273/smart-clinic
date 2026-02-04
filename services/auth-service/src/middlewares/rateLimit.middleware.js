@@ -29,7 +29,7 @@ const generalLimiter = rateLimit({
 // Strict rate limiter for authentication endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 15, // 15 attempts per window
+  max: 150, // 150 attempts per window
   skipSuccessfulRequests: true, // Don't count successful requests
   message: {
     success: false,
@@ -49,7 +49,7 @@ const authLimiter = rateLimit({
 // Registration rate limiter (prevent spam accounts)
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10, // 10 registrations per hour per IP
+  max: 100, // 100 registrations per hour per IP
   message: {
     success: false,
     message: 'Too many accounts created from this IP, please try again after an hour',
