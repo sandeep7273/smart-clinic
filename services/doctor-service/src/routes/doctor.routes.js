@@ -8,6 +8,9 @@ const {
   updateDoctorValidation,
   searchDoctorValidation,
   addSlotValidation,
+  availabilitySlotValidation,
+  reserveSlotValidation,
+  releaseSlotValidation,
   updateSlotValidation,
   idValidation,
 } = require('../middlewares/validator.middleware');
@@ -68,6 +71,31 @@ router.get(
   authenticate,
   idValidation,
   doctorController.getDoctorStats
+);
+
+// Get doctor's availability in given date and time range
+router.get(
+  '/:id/availability',
+  authenticate,
+  idValidation,
+  availabilitySlotValidation,
+  doctorController.getDoctorAvailability
+);
+
+// Reserve a time slot
+router.post(
+  '/:id/slots/reserve',
+  authenticate,
+  reserveSlotValidation,
+  doctorController.reserveSlot
+);
+
+// Release a reserved slot
+router.post(
+  '/:id/slots/:slotId/release',
+  authenticate,
+  releaseSlotValidation,
+  doctorController.releaseSlot
 );
 
 /**

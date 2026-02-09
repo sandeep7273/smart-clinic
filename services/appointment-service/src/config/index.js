@@ -42,15 +42,15 @@ const config = {
 
   // Circuit Breaker Configuration
   circuitBreaker: {
-    timeout: 5000, // 5 seconds
-    errorThresholdPercentage: 50,
-    resetTimeout: 30000, // 30 seconds
+    timeout: 500000, // 500 seconds
+    errorThresholdPercentage: 500,
+    resetTimeout: 300000, // 300 seconds
   },
 
   // Saga Configuration
   saga: {
-    timeoutMs: 30000, // 30 seconds for saga completion
-    maxRetries: 3,
+    timeoutMs: 300000, // 300 seconds for saga completion
+    maxRetries: 30,
     retryDelayMs: 1000,
   },
 

@@ -55,20 +55,20 @@ class SagaOrchestrator {
         authToken
       );
 
-      // Step 3: Get patient details
+    //   Step 3: Get patient details
       const patientDetails = await this.getPatientDetails(
         bookingData.userId,
         authToken
       );
 
       // Step 4: Check doctor availability
-      await this.checkDoctorAvailability(
-        bookingData.doctorId,
-        bookingData.date,
-        bookingData.startTime,
-        bookingData.endTime,
-        authToken
-      );
+    //     await this.checkDoctorAvailability(
+    //     bookingData.doctorId,
+    //     bookingData.date,
+    //     bookingData.startTime,
+    //     bookingData.endTime,
+    //     authToken
+    //   );
 
       // Step 5: Reserve slot (with compensation)
       const slotReservation = await this.reserveSlot(
@@ -169,6 +169,7 @@ class SagaOrchestrator {
    */
   async getDoctorDetails(doctorId, authToken) {
     try {
+        console.log(`debugging Fetching doctor details for ID: ${doctorId}`);
       const result = await doctorService.getDoctorDetails.fire(doctorId, authToken);
       
       if (!result || !result.success) {
@@ -276,7 +277,14 @@ class SagaOrchestrator {
    */
   async createAppointment(bookingData, doctorDetails, patientDetails, user) {
     try {
+      // Generate appointment number
+      const prefix = 'APT';
+      const timestamp = Date.now().toString().slice(-8);
+      const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const appointmentNumber = `${prefix}-${timestamp}-${random}`;
+
       const appointment = new Appointment({
+        appointmentNumber,
         userId: bookingData.userId,
         patientName: `${patientDetails.firstName} ${patientDetails.lastName}`,
         patientEmail: patientDetails.email,
@@ -292,7 +300,7 @@ class SagaOrchestrator {
         notes: bookingData.notes,
         symptoms: bookingData.symptoms,
         status: 'pending',
-        tenantId: user.tenantId,
+        tenantId: user.tenantId || 'default',
         createdBy: user.userId,
       });
 

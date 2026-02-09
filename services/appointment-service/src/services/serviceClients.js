@@ -13,9 +13,10 @@ const { ServiceUnavailableError } = require('../utils/errors');
  * Base HTTP client configuration
  */
 const createHttpClient = (baseURL, serviceName) => {
+    console.log(`debugging Creating HTTP client for ${serviceName} with baseURL: ${baseURL}`);
   const client = axios.create({
     baseURL,
-    timeout: 5000,
+    timeout: 30000, // 30 seconds
     headers: {
       'Content-Type': 'application/json',
     },
@@ -63,7 +64,6 @@ const createHttpClient = (baseURL, serviceName) => {
  * Doctor Service Client
  */
 const doctorServiceClient = createHttpClient(config.doctorServiceUrl, 'DoctorService');
-
 const doctorService = {
   /**
    * Check doctor availability for a specific slot
@@ -71,14 +71,14 @@ const doctorService = {
   checkAvailability: createCircuitBreaker(
     async (doctorId, date, startTime, endTime, authToken) => {
       try {
-        const response = await doctorServiceClient.post(
-          `/doctors/${doctorId}/availability/check`,
+        const response = await doctorServiceClient.get(
+          `/api/doctors/${doctorId}/availability`,
           {
-            date,
-            startTime,
-            endTime,
-          },
-          {
+            params: {
+              date,
+              startTime,
+              endTime,
+            },
             headers: {
               Authorization: `Bearer ${authToken}`,
             },
@@ -87,10 +87,18 @@ const doctorService = {
 
         return response.data;
       } catch (error) {
+        console.error('❌ Check availability error:', {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+        });
+        
         if (error.response?.status === 404) {
           throw new Error('Doctor not found');
         }
-        throw new ServiceUnavailableError('Doctor Service');
+        
+        const errorMessage = error.response?.data?.message || error.message;
+        throw new Error(`Doctor Service error: ${errorMessage}`);
       }
     },
     { name: 'DoctorService.checkAvailability' }
@@ -102,8 +110,12 @@ const doctorService = {
   reserveSlot: createCircuitBreaker(
     async (doctorId, slotData, authToken) => {
       try {
+        console.log(`🔵 Attempting to reserve slot for doctor: ${doctorId}`);
+        console.log(`🔵 Slot data:`, slotData);
+        console.log(`🔵 Request URL: ${config.doctorServiceUrl}/api/doctors/${doctorId}/slots/reserve`);
+        
         const response = await doctorServiceClient.post(
-          `/doctors/${doctorId}/slots/reserve`,
+          `/api/doctors/${doctorId}/slots/reserve`,
           slotData,
           {
             headers: {
@@ -112,12 +124,25 @@ const doctorService = {
           }
         );
 
+        console.log(`✅ Slot reserved successfully:`, response.data);
         return response.data;
       } catch (error) {
+        console.error('❌ Reserve slot error details:', {
+          message: error.message,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          url: error.config?.url,
+          baseURL: error.config?.baseURL,
+        });
+        
         if (error.response?.status === 409) {
           throw new Error('Slot already booked');
         }
-        throw new ServiceUnavailableError('Doctor Service');
+        
+        // Re-throw the original error with more context
+        const errorMessage = error.response?.data?.message || error.message;
+        throw new Error(`Doctor Service error: ${errorMessage}`);
       }
     },
     { name: 'DoctorService.reserveSlot' }
@@ -130,7 +155,7 @@ const doctorService = {
     async (doctorId, slotId, authToken) => {
       try {
         const response = await doctorServiceClient.post(
-          `/doctors/${doctorId}/slots/${slotId}/release`,
+          `/api/doctors/${doctorId}/slots/${slotId}/release`,
           {},
           {
             headers: {
@@ -154,7 +179,8 @@ const doctorService = {
   getDoctorDetails: createCircuitBreaker(
     async (doctorId, authToken) => {
       try {
-        const response = await doctorServiceClient.get(`/doctors/${doctorId}`, {
+        console.log(`debugging Fetching doctor details for ID: ${doctorId}`);
+        const response = await doctorServiceClient.get(`/api/doctors/${doctorId}`, {
           headers: {
             Authorization: `Bearer ${authToken}`,
           },
@@ -162,10 +188,18 @@ const doctorService = {
 
         return response.data;
       } catch (error) {
+        console.error('❌ Get doctor details error:', {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+        });
+        
         if (error.response?.status === 404) {
           throw new Error('Doctor not found');
         }
-        throw new ServiceUnavailableError('Doctor Service');
+        
+        const errorMessage = error.response?.data?.message || error.message;
+        throw new Error(`Doctor Service error: ${errorMessage}`);
       }
     },
     { name: 'DoctorService.getDoctorDetails' }

@@ -262,7 +262,79 @@ class DoctorController {
       next(error);
     }
   }
-   
+
+  /**
+   * Get Doctor's availability in given date and time range
+   * GET /api/doctors/:id/availability
+   */
+  async getDoctorAvailability(req, res, next) {
+    try {
+      const availability = await doctorService.checkAvailability(
+        req.params.id,
+        req.query.date,
+        req.query.startTime,
+        req.query.endTime
+      );
+      
+      res.status(200).json({
+        success: true,
+        data: availability,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Reserve a time slot
+   * POST /api/doctors/:id/slots/reserve
+   */
+  async reserveSlot(req, res, next) {
+    try {
+      console.log('Reserve slot request received:', {
+        doctorId: req.params.id,
+        body: req.body,
+      });
+      
+      const slotData = {
+        doctorId: req.params.id,
+        ...req.body,
+      };
+      
+      const result = await doctorService.reserveTimeSlot(slotData);
+      
+      res.status(200).json({
+        success: true,
+        data: result,
+        message: 'Slot reserved successfully',
+      });
+    } catch (error) {
+      console.error('Reserve slot error:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * Release a reserved slot
+   * POST /api/doctors/:id/slots/:slotId/release
+   */
+  async releaseSlot(req, res, next) {
+    try {
+      const result = await doctorService.releaseTimeSlot(
+        req.params.id,
+        req.params.slotId
+      );
+      
+      res.status(200).json({
+        success: true,
+        data: result,
+        message: 'Slot released successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
 }
 
 module.exports = new DoctorController();

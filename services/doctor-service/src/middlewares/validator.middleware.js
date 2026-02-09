@@ -88,6 +88,38 @@ const addSlotValidation = [
 ];
 
 /**
+ * Validation rules for checking doctor availability
+ */
+const availabilitySlotValidation = [
+  param('id').isMongoId().withMessage('Invalid doctor ID'),
+  query('date').optional().isISO8601().withMessage('Valid date format required (ISO8601)'),
+  query('startTime').optional().matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Valid start time required (HH:MM)'),
+  query('endTime').optional().matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Valid end time required (HH:MM)'),
+  handleValidationErrors,
+];
+
+/**
+ * Validation rules for reserving a slot
+ */
+const reserveSlotValidation = [
+  param('id').isMongoId().withMessage('Invalid doctor ID'),
+  body('date').notEmpty().withMessage('Date is required'),
+  body('startTime').notEmpty().matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Valid start time required (HH:MM)'),
+  body('endTime').notEmpty().matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Valid end time required (HH:MM)'),
+  body('userId').optional().isString().withMessage('User ID must be a string'),
+  handleValidationErrors,
+];
+
+/**
+ * Validation rules for releasing a slot
+ */
+const releaseSlotValidation = [
+  param('id').isMongoId().withMessage('Invalid doctor ID'),
+  param('slotId').isMongoId().withMessage('Invalid slot ID'),
+  handleValidationErrors,
+];
+
+/**
  * Validation rules for updating slot status
  */
 const updateSlotValidation = [
@@ -110,6 +142,9 @@ module.exports = {
   updateDoctorValidation,
   searchDoctorValidation,
   addSlotValidation,
+  availabilitySlotValidation,
+  reserveSlotValidation,
+  releaseSlotValidation,
   updateSlotValidation,
   idValidation,
   handleValidationErrors,

@@ -275,6 +275,174 @@ class DoctorService {
   }
 
   /**
+   * Check doctor availability for a specific slot
+   */
+  async checkAvailability(doctorId, date, startTime, endTime) {
+    try {
+      const doctor = await DoctorScheduleReadView.findById(doctorId);
+      if (!doctor) {
+        throw new NotFoundError('Doctor not found');
+      }
+
+      const isAvailable = doctor.isSlotAvailable(date, startTime, endTime);
+      logger.info(`Checked availability for doctor: ${doctorId} on ${date} from ${startTime} to ${endTime} - Available: ${isAvailable}`);
+      
+      return {
+        available: isAvailable,
+        doctorId,
+        date,
+        startTime,
+        endTime,
+      };
+    } catch (error) {
+      logger.error('Error checking doctor availability:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reserve a time slot for appointment
+   */
+  async reserveTimeSlot(slotData) {
+    try {
+      const { doctorId, date, startTime, endTime, userId } = slotData;
+      
+      console.log(`Attempting to reserve slot for doctor: ${doctorId}`);
+      
+      // Get doctor from write model (use findOne with doctorId field for read view IDs)
+      let doctor = await Doctor.findById(doctorId);
+      
+      // If not found by _id, try finding by the doctorId field from read view
+      if (!doctor) {
+        const readView = await DoctorScheduleReadView.findById(doctorId);
+        if (readView && readView.doctorId) {
+          doctor = await Doctor.findById(readView.doctorId);
+        }
+      }
+      
+      if (!doctor) {
+        console.error(`Doctor not found with ID: ${doctorId}`);
+        throw new NotFoundError('Doctor not found');
+      }
+
+      console.log(`Doctor found: ${doctor.firstName} ${doctor.lastName} (${doctor._id})`);
+
+      // Initialize availability array if not exists
+      if (!doctor.availability) {
+        doctor.availability = [];
+      }
+
+      // Check if slot is available from read view
+      const readView = await DoctorScheduleReadView.findOne({ 
+        $or: [
+          { _id: doctorId },
+          { doctorId: doctor._id }
+        ]
+      });
+      
+      if (readView) {
+        const isAvailable = readView.isSlotAvailable(date, startTime, endTime);
+        if (!isAvailable) {
+          throw new ConflictError('Slot is not available');
+        }
+      }
+
+      // Find existing slot
+      let slot = doctor.availability.find(s => 
+        new Date(s.date).toDateString() === new Date(date).toDateString() &&
+        s.startTime === startTime &&
+        s.endTime === endTime
+      );
+
+      if (slot) {
+        // Check if already booked
+        if (slot.status === 'booked') {
+          throw new ConflictError('Slot is already booked');
+        }
+        // Update existing slot
+        slot.status = 'booked';
+      } else {
+        // Create new slot
+        slot = {
+          date: new Date(date),
+          startTime,
+          endTime,
+          status: 'booked',
+        };
+        doctor.availability.push(slot);
+      }
+
+      // Ensure required fields are present for save validation
+      if (!doctor.createdByUserId) {
+        doctor.createdByUserId = userId || doctor.userId;
+      }
+
+      await doctor.save();
+      
+      // Get the slot ID after save (for newly created slots)
+      if (!slot._id) {
+        slot = doctor.availability[doctor.availability.length - 1];
+      }
+      
+      // Update read view
+      await DoctorScheduleReadView.updateFromDoctor(doctor);
+      
+      logger.info(`Slot reserved successfully for doctor: ${doctor._id} on ${date} from ${startTime} to ${endTime}`);
+      
+      return {
+        success: true,
+        slotId: slot._id,
+        doctorId: doctor._id,
+        date: slot.date,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        status: slot.status,
+      };
+    } catch (error) {
+      logger.error('Error reserving time slot:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Release a reserved time slot (compensation)
+   */
+  async releaseTimeSlot(doctorId, slotId) {
+    try {
+      const doctor = await Doctor.findById(doctorId);
+      if (!doctor) {
+        throw new NotFoundError('Doctor not found');
+      }
+
+      const slot = doctor.availability.id(slotId);
+      if (!slot) {
+        logger.warn(`Slot ${slotId} not found for doctor ${doctorId}`);
+        return { success: true, message: 'Slot not found or already released' };
+      }
+
+      // Change status back to available
+      slot.status = 'available';
+      slot.appointmentId = null;
+
+      await doctor.save();
+      
+      // Update read view
+      await DoctorScheduleReadView.updateFromDoctor(doctor);
+      
+      logger.info(`Slot released for doctor: ${doctorId}, slot: ${slotId}`);
+      
+      return {
+        success: true,
+        slotId: slot._id,
+        status: slot.status,
+      };
+    } catch (error) {
+      logger.error('Error releasing time slot:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Update slot status
    */
   async updateSlotStatus(doctorId, slotId, status) {
@@ -321,10 +489,10 @@ class DoctorService {
       const filter = { status };
 
       // Get total count
-      const total = await DoctorScheduleReadView.countDocuments(filter);
+      const total = await Doctor.countDocuments(filter);
 
       // Fetch doctors with pagination and sorting
-      const doctors = await DoctorScheduleReadView.find(filter)
+      const doctors = await Doctor.find(filter)
         .sort(sortObj)
         .skip(skip)
         .limit(limitNum)

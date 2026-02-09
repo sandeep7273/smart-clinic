@@ -211,6 +211,11 @@ doctorScheduleReadViewSchema.index({
 doctorScheduleReadViewSchema.statics.updateFromDoctor = async function (doctor) {
   const doctorId = doctor._id;
   
+  // Initialize availability if not exists
+  if (!doctor.availability) {
+    doctor.availability = [];
+  }
+  
   // Calculate next available slot
   const availableSlots = doctor.availability.filter(
     slot => slot.status === 'available' && new Date(slot.date) >= new Date()
@@ -508,6 +513,58 @@ doctorScheduleReadViewSchema.statics.getTreatedSymptoms = async function() {
   ]);
   return result.map(r => r._id);
 };
+
+
+doctorScheduleReadViewSchema.methods.isSlotAvailable = function(date, startTime, endTime) {
+  // This method works on read view which doesn't have availability array
+  // It relies on availabilityDates and general schedule
+  
+  // For read view, we need to check if doctor has available slots for the given date
+  if (!date || !startTime || !endTime) {
+    return false;
+  }
+
+  // Check if doctor is active
+  if (this.status !== 'active' || !this.isAvailable) {
+    return false;
+  }
+
+  // Default availability logic: 9am to 5pm, Monday to Friday
+  const appointmentDate = new Date(date);
+  const dayOfWeek = appointmentDate.getDay();
+  const isWeekday = [1, 2, 3, 4, 5].includes(dayOfWeek);
+  const isWithinWorkingHours = (startTime >= '09:00' && endTime <= '17:00');
+  
+  // For weekdays within working hours, assume available unless explicitly marked unavailable
+  if (isWithinWorkingHours && isWeekday) {
+    // Check if there are available slots for this date
+    const dateAvailability = this.availabilityDates.find(ad => 
+      new Date(ad.date).toDateString() === appointmentDate.toDateString()
+    );
+    
+    if (dateAvailability) {
+      // If date has availability data, check if slots are available
+      return dateAvailability.availableSlots > 0;
+    }
+    
+    // If no explicit availability data, assume available during working hours
+    return true;
+  }
+  
+  // For non-working hours, need explicit availability
+  const dateAvailability = this.availabilityDates.find(ad => 
+    new Date(ad.date).toDateString() === appointmentDate.toDateString()
+  );
+  
+  return dateAvailability && dateAvailability.availableSlots > 0;
+};
+
+//   return this.availability.some(slot => 
+//     slot.status === SLOT_STATUS.AVAILABLE &&
+//     new Date(slot.date).toDateString() === new Date(date).toDateString() &&
+//     slot.startTime === startTime &&
+//     slot.endTime === endTime
+//   );
 
 const DoctorScheduleReadView = mongoose.model('DoctorScheduleReadView', doctorScheduleReadViewSchema);
 
