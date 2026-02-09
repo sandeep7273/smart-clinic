@@ -1,16 +1,23 @@
+/**
+ * Main Server Entry Point
+ * Appointment Service with SAGA, CQRS, Event Sourcing, and GraphQL
+ */
+
+require('express-async-errors');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const swaggerUi = require('swagger-ui-express');
-const swaggerJsdoc = require('swagger-jsdoc');
-const config = require('./config');
-const connectDB = require('./config/database');
-const logger = require('./utils/logger');
-const { errorHandler, notFoundHandler } = require('./middlewares/error.middleware');
 
-// Import GraphQL and Kafka
-const { createApolloServer } = require('./graphql/server');
+const config = require('./config');
+const swaggerSpec = require('./config/swagger');
+const { connectDB } = require('./config/database');
+const logger = require('./utils/logger');
+const { errorHandler, notFoundHandler } = require('./middlewares/errorHandler.middleware');
+
+// Import GraphQL and new Kafka setup
+const { createApolloServer, healthCheck } = require('./graphql/server');
 const { 
   initializeProducer, 
   initializeConsumer, 
@@ -18,85 +25,68 @@ const {
 } = require('./kafka');
 
 // Import routes
-const doctorRoutes = require('./routes/doctor.routes');
-const healthRoutes = require('./routes/health.routes');
+const appointmentRoutes = require('./routes/appointment.routes');
 
 // Create Express app
 const app = express();
 
-// Connect to database
-connectDB();
-
-// Security middleware
+// Middleware
 app.use(helmet());
-app.use(cors({
-  origin: config.cors.origin,
-  credentials: true,
-}));
-
-// Body parser middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cors(config.cors));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Logging middleware
 if (config.nodeEnv === 'development') {
   app.use(morgan('dev'));
 } else {
-  app.use(morgan('combined', {
-    stream: {
-      write: (message) => logger.info(message.trim()),
-    },
-  }));
+  app.use(
+    morgan('combined', {
+      stream: {
+        write: (message) => logger.info(message.trim()),
+      },
+    })
+  );
 }
 
-// Swagger documentation
-const swaggerOptions = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'Doctor Service API',
-      version: '1.0.0',
-      description: 'API for managing doctor profiles and appointments',
-      contact: {
-        name: 'API Support',
-      },
-    },
-    servers: [
-      {
-        url: `http://localhost:${config.port}`,
-        description: 'Development server',
-      },
-    ],
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
-        },
-      },
-    },
-  },
-  apis: ['./src/routes/*.js', './src/models/*.js'],
-};
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    ...healthCheck(),
+    success: true,
+    message: 'Appointment Service is running',
+    service: config.serviceName,
+    version: '1.0.0'
+  });
+});
 
-const swaggerDocs = swaggerJsdoc(swaggerOptions);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
-
-// Health check routes
-app.use('/health', healthRoutes);
+// API documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // API routes
-app.use('/api/doctors', doctorRoutes);
+app.use('/appointments', appointmentRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
-    service: 'Doctor Service',
+    success: true,
+    message: 'Appointment Service API',
     version: '1.0.0',
-    status: 'running',
-    documentation: `http://localhost:${config.port}/api-docs`,
-    graphql: `http://localhost:${config.port}/graphql`,
+    documentation: '/api-docs',
+    graphql: '/graphql',
+    endpoints: {
+      appointments: '/appointments',
+      health: '/health',
+      graphql: '/graphql'
+    },
+    patterns: {
+      saga: 'Distributed transaction management',
+      cqrs: 'Command Query Responsibility Segregation',
+      eventSourcing: 'Complete audit trail',
+      graphql: 'Flexible API layer with federation support',
+      kafka: 'Event-driven architecture',
+      circuitBreaker: 'Service resilience'
+    }
   });
 });
 
@@ -133,28 +123,38 @@ const initializeServices = async () => {
     return { apolloServer };
   } catch (error) {
     logger.error('Failed to initialize services:', error);
-    process.exit(1);
+    throw error;
   }
 };
 
 // 404 handler
 app.use(notFoundHandler);
 
-// Global error handler
+// Error handler (must be last)
 app.use(errorHandler);
 
-// Start server
+// Initialize and start server
 const startServer = async () => {
   try {
-    // Initialize all services
+    // Connect to MongoDB
+    await connectDB();
+    logger.info('Database connected successfully');
+
+    // Initialize GraphQL and Kafka services
     const { apolloServer } = await initializeServices();
-    
-    // Start HTTP server
+
+    // Start server
     const server = app.listen(config.port, () => {
-      logger.info(`🚀 Doctor Service running on port ${config.port}`);
-      logger.info(`📚 API Documentation: http://localhost:${config.port}/api-docs`);
-      logger.info(`🔗 GraphQL Endpoint: http://localhost:${config.port}/graphql`);
-      logger.info(`🏥 Environment: ${config.nodeEnv}`);
+      logger.info(`Appointment Service started`, {
+        port: config.port,
+        environment: config.nodeEnv,
+        documentation: `http://localhost:${config.port}/api-docs`,
+        graphql: `http://localhost:${config.port}/graphql`
+      });
+      console.log(`\n🚀 Appointment Service running on port ${config.port}`);
+      console.log(`📚 API Documentation: http://localhost:${config.port}/api-docs`);
+      console.log(`🔗 GraphQL Endpoint: http://localhost:${config.port}/graphql`);
+      console.log(`🏥 Health Check: http://localhost:${config.port}/health\n`);
     });
 
     // Graceful shutdown handler
@@ -195,6 +195,12 @@ const startServer = async () => {
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
+    // Handle unhandled rejections
+    process.on('unhandledRejection', (err) => {
+      logger.error('Unhandled Rejection:', err);
+      gracefulShutdown('UNHANDLED_REJECTION');
+    });
+
     return server;
     
   } catch (error) {
@@ -203,7 +209,7 @@ const startServer = async () => {
   }
 };
 
-// Start the application
+// Start the server
 startServer();
 
 module.exports = app;

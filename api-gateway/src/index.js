@@ -17,7 +17,7 @@ const { graphqlRateLimiter } = require('./middleware/rateLimiter.middleware');
 const healthRoutes = require('./routes/health.routes');
 const proxyRoutes = require('./routes/proxy.routes');
 const { createContext } = require('./graphql/context');
-const { stitchRemoteSchemas } = require('./graphql/stitchSchemas');
+const { stitchRemoteSchemas } = require('./graphql/simpleFederation');
 const { createServiceClients } = require('./services/serviceClient');
 
 // Initialize Express app

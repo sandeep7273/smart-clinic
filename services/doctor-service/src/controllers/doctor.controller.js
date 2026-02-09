@@ -29,6 +29,7 @@ class DoctorController {
    */
   async getDoctorById(req, res, next) {
     try {
+      console.log(`debugging Fetching doctor with ID: ${req.params.id}`);
       const doctor = await doctorService.getDoctorById(req.params.id);
       
       res.status(200).json({

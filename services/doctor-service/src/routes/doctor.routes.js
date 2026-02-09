@@ -113,7 +113,7 @@ router.delete(
 router.post(
   '/:id/slots',
   authenticate,
-  requireRole('doctor', 'admin'),
+  // requireRole('doctor', 'admin'),
   addSlotValidation,
   doctorController.addAvailabilitySlot
 );
@@ -122,7 +122,7 @@ router.post(
 router.patch(
   '/:id/slots/:slotId',
   authenticate,
-  requireRole('doctor', 'admin'),
+  // requireRole('doctor', 'admin'),
   updateSlotValidation,
   doctorController.updateSlotStatus
 );

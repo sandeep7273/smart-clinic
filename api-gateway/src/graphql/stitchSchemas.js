@@ -63,11 +63,12 @@ const stitchRemoteSchemas = async (config) => {
   // List of services that expose GraphQL endpoints
   const graphqlServices = [
     { name: 'auth', url: `${config.services.auth}/graphql` },
-    { name: 'patient', url: `${config.services.patient}/graphql` },
     { name: 'doctor', url: `${config.services.doctor}/graphql` },
     { name: 'appointment', url: `${config.services.appointment}/graphql` },
-    { name: 'notification', url: `${config.services.notification}/graphql` },
-    { name: 'search', url: `${config.services.search}/graphql` },
+    // Note: Adding patient, notification, and search services when they have GraphQL endpoints
+    // { name: 'patient', url: `${config.services.patient}/graphql` },
+    // { name: 'notification', url: `${config.services.notification}/graphql` },
+    // { name: 'search', url: `${config.services.search}/graphql` },
   ];
   
   // Introspect and add each service schema
