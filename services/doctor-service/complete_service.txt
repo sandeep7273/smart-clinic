@@ -1,0 +1,2 @@
+This file marks that the doctor service implementation is being completed.
+All files will be created to make the service fully functional.

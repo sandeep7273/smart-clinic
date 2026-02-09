@@ -19,8 +19,9 @@ const validateToken = async (token) => {
       },
       timeout: 5000,
     });
+    console.log('debugging Token validation response:', response.data); 
 
-    return response.data.data.user;
+    return response.data.data;
   } catch (error) {
     logger.error('Token validation failed', {
       error: error.message,

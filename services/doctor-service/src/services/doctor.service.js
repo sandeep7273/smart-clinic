@@ -1,4 +1,5 @@
 const { Doctor } = require('../models/Doctor');
+const { DoctorScheduleReadView } = require('../models/DoctorScheduleReadView');
 const { ValidationError, NotFoundError, ConflictError } = require('../utils/errors');
 const logger = require('../utils/logger');
 
@@ -21,14 +22,19 @@ class DoctorService {
           throw new ConflictError('Email already in use');
         }
       }
-
+      console.log(`debugging  Creating doctor profile for user: ${userId} `);
       const doctor = new Doctor({
         ...doctorData,
         userId,
       });
 
       await doctor.save();
+      console.log(`Doctor created: ${doctor._id} for user: ${userId}`);
       logger.info(`Doctor created: ${doctor._id} for user: ${userId}`);
+
+      // Update read view (CQRS)
+      await DoctorScheduleReadView.updateFromDoctor(doctor);
+
       return doctor;
     } catch (error) {
       logger.error('Error creating doctor:', error);
@@ -41,7 +47,7 @@ class DoctorService {
    */
   async getDoctorById(doctorId) {
     try {
-      const doctor = await Doctor.findById(doctorId);
+      const doctor = await DoctorScheduleReadView.findById(doctorId);
       if (!doctor) {
         throw new NotFoundError('Doctor not found');
       }
@@ -59,7 +65,7 @@ class DoctorService {
    */
   async getDoctorByUserId(userId) {
     try {
-      const doctor = await Doctor.findByUserId(userId);
+      const doctor = await DoctorScheduleReadView.findByUserId(userId);
       if (!doctor) {
         throw new NotFoundError('Doctor not found');
       }
@@ -95,6 +101,8 @@ class DoctorService {
       });
 
       await doctor.save();
+      // Update read view (CQRS)
+      await DoctorScheduleReadView.updateFromDoctor(doctor);
       logger.info(`Doctor updated: ${doctorId}`);
       return doctor;
     } catch (error) {
@@ -113,6 +121,8 @@ class DoctorService {
         throw new NotFoundError('Doctor not found');
       }
       logger.info(`Doctor deleted: ${doctorId}`);
+      // Update read view (CQRS)
+      await DoctorScheduleReadView.updateFromDoctor(doctor);
       return { message: 'Doctor deleted successfully' };
     } catch (error) {
       logger.error('Error deleting doctor:', error);
@@ -127,11 +137,16 @@ class DoctorService {
     try {
       const {
         query,
+        name,
+        specialty,
         specialization,
         location,
         condition,
         symptom,
         date,
+        minRating,
+        maxFee,
+        acceptsInsurance,
         isAvailable,
         page = 1,
         limit = 10,
@@ -146,17 +161,25 @@ class DoctorService {
         sortOrder,
       };
 
-      const filters = {
-        specialization,
-        location,
-        condition,
-        symptom,
-        date,
-        isAvailable: isAvailable === 'true' || isAvailable === true,
-      };
+      // Build filters object with all available criteria
+      const filters = {};
+      
+      // Add filters only if they are provided
+      if (query) filters.query = query;
+      if (name) filters.name = name;
+      if (specialty) filters.specialization = specialty;
+      if (specialization) filters.specialization = specialization;
+      if (location) filters.location = location;
+      if (condition) filters.condition = condition;
+      if (symptom) filters.symptom = symptom;
+      if (date) filters.date = date;
+      if (minRating) filters.minRating = parseFloat(minRating);
+      if (maxFee) filters.maxFee = parseFloat(maxFee);
+      if (acceptsInsurance !== undefined) filters.acceptsInsurance = acceptsInsurance === 'true' || acceptsInsurance === true;
+      if (isAvailable !== undefined) filters.isAvailable = isAvailable === 'true' || isAvailable === true;
 
-      const results = await Doctor.search(query, filters, options);
-      logger.info(`Search performed with query: ${query}, filters: ${JSON.stringify(filters)}`);
+      const results = await DoctorScheduleReadView.search({ ...filters, ...options });
+      logger.info(`Search performed with filters: ${JSON.stringify(filters)}`);
       return results;
     } catch (error) {
       logger.error('Error searching doctors:', error);
@@ -182,7 +205,7 @@ class DoctorService {
       if (location) filters.location = location;
       if (date) filters.date = date;
 
-      const results = await Doctor.findAvailable(filters, {
+      const results = await DoctorScheduleReadView.findAvailableDoctors(filters, {
         page: parseInt(page),
         limit: parseInt(limit),
       });
@@ -206,12 +229,12 @@ class DoctorService {
         sortOrder = 'desc',
       } = options;
 
-      const doctors = await Doctor.findBySpecialization(specialization)
+      const doctors = await DoctorScheduleReadView.findBySpecialization(specialization)
         .sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 })
         .skip((page - 1) * limit)
         .limit(limit);
 
-      const total = await Doctor.countDocuments({
+      const total = await DoctorScheduleReadView.countDocuments({
         specializations: specialization,
         status: 'active',
       });
@@ -242,6 +265,7 @@ class DoctorService {
       }
 
       await doctor.addAvailabilitySlot(slotData);
+      await DoctorScheduleReadView.updateFromDoctor(doctor); // Update read view (CQRS)
       logger.info(`Availability slot added for doctor: ${doctorId}`);
       return doctor;
     } catch (error) {
@@ -261,6 +285,7 @@ class DoctorService {
       }
 
       await doctor.updateSlotStatus(slotId, status);
+      await DoctorScheduleReadView.updateFromDoctor(doctor); // Update read view (CQRS)
       logger.info(`Slot status updated for doctor: ${doctorId}, slot: ${slotId}`);
       return doctor;
     } catch (error) {
@@ -296,10 +321,10 @@ class DoctorService {
       const filter = { status };
 
       // Get total count
-      const total = await Doctor.countDocuments(filter);
+      const total = await DoctorScheduleReadView.countDocuments(filter);
 
       // Fetch doctors with pagination and sorting
-      const doctors = await Doctor.find(filter)
+      const doctors = await DoctorScheduleReadView.find(filter)
         .sort(sortObj)
         .skip(skip)
         .limit(limitNum)
@@ -323,20 +348,39 @@ class DoctorService {
   }
 
   /**
+   * Sync all doctors data to read view (CQRS)
+   */
+  async syncRecordsDoctorToReadView() {
+    try {
+      console.log('Syncing doctors to read view...');
+       const doctors = await Doctor.find({});
+       for (const doctor of doctors) {
+         await DoctorScheduleReadView.updateFromDoctor(doctor);
+       }
+    } catch (error) {
+       logger.error('Error syncing doctors to read view:', error);
+      throw error;
+    }
+  }
+
+
+  /**
    * Get filter options for dropdowns
    */
   async getFilterOptions() {
     try {
-      const [specializations, locations, conditions] = await Promise.all([
-        Doctor.getSpecializations(),
-        Doctor.getLocations(),
-        Doctor.getTreatedConditions(),
+      const [specializations, locations, conditions, symptoms] = await Promise.all([
+        DoctorScheduleReadView.getSpecializations(),
+        DoctorScheduleReadView.getLocations(),
+        DoctorScheduleReadView.getTreatedConditions(),
+        DoctorScheduleReadView.getTreatedSymptoms(),
       ]);
 
       return {
         specializations,
         locations,
         conditions,
+        symptoms,
       };
     } catch (error) {
       logger.error('Error getting filter options:', error);
@@ -349,7 +393,7 @@ class DoctorService {
    */
   async getDoctorStats(doctorId) {
     try {
-      const doctor = await Doctor.findById(doctorId);
+      const doctor = await DoctorScheduleReadView.findById(doctorId);
       if (!doctor) {
         throw new NotFoundError('Doctor not found');
       }

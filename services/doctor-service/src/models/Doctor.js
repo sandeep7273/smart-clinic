@@ -37,9 +37,9 @@ const QualificationSchema = new mongoose.Schema({
 }, { _id: false });
 
 const LicenseSchema = new mongoose.Schema({
-  licenseNumber: { type: String, required: true },
-  issuingAuthority: { type: String, required: true },
-  state: { type: String, required: true },
+  licenseNumber: { type: String },
+  issuingAuthority: { type: String},
+  state: { type: String,  },
   expiryDate: Date,
   isActive: { type: Boolean, default: true },
 }, { _id: false });
@@ -59,7 +59,7 @@ const ScheduleSlotSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const WeeklyScheduleSchema = new mongoose.Schema({
-  dayOfWeek: { type: Number, required: true, min: 0, max: 6 }, // 0 = Sunday
+  dayOfWeek: { type: Number, min: 0, max: 6 }, // 0 = Sunday
   isAvailable: { type: Boolean, default: true },
   startTime: String,
   endTime: String,
@@ -72,7 +72,7 @@ const WeeklyScheduleSchema = new mongoose.Schema({
 // Main Doctor Schema
 const DoctorSchema = new mongoose.Schema({
   // User reference
-  userId: { type: String, required: true, unique: true, index: true },
+  userId: { type: String, required: true, index: true },
   
   // Basic Information
   firstName: { type: String, required: true, trim: true },
@@ -85,7 +85,7 @@ const DoctorSchema = new mongoose.Schema({
   // Professional Information
   specializations: [{ type: String, required: true, index: true }], // e.g., 'cardiology', 'internal medicine'
   subSpecialties: [String], // e.g., 'interventional cardiology'
-  licenseNumber: { type: String, required: true },
+  licenseNumber: { type: String  },
   yearsOfExperience: { type: Number, min: 0 },
   
   // Medical conditions and symptoms they treat (for search)
@@ -133,8 +133,13 @@ const DoctorSchema = new mongoose.Schema({
   unavailableUntil: Date,
   
   // Metadata
-  tenantId: { type: String, required: true, index: true },
+  tenantId: { type: String, index: true },
   isDeleted: { type: Boolean, default: false, index: true },
+  createdByUserId: {
+    type: String,
+    index: true,
+    required: true,
+  },
 }, { 
   timestamps: true,
   toJSON: { virtuals: true },
@@ -194,14 +199,21 @@ DoctorSchema.statics.findBySpecialization = function(specialization) {
 // Comprehensive search method
 DoctorSchema.statics.search = async function(searchParams) {
   const {
-    query, // Free text search
+    query, // Free text search across multiple fields
+    name, // Search by doctor's name specifically
     specialization,
     location, // city
     condition,
     symptom,
     date,
+    minRating,
+    maxFee,
+    acceptsInsurance,
+    isAvailable,
     page = 1,
     limit = 10,
+    sortBy = 'rating',
+    sortOrder = 'desc',
   } = searchParams;
 
   const filter = {
@@ -209,9 +221,24 @@ DoctorSchema.statics.search = async function(searchParams) {
     isDeleted: false,
   };
 
-  // Text search across name, specialty, conditions, symptoms
+  // Text search across name, specialty, conditions, symptoms using MongoDB text index
   if (query) {
     filter.$text = { $search: query };
+  }
+
+  // Search by doctor's name (first name or last name)
+  if (name) {
+    filter.$or = [
+      { firstName: new RegExp(name, 'i') },
+      { lastName: new RegExp(name, 'i') },
+      { $expr: { 
+        $regexMatch: { 
+          input: { $concat: ['$firstName', ' ', '$lastName'] }, 
+          regex: name, 
+          options: 'i' 
+        } 
+      }}
+    ];
   }
 
   // Specialization filter
@@ -234,6 +261,21 @@ DoctorSchema.statics.search = async function(searchParams) {
     filter.treatedSymptoms = { $in: Array.isArray(symptom) ? symptom : [symptom] };
   }
 
+  // Rating filter
+  if (minRating) {
+    filter.rating = { $gte: parseFloat(minRating) };
+  }
+
+  // Fee filter
+  if (maxFee) {
+    filter.consultationFee = { $lte: parseFloat(maxFee) };
+  }
+
+  // Insurance filter
+  if (acceptsInsurance !== undefined) {
+    filter.acceptsInsurance = acceptsInsurance;
+  }
+
   // Date availability filter
   if (date) {
     const searchDate = new Date(date);
@@ -248,14 +290,31 @@ DoctorSchema.statics.search = async function(searchParams) {
     };
   }
 
+  // Availability status filter
+  if (isAvailable !== undefined) {
+    if (isAvailable) {
+      filter['availability.status'] = SLOT_STATUS.AVAILABLE;
+    }
+  }
+
   const skip = (page - 1) * limit;
+
+  // Build sort object
+  let sortObject = {};
+  if (query && !sortBy) {
+    // If text search, sort by relevance score
+    sortObject = { score: { $meta: 'textScore' } };
+  } else {
+    // Otherwise sort by specified field
+    sortObject[sortBy] = sortOrder === 'asc' ? 1 : -1;
+  }
 
   const [doctors, total] = await Promise.all([
     this.find(filter)
       .select('-availability') // Exclude availability array for list view
       .skip(skip)
       .limit(limit)
-      .sort(query ? { score: { $meta: 'textScore' } } : { rating: -1, createdAt: -1 })
+      .sort(sortObject)
       .lean(),
     this.countDocuments(filter),
   ]);

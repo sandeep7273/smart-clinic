@@ -51,10 +51,28 @@ const updateDoctorValidation = [
  * Validation rules for search
  */
 const searchDoctorValidation = [
+  // Pagination
   query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
+  
+  // Sorting
   query('sortBy').optional().isIn(['rating', 'experience', 'consultationFee', 'firstName']).withMessage('Invalid sort field'),
   query('sortOrder').optional().isIn(['asc', 'desc']).withMessage('Sort order must be asc or desc'),
+  
+  // Search criteria - all optional
+  query('query').optional().isString().trim().withMessage('Search query must be a string'),
+  query('name').optional().isString().trim().withMessage('Name must be a string'),
+  query('specialty').optional().isString().trim().withMessage('Specialty must be a string'),
+  query('specialization').optional().isString().trim().withMessage('Specialization must be a string'),
+  query('location').optional().isString().trim().withMessage('Location must be a string'),
+  query('condition').optional().isString().trim().withMessage('Condition must be a string'),
+  query('symptom').optional().isString().trim().withMessage('Symptom must be a string'),
+  query('date').optional().isString().trim().withMessage('Date must be a string'),
+  query('minRating').optional().isFloat({ min: 0, max: 5 }).withMessage('Min rating must be between 0 and 5'),
+  query('maxFee').optional().isFloat({ min: 0 }).withMessage('Max fee must be a positive number'),
+  query('acceptsInsurance').optional().isBoolean().withMessage('Accepts insurance must be a boolean'),
+  query('isAvailable').optional().isBoolean().withMessage('Is available must be a boolean'),
+  
   handleValidationErrors,
 ];
 

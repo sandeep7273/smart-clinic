@@ -19,12 +19,14 @@ const {
 // Get all doctors with pagination and sorting
 router.get(
   '/',
+  authenticate,
   doctorController.getAllDoctors
 );
 
 // Search doctors with filters
 router.get(
   '/search',
+  authenticate,
   searchDoctorValidation,
   doctorController.searchDoctors
 );
@@ -32,6 +34,7 @@ router.get(
 // Get available doctors
 router.get(
   '/available',
+  authenticate,
   searchDoctorValidation,
   doctorController.getAvailableDoctors
 );
@@ -39,12 +42,14 @@ router.get(
 // Get filter options for dropdowns
 router.get(
   '/filters/options',
+  authenticate,
   doctorController.getFilterOptions
 );
 
 // Get doctors by specialization
 router.get(
   '/specialization/:specialization',
+  authenticate,
   searchDoctorValidation,
   doctorController.getDoctorsBySpecialization
 );
@@ -52,6 +57,7 @@ router.get(
 // Get doctor by ID
 router.get(
   '/:id',
+  authenticate,
   idValidation,
   doctorController.getDoctorById
 );
@@ -59,6 +65,7 @@ router.get(
 // Get doctor statistics
 router.get(
   '/:id/stats',
+  authenticate,
   idValidation,
   doctorController.getDoctorStats
 );
@@ -118,6 +125,14 @@ router.patch(
   requireRole('doctor', 'admin'),
   updateSlotValidation,
   doctorController.updateSlotStatus
+);
+
+// Sync all doctors to read view (for admin use)
+router.post(
+  '/syncReadView',
+  authenticate,
+  requireRole('admin'),
+  doctorController.syncRecordsDoctorToReadView
 );
 
 module.exports = router;

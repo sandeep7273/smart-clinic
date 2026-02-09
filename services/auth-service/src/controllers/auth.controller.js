@@ -106,6 +106,19 @@ const healthCheck = asyncHandler(async (req, res) => {
   });
 });
 
+
+/**
+ * Get all users (for testing purposes)
+ * GET /auth/all
+ */
+const getAllUsers = asyncHandler(async (req, res) => {
+  const users = await authService.getAllUsers(); 
+  res.status(200).json({
+    success: true,
+    data: users,
+  });
+});
+
 module.exports = {
   register,
   login,
@@ -113,4 +126,5 @@ module.exports = {
   logout,
   getMe,
   healthCheck,
+  getAllUsers,
 };

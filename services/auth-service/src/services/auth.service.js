@@ -231,10 +231,24 @@ async function getUserProfile(userId) {
   }
 }
 
+/**
+ * Get all users (for testing purposes)
+ */
+async function getAllUsers() {
+  try {
+    const users = await User.find({});
+    return users.map(user => user.toPublicJSON());
+  } catch (error) {
+    logger.error('Get all users error:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   register,
   login,
   refreshAccessToken,
   logout,
   getUserProfile,
+  getAllUsers,
 };

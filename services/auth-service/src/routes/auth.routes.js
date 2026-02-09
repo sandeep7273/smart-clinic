@@ -57,11 +57,21 @@ router.post(
   authController.logout
 );
 
+// verify token
+router.get(
+  '/verify',
+  authenticate,
+  authController.getMe
+);
+
 /**
  * Protected routes (authentication required)
  */
 
 // Get current user profile
 router.get('/me', authenticate, authController.getMe);
+
+// get All Users (for testing purposes)
+router.get('/all', authenticate, authController.getAllUsers);
 
 module.exports = router;

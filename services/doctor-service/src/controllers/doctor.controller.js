@@ -8,7 +8,9 @@ class DoctorController {
    */
   async createDoctor(req, res, next) {
     try {
-      const userId = req.user.userId;
+      const userId = req.user.id;
+      req.body.createdByUserId = userId;
+      console.log(`debugging Creating doctor profile for user: ${userId}`);
       const doctor = await doctorService.createDoctor(userId, req.body);
       
       res.status(201).json({
@@ -242,6 +244,24 @@ class DoctorController {
       next(error);
     }
   }
+
+  /**
+   * Sync all doctors to read view (for testing/demo purposes)
+   * POST /api/doctors/sync-read-view
+   */
+  async syncRecordsDoctorToReadView(req, res, next) {
+    try {
+      await doctorService.syncRecordsDoctorToReadView();
+      
+      res.status(200).json({
+        success: true,
+        message: 'Doctor read view synchronized successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+   
 }
 
 module.exports = new DoctorController();
