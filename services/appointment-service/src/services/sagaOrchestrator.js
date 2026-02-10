@@ -56,19 +56,13 @@ class SagaOrchestrator {
       );
 
     //   Step 3: Get patient details
-      const patientDetails = await this.getPatientDetails(
-        bookingData.userId,
-        authToken
-      );
-
-      // Step 4: Check doctor availability
-    //     await this.checkDoctorAvailability(
-    //     bookingData.doctorId,
-    //     bookingData.date,
-    //     bookingData.startTime,
-    //     bookingData.endTime,
-    //     authToken
-    //   );
+      const patientDetails = {
+        _id: bookingData.userId,
+        firstName: user.firstName || 'Unknown',
+        lastName: user.lastName || 'Patient',
+        email: user.email || '',
+        phone: user.phoneNumber || '',
+      }
 
       // Step 5: Reserve slot (with compensation)
       const slotReservation = await this.reserveSlot(

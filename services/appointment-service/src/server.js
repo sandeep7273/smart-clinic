@@ -64,7 +64,7 @@ app.get('/health', (req, res) => {
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // API routes
-app.use('/appointments', appointmentRoutes);
+app.use('/api/appointments', appointmentRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

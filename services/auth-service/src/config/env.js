@@ -18,7 +18,7 @@ const config = {
     accessSecret: process.env.JWT_ACCESS_SECRET || 'fallback_access_secret',
     refreshSecret: process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret',
     issuer: process.env.JWT_ISSUER || 'auth-service',
-    accessTokenExpiry: process.env.ACCESS_TOKEN_EXPIRY || '15m',
+    accessTokenExpiry: process.env.ACCESS_TOKEN_EXPIRY || '50m',
     refreshTokenExpiry: process.env.REFRESH_TOKEN_EXPIRY || '7d',
   },
 

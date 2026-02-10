@@ -53,7 +53,7 @@ class DoctorService {
       }
       return doctor;
     } catch (error) {
-      if (error.name === 'CastError') {
+      if (error.name === 'NotFoundError') {
         throw new NotFoundError('Doctor not found');
       }
       throw error;
@@ -489,10 +489,10 @@ class DoctorService {
       const filter = { status };
 
       // Get total count
-      const total = await Doctor.countDocuments(filter);
+      const total = await DoctorScheduleReadView.countDocuments(filter);
 
       // Fetch doctors with pagination and sorting
-      const doctors = await Doctor.find(filter)
+      const doctors = await DoctorScheduleReadView.find(filter)
         .sort(sortObj)
         .skip(skip)
         .limit(limitNum)

@@ -42,9 +42,9 @@ const config = {
 
   // Circuit Breaker Configuration
   circuitBreaker: {
-    timeout: 500000, // 500 seconds
-    errorThresholdPercentage: 500,
-    resetTimeout: 300000, // 300 seconds
+    timeout: 120000, // 2 minutes (120 seconds) - increased for testing
+    errorThresholdPercentage: 90, // 90% - very lenient for testing
+    resetTimeout: 10000, // 10 seconds - quick recovery for testing
   },
 
   // Saga Configuration
