@@ -1,18 +1,12 @@
 /**
  * Server Entry Point
- * Starts the Express server with GraphQL and Kafka integration
+ * Starts the Express server
  */
 
 const app = require('./app');
 const config = require('./config/env');
 const logger = require('./utils/logger.util');
 const { connectDatabase, disconnectDatabase } = require('./config/database');
-const { createApolloServer } = require('./graphql/server');
-const { 
-  initializeProducer, 
-  initializeConsumer, 
-  shutdown: shutdownKafka 
-} = require('./kafka');
 
 const PORT = config.app.port;
 
@@ -28,29 +22,6 @@ async function startServer() {
     // Connect to MongoDB
     await connectDatabase();
 
-    // Initialize Kafka
-    let kafkaInitialized = false;
-    try {
-      await initializeProducer();
-      await initializeConsumer();
-      kafkaInitialized = true;
-      logger.info('✅ Kafka initialized successfully');
-    } catch (error) {
-      logger.warn('⚠️ Kafka initialization failed, continuing without event streaming:', error.message);
-    }
-
-    // Initialize GraphQL server
-    const apolloServer = createApolloServer();
-    await apolloServer.start();
-    apolloServer.applyMiddleware({ 
-      app, 
-      path: '/graphql',
-      cors: {
-        origin: config.cors.origin.split(','),
-        credentials: config.cors.credentials
-      }
-    });
-
     // Start Express server
     const server = app.listen(PORT, () => {
       logger.info(`🚀 Auth Service running on port ${PORT}`);
@@ -59,10 +30,6 @@ async function startServer() {
       logger.info(`🔐 CORS Origin: ${config.cors.origin}`);
       logger.info(`⏱️  Access Token Expiry: ${config.jwt.accessTokenExpiry}`);
       logger.info(`⏱️  Refresh Token Expiry: ${config.jwt.refreshTokenExpiry}`);
-      logger.info(`🌐 GraphQL Playground: http://localhost:${PORT}${apolloServer.graphqlPath}`);
-      if (kafkaInitialized) {
-        logger.info(`📡 Kafka: Connected and consuming events`);
-      }
     });
 
     // Handle server errors
@@ -79,20 +46,10 @@ async function startServer() {
     const gracefulShutdown = async (signal) => {
       logger.info(`${signal} received. Starting graceful shutdown...`);
 
-      // Stop Apollo Server
-      await apolloServer.stop();
-      logger.info('GraphQL server stopped');
-
       server.close(async () => {
         logger.info('HTTP server closed');
 
         try {
-          // Shutdown Kafka connections
-          if (kafkaInitialized) {
-            await shutdownKafka();
-            logger.info('Kafka connections closed');
-          }
-
           await disconnectDatabase();
           logger.info('MongoDB connection closed');
           
