@@ -436,13 +436,17 @@ doctorScheduleReadViewSchema.statics.search = async function(searchParams) {
     this.countDocuments(filter),
   ]);
 
+  const totalPages = Math.ceil(total / limit);
+  
   return {
     doctors,
     pagination: {
       page,
       limit,
       total,
-      pages: Math.ceil(total / limit),
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
     },
   };
 };

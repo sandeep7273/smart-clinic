@@ -66,7 +66,7 @@ app.use('/api', proxyRoutes);
 /**
  * Initialize Apollo Server for GraphQL
  */
-const initializeApolloServer = async () => {
+const initializeApolloServer = async (app) => {
   try {
     logger.info('Initializing Apollo Server...');
     
@@ -134,7 +134,7 @@ const initializeApolloServer = async () => {
       cors: false, // Already handled by Express
     });
     
-    logger.info(`GraphQL endpoint available at /graphql`);
+    logger.info(`✅ GraphQL endpoint available at /graphql`);
     
     return apolloServer;
   } catch (error) {
@@ -147,12 +147,6 @@ const initializeApolloServer = async () => {
 };
 
 /**
- * Error Handling Middleware
- */
-app.use(notFound);
-app.use(errorHandler);
-
-/**
  * Start Server
  */
 const startServer = async () => {
@@ -161,8 +155,14 @@ const startServer = async () => {
     const serviceClients = createServiceClients();
     logger.info('Service clients initialized');
     
-    // Initialize Apollo Server
-    const apolloServer = await initializeApolloServer();
+    // Initialize Apollo Server (must be before error handlers)
+    const apolloServer = await initializeApolloServer(app);
+    
+    /**
+     * Error Handling Middleware (registered AFTER GraphQL)
+     */
+    app.use(notFound);
+    app.use(errorHandler);
     
     // Start Express server
     const server = app.listen(config.app.port, () => {

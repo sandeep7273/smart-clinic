@@ -2,6 +2,7 @@ const { Doctor } = require('../models/Doctor');
 const { DoctorScheduleReadView } = require('../models/DoctorScheduleReadView');
 const { ValidationError, NotFoundError, ConflictError } = require('../utils/errors');
 const logger = require('../utils/logger');
+const { publishDoctorEvent, EVENT_TYPES } = require('../kafka');
 
 class DoctorService {
   /**
@@ -34,6 +35,23 @@ class DoctorService {
 
       // Update read view (CQRS)
       await DoctorScheduleReadView.updateFromDoctor(doctor);
+
+      // Publish doctor created event
+      try {
+        await publishDoctorEvent(EVENT_TYPES.DOCTOR_CREATED, {
+          doctorId: doctor._id.toString(),
+          userId,
+          firstName: doctor.firstName,
+          lastName: doctor.lastName,
+          email: doctor.email,
+          specializations: doctor.specializations,
+          consultationFee: doctor.consultationFee,
+          status: doctor.status
+        });
+      } catch (kafkaError) {
+        logger.error('Failed to publish DOCTOR_CREATED event:', kafkaError);
+        // Don't fail the request if Kafka is down
+      }
 
       return doctor;
     } catch (error) {
@@ -104,6 +122,20 @@ class DoctorService {
       // Update read view (CQRS)
       await DoctorScheduleReadView.updateFromDoctor(doctor);
       logger.info(`Doctor updated: ${doctorId}`);
+
+      // Publish doctor updated event
+      try {
+        await publishDoctorEvent(EVENT_TYPES.DOCTOR_UPDATED, {
+          doctorId: doctor._id.toString(),
+          userId: doctor.userId,
+          updatedFields: Object.keys(updateData),
+          email: doctor.email,
+          specializations: doctor.specializations
+        });
+      } catch (kafkaError) {
+        logger.error('Failed to publish DOCTOR_UPDATED event:', kafkaError);
+      }
+
       return doctor;
     } catch (error) {
       logger.error('Error updating doctor:', error);
@@ -123,6 +155,18 @@ class DoctorService {
       logger.info(`Doctor deleted: ${doctorId}`);
       // Update read view (CQRS)
       await DoctorScheduleReadView.updateFromDoctor(doctor);
+
+      // Publish doctor deleted event
+      try {
+        await publishDoctorEvent(EVENT_TYPES.DOCTOR_DELETED, {
+          doctorId: doctor._id.toString(),
+          userId: doctor.userId,
+          email: doctor.email
+        });
+      } catch (kafkaError) {
+        logger.error('Failed to publish DOCTOR_DELETED event:', kafkaError);
+      }
+
       return { message: 'Doctor deleted successfully' };
     } catch (error) {
       logger.error('Error deleting doctor:', error);
@@ -239,13 +283,17 @@ class DoctorService {
         status: 'active',
       });
 
+      const totalPages = Math.ceil(total / limit);
+
       return {
         doctors,
         pagination: {
           page,
           limit,
           total,
-          pages: Math.ceil(total / limit),
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1,
         },
       };
     } catch (error) {
@@ -389,6 +437,21 @@ class DoctorService {
       
       logger.info(`Slot reserved successfully for doctor: ${doctor._id} on ${date} from ${startTime} to ${endTime}`);
       
+      // Publish slot reserved event
+      try {
+        await publishDoctorEvent(EVENT_TYPES.DOCTOR_SLOT_RESERVED, {
+          doctorId: doctor._id.toString(),
+          slotId: slot._id.toString(),
+          date: slot.date,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          userId: userId,
+          status: slot.status
+        });
+      } catch (kafkaError) {
+        logger.error('Failed to publish DOCTOR_SLOT_RESERVED event:', kafkaError);
+      }
+      
       return {
         success: true,
         slotId: slot._id,
@@ -430,6 +493,20 @@ class DoctorService {
       await DoctorScheduleReadView.updateFromDoctor(doctor);
       
       logger.info(`Slot released for doctor: ${doctorId}, slot: ${slotId}`);
+      
+      // Publish slot released event
+      try {
+        await publishDoctorEvent(EVENT_TYPES.DOCTOR_SLOT_RELEASED, {
+          doctorId: doctor._id.toString(),
+          slotId: slot._id.toString(),
+          date: slot.date,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          status: slot.status
+        });
+      } catch (kafkaError) {
+        logger.error('Failed to publish DOCTOR_SLOT_RELEASED event:', kafkaError);
+      }
       
       return {
         success: true,
@@ -500,13 +577,17 @@ class DoctorService {
 
       logger.info(`Retrieved ${doctors.length} doctors (page ${pageNum})`);
 
+      const totalPages = Math.ceil(total / limitNum);
+
       return {
         doctors,
         pagination: {
           page: pageNum,
           limit: limitNum,
           total,
-          pages: Math.ceil(total / limitNum),
+          totalPages,
+          hasNext: pageNum < totalPages,
+          hasPrev: pageNum > 1,
         },
       };
     } catch (error) {

@@ -287,6 +287,31 @@ const resolvers = {
     createdAt: (doctor) => doctor.createdAt?.toISOString(),
     updatedAt: (doctor) => doctor.updatedAt?.toISOString(),
     
+    // Provide default values for required fields
+    isVerified: (doctor) => doctor.isVerified ?? false,
+    isAvailable: (doctor) => doctor.isAvailable ?? true,
+    
+    // Transform status from lowercase to uppercase enum
+    status: (doctor) => {
+      if (!doctor.status) return 'ACTIVE';
+      return doctor.status.toUpperCase().replace(/-/g, '_');
+    },
+    
+    // Ensure arrays are never null
+    specializations: (doctor) => doctor.specializations || [],
+    qualifications: (doctor) => doctor.qualifications || [],
+    licenses: (doctor) => {
+      const licenses = doctor.licenses || [];
+      return licenses.map(license => ({
+        ...license,
+        expiryDate: license.expiryDate?.toISOString()
+      }));
+    },
+    languages: (doctor) => doctor.languages || [],
+    awards: (doctor) => doctor.awards || [],
+    affiliations: (doctor) => doctor.affiliations || [],
+    services: (doctor) => doctor.services || [],
+    
     // Resolve availability
     availability: async (doctor) => {
       if (doctor.availability) {
@@ -306,20 +331,18 @@ const resolvers = {
     // Calculate rating
     rating: (doctor) => {
       return doctor.rating || 0;
-    },
-    
-    // Format license expiry dates
-    licenses: (doctor) => {
-      return doctor.licenses?.map(license => ({
-        ...license,
-        expiryDate: license.expiryDate?.toISOString()
-      })) || [];
     }
   },
 
   TimeSlot: {
     // Format dates
-    date: (slot) => slot.date?.toISOString?.() || slot.date
+    date: (slot) => slot.date?.toISOString?.() || slot.date,
+    
+    // Transform status from lowercase to uppercase enum
+    status: (slot) => {
+      if (!slot.status) return 'AVAILABLE';
+      return slot.status.toUpperCase();
+    }
   }
 };
 

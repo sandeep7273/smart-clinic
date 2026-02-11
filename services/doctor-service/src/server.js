@@ -137,17 +137,17 @@ const initializeServices = async () => {
   }
 };
 
-// 404 handler
-app.use(notFoundHandler);
-
-// Global error handler
-app.use(errorHandler);
-
 // Start server
 const startServer = async () => {
   try {
     // Initialize all services
     const { apolloServer } = await initializeServices();
+    
+    // Register error handling middleware AFTER GraphQL
+    // 404 handler
+    app.use(notFoundHandler);
+    // Global error handler
+    app.use(errorHandler);
     
     // Start HTTP server
     const server = app.listen(config.port, () => {
