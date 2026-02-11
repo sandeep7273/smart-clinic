@@ -180,16 +180,20 @@ class DoctorService {
   async searchDoctors(searchParams) {
     try {
       const {
+        search, // GraphQL 'search' parameter - map to 'name' for doctor name search
         query,
         name,
         specialty,
         specialization,
         location,
+        city, // GraphQL 'city' parameter - map to 'location'
+        state, // GraphQL 'state' parameter
         condition,
         symptom,
         date,
         minRating,
         maxFee,
+        language,
         acceptsInsurance,
         isAvailable,
         page = 1,
@@ -209,21 +213,27 @@ class DoctorService {
       const filters = {};
       
       // Add filters only if they are provided
+      // Map 'search' from GraphQL to 'name' for doctor name search
+      if (search) filters.name = search;
       if (query) filters.query = query;
       if (name) filters.name = name;
       if (specialty) filters.specialization = specialty;
       if (specialization) filters.specialization = specialization;
+      // Map 'city' from GraphQL to 'location' for the model
+      if (city) filters.location = city;
       if (location) filters.location = location;
+      if (state) filters.state = state; // Add state filter support
       if (condition) filters.condition = condition;
       if (symptom) filters.symptom = symptom;
       if (date) filters.date = date;
       if (minRating) filters.minRating = parseFloat(minRating);
       if (maxFee) filters.maxFee = parseFloat(maxFee);
+      if (language) filters.language = language; // Add language filter support
       if (acceptsInsurance !== undefined) filters.acceptsInsurance = acceptsInsurance === 'true' || acceptsInsurance === true;
       if (isAvailable !== undefined) filters.isAvailable = isAvailable === 'true' || isAvailable === true;
 
+      logger.info(`Search performed with filters: ${JSON.stringify(filters)}, options: ${JSON.stringify(options)}`);
       const results = await DoctorScheduleReadView.search({ ...filters, ...options });
-      logger.info(`Search performed with filters: ${JSON.stringify(filters)}`);
       return results;
     } catch (error) {
       logger.error('Error searching doctors:', error);
@@ -633,6 +643,46 @@ class DoctorService {
       };
     } catch (error) {
       logger.error('Error getting filter options:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get popular specializations with statistics
+   */
+  async getPopularSpecializations(limit = 10) {
+    try {
+      const specializations = await DoctorScheduleReadView.aggregate([
+        // Unwind the specializations array
+        { $unwind: '$specializations' },
+        // Group by specialization and calculate stats
+        {
+          $group: {
+            _id: '$specializations',
+            count: { $sum: 1 },
+            avgRating: { $avg: '$rating' },
+            avgFee: { $avg: '$consultationFee' }
+          }
+        },
+        // Sort by count descending
+        { $sort: { count: -1 } },
+        // Limit results
+        { $limit: limit },
+        // Project to match GraphQL schema
+        {
+          $project: {
+            _id: 0,
+            specialization: '$_id',
+            count: 1,
+            avgRating: { $ifNull: ['$avgRating', 0] },
+            avgFee: { $round: [{ $ifNull: ['$avgFee', 0] }, 0] }
+          }
+        }
+      ]);
+
+      return specializations;
+    } catch (error) {
+      logger.error('Error getting popular specializations:', error);
       throw error;
     }
   }

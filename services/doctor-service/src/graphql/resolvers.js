@@ -23,6 +23,8 @@ const resolvers = {
     // Search doctors with filters
     searchDoctors: async (parent, { search, filters, page, limit, sortBy, sortOrder }) => {
       try {
+        logger.info(`GraphQL searchDoctors called with search="${search}", filters=${JSON.stringify(filters)}, page=${page}, limit=${limit}`);
+        
         const searchFilters = {
           ...filters,
           search,

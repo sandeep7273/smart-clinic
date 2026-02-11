@@ -125,12 +125,23 @@ const initializeServices = async () => {
     // Initialize GraphQL
     const apolloServer = await initializeGraphQL();
     
-    // Initialize Kafka
-    await initializeProducer();
-    await initializeConsumer();
+    // Initialize Kafka (optional - service can run without it)
+    let kafkaInitialized = false;
+    try {
+      await initializeProducer();
+      await initializeConsumer();
+      kafkaInitialized = true;
+      logger.info('✅ Kafka initialized successfully');
+    } catch (kafkaError) {
+      logger.warn('⚠️ Kafka initialization failed - service will run without event streaming', {
+        error: kafkaError.message,
+        broker: kafkaError.cause?.broker
+      });
+      logger.info('💡 To enable Kafka: Start Kafka broker on localhost:9092');
+    }
     
-    logger.info('All services initialized successfully');
-    return { apolloServer };
+    logger.info('All services initialized successfully', { kafkaEnabled: kafkaInitialized });
+    return { apolloServer, kafkaInitialized };
   } catch (error) {
     logger.error('Failed to initialize services:', error);
     process.exit(1);
@@ -141,7 +152,7 @@ const initializeServices = async () => {
 const startServer = async () => {
   try {
     // Initialize all services
-    const { apolloServer } = await initializeServices();
+    const { apolloServer, kafkaInitialized } = await initializeServices();
     
     // Register error handling middleware AFTER GraphQL
     // 404 handler
@@ -172,8 +183,10 @@ const startServer = async () => {
             logger.info('GraphQL server stopped');
           }
           
-          // Shutdown Kafka connections
-          await shutdownKafka();
+          // Shutdown Kafka connections (only if initialized)
+          if (kafkaInitialized) {
+            await shutdownKafka();
+          }
           
           logger.info('Graceful shutdown completed');
           process.exit(0);

@@ -6,7 +6,7 @@
 const axios = require('axios');
 const config = require('../config');
 const logger = require('../utils/logger');
-const { createCircuitBreaker } = require('../utils/circuitBreaker');
+const { createCircuitBreaker, BusinessError } = require('../utils/circuitBreaker');
 const { ServiceUnavailableError } = require('../utils/errors');
 
 /**
@@ -110,10 +110,6 @@ const doctorService = {
   reserveSlot: createCircuitBreaker(
     async (doctorId, slotData, authToken) => {
       try {
-        console.log(`🔵 Attempting to reserve slot for doctor: ${doctorId}`);
-        console.log(`🔵 Slot data:`, slotData);
-        console.log(`🔵 Request URL: ${config.doctorServiceUrl}/api/doctors/${doctorId}/slots/reserve`);
-        
         const response = await doctorServiceClient.post(
           `/api/doctors/${doctorId}/slots/reserve`,
           slotData,
@@ -127,21 +123,36 @@ const doctorService = {
         console.log(`✅ Slot reserved successfully:`, response.data);
         return response.data;
       } catch (error) {
-        console.error('❌ Reserve slot error details:', {
+        const status = error.response?.status;
+        const errorData = error.response?.data;
+        
+        console.log('⚠️ Reserve slot response:', {
           message: error.message,
-          status: error.response?.status,
+          status,
           statusText: error.response?.statusText,
-          data: error.response?.data,
-          url: error.config?.url,
-          baseURL: error.config?.baseURL,
+          data: errorData,
         });
         
-        if (error.response?.status === 409) {
-          throw new Error('Slot already booked');
+        // 409 Conflict - Slot already booked (business error, not service failure)
+        if (status === 409) {
+          throw new BusinessError(
+            errorData?.message || 'Slot is not available',
+            409,
+            error
+          );
         }
         
-        // Re-throw the original error with more context
-        const errorMessage = error.response?.data?.message || error.message;
+        // Other 4xx errors - business/validation errors
+        if (status >= 400 && status < 500) {
+          throw new BusinessError(
+            errorData?.message || error.message,
+            status,
+            error
+          );
+        }
+        
+        // 5xx errors or network errors - actual service failures
+        const errorMessage = errorData?.message || error.message;
         throw new Error(`Doctor Service error: ${errorMessage}`);
       }
     },
@@ -166,7 +177,21 @@ const doctorService = {
 
         return response.data;
       } catch (error) {
+        const status = error.response?.status;
+        const errorData = error.response?.data;
+        
         logger.error('Failed to release slot:', error);
+        
+        // 4xx errors - business/validation errors (e.g., slot not found)
+        if (status >= 400 && status < 500) {
+          throw new BusinessError(
+            errorData?.message || error.message,
+            status,
+            error
+          );
+        }
+        
+        // 5xx errors or network errors - actual service failures
         throw new ServiceUnavailableError('Doctor Service');
       }
     },
@@ -188,17 +213,26 @@ const doctorService = {
 
         return response.data;
       } catch (error) {
+        const status = error.response?.status;
+        const errorData = error.response?.data;
+        
         console.error('❌ Get doctor details error:', {
           message: error.message,
-          status: error.response?.status,
-          data: error.response?.data,
+          status,
+          data: errorData,
         });
         
-        if (error.response?.status === 404) {
-          throw new Error('Doctor not found');
+        // 4xx errors - business/validation errors (e.g., doctor not found)
+        if (status >= 400 && status < 500) {
+          throw new BusinessError(
+            errorData?.message || error.message,
+            status,
+            error
+          );
         }
         
-        const errorMessage = error.response?.data?.message || error.message;
+        // 5xx errors or network errors - actual service failures
+        const errorMessage = errorData?.message || error.message;
         throw new Error(`Doctor Service error: ${errorMessage}`);
       }
     },
@@ -226,9 +260,19 @@ const userService = {
 
         return response.data;
       } catch (error) {
-        if (error.response?.status === 404) {
-          throw new Error('Patient not found');
+        const status = error.response?.status;
+        const errorData = error.response?.data;
+        
+        // 4xx errors - business/validation errors (e.g., patient not found)
+        if (status >= 400 && status < 500) {
+          throw new BusinessError(
+            errorData?.message || error.message,
+            status,
+            error
+          );
         }
+        
+        // 5xx errors or network errors - actual service failures
         throw new ServiceUnavailableError('User Service');
       }
     },

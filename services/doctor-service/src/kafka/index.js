@@ -94,13 +94,13 @@ const publishDoctorEvent = async (eventType, payload, metadata = {}) => {
     });
 
   } catch (error) {
-    logger.error('Failed to publish doctor event:', {
+    // Log error but don't throw - service should continue without Kafka
+    logger.warn('Failed to publish doctor event (Kafka may not be available):', {
       eventType,
-      payload,
-      error: error.message,
-      stack: error.stack
+      doctorId: payload.doctorId,
+      error: error.message
     });
-    throw error;
+    // Don't throw - allow service to continue without event publishing
   }
 };
 
