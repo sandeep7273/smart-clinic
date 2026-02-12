@@ -97,31 +97,6 @@ const resolvers = {
       }
     },
 
-    // Get doctor statistics (admin only)
-    getDoctorStats: async (parent, args, context) => {
-      if (!context.user || context.user.role !== 'ADMIN') {
-        throw new ForbiddenError('Admin access required');
-      }
-
-      try {
-        const stats = await doctorService.getDoctorStatistics();
-        return stats;
-      } catch (error) {
-        logger.error('Error fetching doctor statistics:', error);
-        throw error;
-      }
-    },
-
-    // Get nearby doctors
-    getNearbyDoctors: async (parent, { latitude, longitude, radius, limit }) => {
-      try {
-        const doctors = await doctorService.getNearbyDoctors(latitude, longitude, radius, limit);
-        return doctors;
-      } catch (error) {
-        logger.error('Error fetching nearby doctors:', error);
-        throw error;
-      }
-    }
   },
 
   Mutation: {
@@ -177,6 +152,10 @@ const resolvers = {
 
     // Reserve a time slot
     reserveSlot: async (parent, { input }, context) => {
+      if (!context.user) {
+        throw new AuthenticationError('You must be logged in');
+      }
+
       try {
         const slot = await doctorService.reserveTimeSlot(input);
         return slot;
@@ -188,6 +167,10 @@ const resolvers = {
 
     // Release a reserved slot
     releaseSlot: async (parent, { doctorId, date, startTime }, context) => {
+      if (!context.user) {
+        throw new AuthenticationError('You must be logged in');
+      }
+
       try {
         const slot = await doctorService.releaseTimeSlot(doctorId, date, startTime);
         return slot;
@@ -199,13 +182,16 @@ const resolvers = {
 
     // Update slot status
     updateSlotStatus: async (parent, { doctorId, date, startTime, status, appointmentId }, context) => {
+      if (!context.user) {
+        throw new AuthenticationError('You must be logged in');
+      }
+
       try {
         const slot = await doctorService.updateSlotStatus(
           doctorId, 
           date, 
           startTime, 
           status, 
-          appointmentId
         );
         return slot;
       } catch (error) {
@@ -214,35 +200,6 @@ const resolvers = {
       }
     },
 
-    // Update doctor status (admin only)
-    updateDoctorStatus: async (parent, { doctorId, status }, context) => {
-      if (!context.user || context.user.role !== 'ADMIN') {
-        throw new ForbiddenError('Admin access required');
-      }
-
-      try {
-        const doctor = await doctorService.updateDoctorStatus(doctorId, status);
-        return doctor;
-      } catch (error) {
-        logger.error('Error updating doctor status:', error);
-        throw error;
-      }
-    },
-
-    // Verify doctor (admin only)
-    verifyDoctor: async (parent, { doctorId, isVerified }, context) => {
-      if (!context.user || context.user.role !== 'ADMIN') {
-        throw new ForbiddenError('Admin access required');
-      }
-
-      try {
-        const doctor = await doctorService.verifyDoctor(doctorId, isVerified);
-        return doctor;
-      } catch (error) {
-        logger.error('Error verifying doctor:', error);
-        throw error;
-      }
-    },
 
     // Delete doctor (soft delete)
     deleteDoctor: async (parent, { doctorId }, context) => {
@@ -259,25 +216,6 @@ const resolvers = {
       }
     },
 
-    // Generate time slots for doctor
-    generateTimeSlots: async (parent, { doctorId, startDate, endDate, slotDuration }, context) => {
-      if (!context.user) {
-        throw new AuthenticationError('You must be logged in');
-      }
-
-      try {
-        const slots = await doctorService.generateTimeSlots(
-          doctorId, 
-          startDate, 
-          endDate, 
-          slotDuration
-        );
-        return slots;
-      } catch (error) {
-        logger.error('Error generating time slots:', error);
-        throw error;
-      }
-    }
   },
 
   // Field resolvers

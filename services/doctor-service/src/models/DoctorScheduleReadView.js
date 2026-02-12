@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const { create } = require('../../../auth-service/src/models/user');
 
 // Enums
 const DOCTOR_STATUS = {
@@ -216,47 +215,33 @@ doctorScheduleReadViewSchema.statics.updateFromDoctor = async function (doctor) 
     doctor.availability = [];
   }
   
-  // Calculate next available slot
-  const availableSlots = doctor.availability.filter(
-    slot => slot.status === 'available' && new Date(slot.date) >= new Date()
-  );
+  // Only track booked slots - no need to calculate "available" slots
+  // Next available slot concept removed - all non-booked times are available
+  const nextAvailableSlot = null; // Not needed in new model
   
-  let nextAvailableSlot = null;
-  if (availableSlots.length > 0) {
-    const sortedSlots = availableSlots.sort((a, b) => 
-      new Date(a.date) - new Date(b.date) || a.startTime.localeCompare(b.startTime)
-    );
-    nextAvailableSlot = {
-      date: sortedSlots[0].date,
-      startTime: sortedSlots[0].startTime,
-      endTime: sortedSlots[0].endTime,
-    };
-  }
-  
-  // Count slots
-  const availableSlotsCount = doctor.availability.filter(
-    slot => slot.status === 'available'
-  ).length;
-  
-  const bookedSlotsCount = doctor.availability.filter(
+  // Count only booked slots (we only track booked slots now)
+  const bookedSlotsCount = doctor.availability ? doctor.availability.filter(
     slot => slot.status === 'booked'
-  ).length;
+  ).length : 0;
+  
+  const availableSlotsCount = 0; // Not tracked anymore - all non-booked slots are available
   
   // Group availability by date
   const availabilityDates = [];
   const slotsByDate = {};
   
-  doctor.availability.forEach(slot => {
-    const dateKey = new Date(slot.date).toISOString().split('T')[0];
-    if (!slotsByDate[dateKey]) {
-      slotsByDate[dateKey] = { available: 0, booked: 0 };
-    }
-    if (slot.status === 'available') {
-      slotsByDate[dateKey].available++;
-    } else if (slot.status === 'booked') {
-      slotsByDate[dateKey].booked++;
-    }
-  });
+  // Only track booked slots by date
+  if (doctor.availability) {
+    doctor.availability.forEach(slot => {
+      if (slot.status === 'booked') {
+        const dateKey = new Date(slot.date).toISOString().split('T')[0];
+        if (!slotsByDate[dateKey]) {
+          slotsByDate[dateKey] = { available: 0, booked: 0 };
+        }
+        slotsByDate[dateKey].booked++;
+      }
+    });
+  }
   
   Object.keys(slotsByDate).forEach(date => {
     availabilityDates.push({
@@ -314,15 +299,8 @@ doctorScheduleReadViewSchema.statics.updateFromDoctor = async function (doctor) 
 doctorScheduleReadViewSchema.statics.search = async function(searchParams) {
   const {
     query, // Free text search across multiple fields
-    name, // Search by doctor's name specifically
     specialization,
     location, // city
-    condition,
-    symptom,
-    date,
-    minRating,
-    maxFee,
-    acceptsInsurance,
     isAvailable,
     page = 1,
     limit = 10,
@@ -340,21 +318,6 @@ doctorScheduleReadViewSchema.statics.search = async function(searchParams) {
     filter.$text = { $search: query };
   }
 
-  // Search by doctor's name (first name or last name)
-  if (name) {
-    filter.$or = [
-      { firstName: new RegExp(name, 'i') },
-      { lastName: new RegExp(name, 'i') },
-      { $expr: { 
-        $regexMatch: { 
-          input: { $concat: ['$firstName', ' ', '$lastName'] }, 
-          regex: name, 
-          options: 'i' 
-        } 
-      }}
-    ];
-  }
-
   // Specialization filter
   if (specialization) {
     filter.specializations = { $in: Array.isArray(specialization) ? specialization : [specialization] };
@@ -365,47 +328,6 @@ doctorScheduleReadViewSchema.statics.search = async function(searchParams) {
     filter['address.city'] = new RegExp(location, 'i');
   }
 
-  // Condition filter
-  if (condition) {
-    filter.treatedConditions = { $in: Array.isArray(condition) ? condition : [condition] };
-  }
-
-  // Symptom filter
-  if (symptom) {
-    filter.treatedSymptoms = { $in: Array.isArray(symptom) ? symptom : [symptom] };
-  }
-
-  // Rating filter
-  if (minRating) {
-    filter.rating = { $gte: parseFloat(minRating) };
-  }
-
-  // Fee filter
-  if (maxFee) {
-    filter.consultationFee = { $lte: parseFloat(maxFee) };
-  }
-
-  // Insurance filter
-  if (acceptsInsurance !== undefined) {
-    filter.acceptsInsurance = acceptsInsurance;
-  }
-
-  // Date availability filter - using denormalized availabilityDates
-  if (date) {
-    const searchDate = new Date(date);
-    const startOfDay = new Date(searchDate.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(searchDate.setHours(23, 59, 59, 999));
-    
-    filter['availabilityDates'] = {
-      $elemMatch: {
-        date: {
-          $gte: startOfDay,
-          $lt: endOfDay,
-        },
-        availableSlots: { $gt: 0 },
-      },
-    };
-  }
 
   // Availability status filter
   if (isAvailable !== undefined) {
@@ -498,32 +420,9 @@ doctorScheduleReadViewSchema.statics.getLocations = async function() {
   return result.map(r => r._id);
 };
 
-doctorScheduleReadViewSchema.statics.getTreatedConditions = async function() {
-  const result = await this.aggregate([
-    { $match: { status: DOCTOR_STATUS.ACTIVE, isDeleted: false } },
-    { $unwind: '$treatedConditions' },
-    { $group: { _id: '$treatedConditions' } },
-    { $sort: { _id: 1 } },
-  ]);
-  return result.map(r => r._id);
-};
-
-doctorScheduleReadViewSchema.statics.getTreatedSymptoms = async function() {
-  const result = await this.aggregate([
-    { $match: { status: DOCTOR_STATUS.ACTIVE, isDeleted: false } },
-    { $unwind: '$treatedSymptoms' },
-    { $group: { _id: '$treatedSymptoms' } },
-    { $sort: { _id: 1 } },
-  ]);
-  return result.map(r => r._id);
-};
-
 
 doctorScheduleReadViewSchema.methods.isSlotAvailable = function(date, startTime, endTime) {
-  // This method works on read view which doesn't have availability array
-  // It relies on availabilityDates and general schedule
-  
-  // For read view, we need to check if doctor has available slots for the given date
+  // Simple logic: all slots are available unless explicitly booked
   if (!date || !startTime || !endTime) {
     return false;
   }
@@ -533,42 +432,21 @@ doctorScheduleReadViewSchema.methods.isSlotAvailable = function(date, startTime,
     return false;
   }
 
-  // Default availability logic: 9am to 5pm, Monday to Friday
+  // Check if the date has any available slots (not booked)
   const appointmentDate = new Date(date);
-  const dayOfWeek = appointmentDate.getDay();
-  const isWeekday = [1, 2, 3, 4, 5].includes(dayOfWeek);
-  const isWithinWorkingHours = (startTime >= '09:00' && endTime <= '17:00');
-  
-  // For weekdays within working hours, assume available unless explicitly marked unavailable
-  if (isWithinWorkingHours && isWeekday) {
-    // Check if there are available slots for this date
-    const dateAvailability = this.availabilityDates.find(ad => 
-      new Date(ad.date).toDateString() === appointmentDate.toDateString()
-    );
-    
-    if (dateAvailability) {
-      // If date has availability data, check if slots are available
-      return dateAvailability.availableSlots > 0;
-    }
-    
-    // If no explicit availability data, assume available during working hours
-    return true;
-  }
-  
-  // For non-working hours, need explicit availability
   const dateAvailability = this.availabilityDates.find(ad => 
     new Date(ad.date).toDateString() === appointmentDate.toDateString()
   );
   
-  return dateAvailability && dateAvailability.availableSlots > 0;
+  if (dateAvailability) {
+    // If date has availability data, check if slots are available (not all booked)
+    return dateAvailability.availableSlots > 0;
+  }
+  
+  // If no explicit availability data exists for this date, assume available
+  return true;
 };
 
-//   return this.availability.some(slot => 
-//     slot.status === SLOT_STATUS.AVAILABLE &&
-//     new Date(slot.date).toDateString() === new Date(date).toDateString() &&
-//     slot.startTime === startTime &&
-//     slot.endTime === endTime
-//   );
 
 const DoctorScheduleReadView = mongoose.model('DoctorScheduleReadView', doctorScheduleReadViewSchema);
 

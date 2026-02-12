@@ -25,7 +25,7 @@ const config = {
 
   // JWT Configuration
   jwt: {
-    accessSecret: process.env.JWT_ACCESS_SECRET || 'fallback-access-secret',
+    accessSecret: process.env.JWT_ACCESS_SECRET || 'fallback_access_secret',
     refreshSecret: process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret',
   },
 
@@ -93,7 +93,7 @@ function validateConfig() {
 
   // Check JWT secrets in production
   if (config.isProduction()) {
-    if (config.jwt.accessSecret === 'fallback-access-secret') {
+    if (config.jwt.accessSecret === 'fallback_access_secret') {
       errors.push('JWT_ACCESS_SECRET must be set in production');
     }
     if (config.jwt.refreshSecret === 'fallback-refresh-secret') {

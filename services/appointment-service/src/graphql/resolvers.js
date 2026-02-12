@@ -6,29 +6,31 @@
 const { AuthenticationError, ForbiddenError, UserInputError } = require('apollo-server-express');
 const { publishAppointmentEvent } = require('../kafka');
 const logger = require('../utils/logger');
+const SagaOrchestrator = require('../services/sagaOrchestrator');
+const { Appointment } = require('../models/Appointment');
+const { AppointmentReadView } = require('../models/AppointmentReadView');
+const { AppointmentEvent } = require('../models/AppointmentEvent');
 
-// Mock implementation - replace with actual service calls
-const appointmentService = {
-  // These would be actual service implementations
-  getAppointment: async (id) => ({}),
-  bookAppointment: async (input, context) => ({}),
-  confirmAppointment: async (id, context) => ({}),
-  cancelAppointment: async (id, reason, context) => ({}),
-  rescheduleAppointment: async (input, context) => ({}),
-  updateAppointment: async (input, context) => ({}),
-  startAppointment: async (id, context) => ({}),
-  completeAppointment: async (id, notes, followUp, context) => ({}),
-  markNoShow: async (id, context) => ({}),
-  getAppointmentsByFilter: async (filter, sort, pagination) => ({}),
-  getPatientAppointments: async (patientId, filter, pagination) => ({}),
-  getDoctorAppointments: async (doctorId, filter, pagination) => ({}),
-  getTodayAppointments: async (doctorId, status) => ([]),
-  getUpcomingAppointments: async (filter, days) => ([]),
-  getAppointmentEvents: async (appointmentId, eventType, fromVersion) => ([]),
-  getAppointmentSaga: async (sagaId) => ({}),
-  getAppointmentSagas: async (filter, pagination) => ([]),
-  getAppointmentStats: async (filter) => ({}),
-  searchAppointments: async (query, filters, pagination) => ({})
+/**
+ * Map database status values to GraphQL enum values
+ */
+const mapStatusToGraphQL = (status) => {
+  if (!status) {
+    logger.warn('Status is null/undefined, defaulting to PENDING');
+    return 'PENDING';
+  }
+  
+  const statusMap = {
+    'pending': 'PENDING',
+    'confirmed': 'CONFIRMED',
+    'cancelled': 'CANCELLED',
+    'completed': 'COMPLETED',
+    'no_show': 'NO_SHOW',
+  };
+  
+  const mappedStatus = statusMap[status.toLowerCase()] || status.toUpperCase();
+  logger.debug('Mapped status:', { input: status, output: mappedStatus });
+  return mappedStatus;
 };
 
 const resolvers = {
@@ -43,9 +45,9 @@ const resolvers = {
      */
     appointment: async (_, { id }, context) => {
       try {
-        logger.debug('Fetching appointment:', { id, userId: context.user?.userId });
+        logger.debug('Fetching appointment via GraphQL:', { id, userId: context.user?.userId });
         
-        const appointment = await appointmentService.getAppointment(id);
+        const appointment = await AppointmentReadView.findById(id);
         
         // Check authorization
         if (!appointment) {
@@ -56,56 +58,32 @@ const resolvers = {
           throw new ForbiddenError('Access denied to this appointment');
         }
         
-        return appointment;
+        // Map to GraphQL schema
+        return {
+          id: appointment._id.toString(),
+          patientId: appointment.userId,
+          doctorId: appointment.doctorId,
+          slotId: appointment.slotId,
+          title: `Appointment with Dr. ${appointment.doctorName}`,
+          description: appointment.reason,
+          type: 'CONSULTATION',
+          status: mapStatusToGraphQL(appointment.status),
+          date: appointment.date,
+          startTime: appointment.startTime,
+          duration: appointment.duration,
+          timeZone: 'UTC',
+          location: null,
+          isVirtual: false,
+          fee: appointment.consultationFee || 0,
+          paymentStatus: 'PENDING',
+          notes: appointment.notes,
+          tags: [],
+          createdAt: appointment.createdAt,
+          updatedAt: appointment.updatedAt,
+          bookedAt: appointment.createdAt
+        };
       } catch (error) {
-        logger.error('Error fetching appointment:', { id, error: error.message });
-        throw error;
-      }
-    },
-
-    /**
-     * Get appointment by slot ID
-     */
-    appointmentBySlot: async (_, { slotId }, context) => {
-      try {
-        logger.debug('Fetching appointment by slot:', { slotId, userId: context.user?.userId });
-        
-        const appointment = await appointmentService.getAppointmentBySlot(slotId);
-        
-        if (!appointment) {
-          return null;
-        }
-        
-        if (!canAccessAppointment(appointment, context.user)) {
-          throw new ForbiddenError('Access denied to this appointment');
-        }
-        
-        return appointment;
-      } catch (error) {
-        logger.error('Error fetching appointment by slot:', { slotId, error: error.message });
-        throw error;
-      }
-    },
-
-    /**
-     * Get appointments with filtering, sorting, and pagination
-     */
-    appointments: async (_, { filter, sort, first, after, last, before }, context) => {
-      try {
-        requireAuthentication(context);
-        
-        // Apply user-based filtering for non-admin users
-        const userFilter = applyUserFilter(filter, context.user);
-        
-        const result = await appointmentService.getAppointmentsByFilter(
-          userFilter,
-          sort || { field: 'SCHEDULED_DATE', direction: 'ASC' },
-          { first, after, last, before }
-        );
-        
-        return result;
-      } catch (error) {
-        logger.error('Error fetching appointments:', { filter, error: error.message });
+        logger.error('Error fetching appointment via GraphQL:', { id, error: error.message });
         throw error;
       }
     },
@@ -123,19 +101,55 @@ const resolvers = {
         }
         
         const filter = {
-          patientId,
+          userId: patientId,
           ...(status && { status }),
-          ...(dateFrom && { dateFrom }),
-          ...(dateTo && { dateTo })
+          ...(dateFrom && { date: { $gte: dateFrom } }),
+          ...(dateTo && { date: { ...filter.date, $lte: dateTo } })
         };
         
-        return await appointmentService.getPatientAppointments(
-          patientId,
-          filter,
-          { first: first || 20, after }
-        );
+        const appointments = await AppointmentReadView.find(filter)
+          .limit(first || 20)
+          .sort({ date: -1, startTime: -1 });
+        
+        const total = await AppointmentReadView.countDocuments(filter);
+        
+        return {
+          edges: appointments.map((apt) => ({
+            cursor: apt._id.toString(),
+            node: {
+              id: apt._id.toString(),
+              patientId: apt.userId,
+              doctorId: apt.doctorId,
+              slotId: apt.slotId,
+              title: `Appointment with Dr. ${apt.doctorName}`,
+              description: apt.reason,
+              type: 'CONSULTATION',
+              status: mapStatusToGraphQL(apt.status),
+              date: apt.date,
+              startTime: apt.startTime,
+              duration: apt.duration,
+              timeZone: 'UTC',
+              location: null,
+              isVirtual: false,
+              fee: apt.consultationFee || 0,
+              paymentStatus: 'PENDING',
+              notes: apt.notes,
+              tags: [],
+              createdAt: apt.createdAt,
+              updatedAt: apt.updatedAt,
+              bookedAt: apt.createdAt
+            }
+          })),
+          pageInfo: {
+            hasNextPage: appointments.length === (first || 20),
+            hasPreviousPage: false,
+            startCursor: appointments.length > 0 ? appointments[0]._id.toString() : null,
+            endCursor: appointments.length > 0 ? appointments[appointments.length - 1]._id.toString() : null
+          },
+          totalCount: total
+        };
       } catch (error) {
-        logger.error('Error fetching patient appointments:', { patientId, error: error.message });
+        logger.error('Error fetching patient appointments via GraphQL:', { patientId, error: error.message });
         throw error;
       }
     },
@@ -325,39 +339,97 @@ const resolvers = {
      */
     bookAppointment: async (_, { input }, context) => {
       try {
-        requireAuthentication(context);
+        // requireAuthentication(context);
         
-        // Validate input
-        validateBookingInput(input);
-        
-        // Check if user can book for the patient
-        if (!canBookForPatient(input.patientId, context.user)) {
-          throw new ForbiddenError('Cannot book appointment for this patient');
-        }
-        
-        logger.info('Booking appointment:', {
+        logger.info('Booking appointment via GraphQL:', {
           input,
-          userId: context.user.userId,
+          patientId: context.user.userId,
           correlationId: context.correlationId
         });
         
-        const result = await appointmentService.bookAppointment(input, context);
+        // Initialize saga orchestrator
+        const sagaOrchestrator = new SagaOrchestrator();
         
-        // Publish event
-        if (result.success) {
-          await publishAppointmentEvent('APPOINTMENT_REQUESTED', {
-            appointmentId: result.appointment.id,
-            patientId: input.patientId,
-            doctorId: input.doctorId,
-            slotId: input.slotId,
-            sagaId: result.sagaId
-          }, context);
+        // Map GraphQL input to booking data format
+        const bookingData = {
+          userId: context.user.userId,
+          doctorId: input.doctorId,
+          date: input.date,
+          startTime: input.startTime,
+          endTime: input.endTime,
+          duration: input.duration || 30,
+          reason: input.reason || input.description,
+          notes: input.notes,
+          symptoms: input.symptoms,
+          patientDetails: input.patientDetails // Optional - system can use authenticated user data if not provided
+        };
+
+        
+        // Execute booking through SAGA
+        const result = await sagaOrchestrator.bookAppointment(
+          bookingData,
+          context.user,   /// need to check user
+          context.token
+        );
+        
+        logger.info('SAGA booking result:', {
+          hasAppointment: !!result.appointment,
+          appointmentStatus: result.appointment?.status,
+          appointmentId: result.appointment?._id
+        });
+        
+        // Validate the result
+        if (!result.appointment) {
+          throw new Error('Appointment creation failed - no appointment returned from saga');
         }
         
-        return result;
+        // Ensure status has a valid value
+        const appointmentStatus = result.appointment.status || 'pending';
+        const mappedStatus = mapStatusToGraphQL(appointmentStatus);
+        
+        logger.info('Status mapping:', {
+          originalStatus: appointmentStatus,
+          mappedStatus: mappedStatus
+        });
+        
+        const appointmentResponse = {
+          id: result.appointment._id?.toString() || '',
+          patientId: result.appointment.userId || '',
+          doctorId: result.appointment.doctorId || '',
+          slotId: result.slotReservation?.slotId || 'unknown',
+          title: `Appointment with Dr. ${result.appointment.doctorName || 'Unknown'}`,
+          description: result.appointment.reason || '',
+          status: mappedStatus,
+          date: result.appointment.date || new Date().toISOString(),
+          startTime: result.appointment.startTime || '',
+          duration: result.appointment.duration || 30,
+          notes: result.appointment.notes || '',
+          createdAt: result.appointment.createdAt || new Date(),
+          bookedAt: result.appointment.createdAt || new Date()
+        };
+        
+        logger.info('Appointment response constructed:', {
+          id: appointmentResponse.id,
+          status: appointmentResponse.status
+        });
+        
+        return {
+          success: true,
+          message: 'Appointment booked successfully',
+          appointment: appointmentResponse,
+          sagaId: result.appointment.sagaId || null
+        };
       } catch (error) {
-        logger.error('Error booking appointment:', { input, error: error.message });
-        throw error;
+        logger.error('Error booking appointment via GraphQL:', { 
+          input, 
+          error: error.message,
+          stack: error.stack 
+        });
+        return {
+          success: false,
+          message: error.message || 'Failed to book appointment',
+          errors: [{ message: error.message, code: 'BOOKING_FAILED' }]
+        };
       }
     },
 
@@ -407,8 +479,8 @@ const resolvers = {
       try {
         requireAuthentication(context);
         
-        const appointment = await appointmentService.getAppointment(appointmentId);
-        if (!appointment) {
+        const appointment = await Appointment.findById(appointmentId);
+        if (!appointment || appointment.isDeleted) {
           throw new UserInputError('Appointment not found');
         }
         
@@ -416,28 +488,96 @@ const resolvers = {
           throw new ForbiddenError('Cannot cancel this appointment');
         }
         
-        logger.info('Cancelling appointment:', {
+        if (!appointment.isCancellable()) {
+          throw new UserInputError('Appointment cannot be cancelled at this time');
+        }
+        
+        logger.info('Cancelling appointment via GraphQL:', {
           appointmentId,
           reason,
           userId: context.user.userId,
           correlationId: context.correlationId
         });
         
-        const result = await appointmentService.cancelAppointment(appointmentId, reason, context);
+        appointment.status = 'cancelled';
+        appointment.cancelReason = reason;
+        appointment.cancelledAt = new Date();
+        appointment.cancelledBy = context.user.userId;
+        appointment.updatedBy = context.user.userId;
         
-        // Publish event
-        if (result.success) {
+        await appointment.save();
+        
+        // Create event
+        await AppointmentEvent.createEvent({
+          aggregateId: appointment._id.toString(),
+          aggregateType: 'Appointment',
+          eventType: 'APPOINTMENT_CANCELLED',
+          eventData: {
+            cancelReason: reason,
+          },
+          metadata: {
+            userId: context.user.userId,
+            userRole: context.user.role,
+          },
+          tenantId: context.user.tenantId,
+        });
+        
+        // Update read view
+        await AppointmentReadView.updateFromAppointment(appointment);
+        
+        // Publish Kafka event
+        try {
           await publishAppointmentEvent('APPOINTMENT_CANCELLED', {
-            appointmentId,
-            reason,
+            appointmentId: appointment._id.toString(),
+            appointmentNumber: appointment.appointmentNumber,
+            userId: appointment.userId,
+            doctorId: appointment.doctorId,
+            cancelReason: reason,
             cancelledBy: context.user.userId
-          }, context);
+          });
+        } catch (kafkaError) {
+          logger.warn('Failed to publish cancel event to Kafka:', kafkaError.message);
         }
         
-        return result;
+        const readView = await AppointmentReadView.findOne({ appointmentId: appointment._id });
+        
+        return {
+          success: true,
+          message: 'Appointment cancelled successfully',
+          appointment: readView ? {
+            id: readView._id.toString(),
+            patientId: readView.userId,
+            doctorId: readView.doctorId,
+            slotId: readView.slotId,
+            title: `Appointment with Dr. ${readView.doctorName}`,
+            description: readView.reason,
+            type: 'CONSULTATION',
+            status: mapStatusToGraphQL(readView.status),
+            date: readView.date,
+            startTime: readView.startTime,
+            duration: readView.duration,
+            timeZone: 'UTC',
+            location: null,
+            isVirtual: false,
+            fee: readView.consultationFee || 0,
+            paymentStatus: 'PENDING',
+            notes: readView.notes,
+            tags: [],
+            createdAt: readView.createdAt,
+            updatedAt: readView.updatedAt,
+            bookedAt: readView.createdAt
+          } : null
+        };
       } catch (error) {
-        logger.error('Error cancelling appointment:', { appointmentId, error: error.message });
-        throw error;
+        logger.error('Error cancelling appointment via GraphQL:', { 
+          appointmentId, 
+          error: error.message 
+        });
+        return {
+          success: false,
+          message: error.message || 'Failed to cancel appointment',
+          errors: [{ message: error.message, code: 'CANCELLATION_FAILED' }]
+        };
       }
     },
 
@@ -713,7 +853,7 @@ const resolvers = {
 // Helper functions
 
 function requireAuthentication(context) {
-  if (!context.user || !context.user.userId) {
+  if (!context.token) {
     throw new AuthenticationError('Authentication required');
   }
 }
@@ -851,14 +991,6 @@ function validateBookingInput(input) {
   
   if (!input.doctorId) {
     errors.push({ field: 'doctorId', message: 'Doctor ID is required', code: 'REQUIRED' });
-  }
-  
-  if (!input.slotId) {
-    errors.push({ field: 'slotId', message: 'Slot ID is required', code: 'REQUIRED' });
-  }
-  
-  if (!input.title) {
-    errors.push({ field: 'title', message: 'Appointment title is required', code: 'REQUIRED' });
   }
   
   if (errors.length > 0) {

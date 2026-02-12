@@ -8,29 +8,29 @@ const { makeExecutableSchema } = require('@graphql-tools/schema');
 const typeDefs = require('./typeDefs');
 const resolvers = require('./resolvers');
 const logger = require('../utils/logger');
-
-/**
- * Create GraphQL context
- */
-const createContext = ({ req }) => {
-  // Extract user from request headers (forwarded from API Gateway)
-  const user = req.user || {
-    userId: req.headers['x-user-id'],
-    email: req.headers['x-user-email'],
-    role: req.headers['x-user-role'],
-    tenantId: req.headers['x-tenant-id']
-  };
+const createContext = require('./context');
+// /**
+//  * Create GraphQL context
+//  */
+// const createContext = ({ req }) => {
+//   // Extract user from request headers (forwarded from API Gateway)
+//   const user = req.user || {
+//     userId: req.headers['x-user-id'],
+//     email: req.headers['x-user-email'],
+//     role: req.headers['x-user-role'],
+//     tenantId: req.headers['x-tenant-id']
+//   };
   
-  const token = req.headers.authorization?.replace('Bearer ', '') || null;
+//   const token = req.headers.authorization?.replace('Bearer ', '') || null;
   
-  return {
-    user: user.userId ? user : null,
-    token,
-    correlationId: req.headers['x-correlation-id'] || req.id,
-    userAgent: req.headers['user-agent'],
-    ip: req.ip || req.connection.remoteAddress
-  };
-};
+//   return {
+//     user: user.userId ? user : null,
+//     token,
+//     correlationId: req.headers['x-correlation-id'] || req.id,
+//     userAgent: req.headers['user-agent'],
+//     ip: req.ip || req.connection.remoteAddress
+//   };
+// };
 
 /**
  * Create Apollo Server instance

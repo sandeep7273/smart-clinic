@@ -127,12 +127,6 @@ const initializeServices = async () => {
   }
 };
 
-// 404 handler
-app.use(notFoundHandler);
-
-// Error handler (must be last)
-app.use(errorHandler);
-
 // Initialize and start server
 const startServer = async () => {
   try {
@@ -140,8 +134,14 @@ const startServer = async () => {
     await connectDB();
     logger.info('Database connected successfully');
 
-    // Initialize GraphQL and Kafka services
+    // Initialize GraphQL and Kafka services FIRST
     const { apolloServer } = await initializeServices();
+
+    // NOW register 404 handler AFTER GraphQL is mounted
+    app.use(notFoundHandler);
+
+    // Error handler (must be last)
+    app.use(errorHandler);
 
     // Start server
     const server = app.listen(config.port, () => {

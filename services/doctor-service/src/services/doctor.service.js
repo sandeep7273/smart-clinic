@@ -213,23 +213,14 @@ class DoctorService {
       const filters = {};
       
       // Add filters only if they are provided
-      // Map 'search' from GraphQL to 'name' for doctor name search
-      if (search) filters.name = search;
-      if (query) filters.query = query;
-      if (name) filters.name = name;
+      // Map 'search' from GraphQL to 'query' for doctor  search
+
+      if (query) filters.query = search;
       if (specialty) filters.specialization = specialty;
       if (specialization) filters.specialization = specialization;
       // Map 'city' from GraphQL to 'location' for the model
       if (city) filters.location = city;
       if (location) filters.location = location;
-      if (state) filters.state = state; // Add state filter support
-      if (condition) filters.condition = condition;
-      if (symptom) filters.symptom = symptom;
-      if (date) filters.date = date;
-      if (minRating) filters.minRating = parseFloat(minRating);
-      if (maxFee) filters.maxFee = parseFloat(maxFee);
-      if (language) filters.language = language; // Add language filter support
-      if (acceptsInsurance !== undefined) filters.acceptsInsurance = acceptsInsurance === 'true' || acceptsInsurance === true;
       if (isAvailable !== undefined) filters.isAvailable = isAvailable === 'true' || isAvailable === true;
 
       logger.info(`Search performed with filters: ${JSON.stringify(filters)}, options: ${JSON.stringify(options)}`);
@@ -334,15 +325,39 @@ class DoctorService {
 
   /**
    * Check doctor availability for a specific slot
+   * Simple logic: available if NOT booked
    */
   async checkAvailability(doctorId, date, startTime, endTime) {
     try {
-      const doctor = await DoctorScheduleReadView.findById(doctorId);
+      // Get doctor from write model to check actual bookings
+      let doctor = await Doctor.findById(doctorId);
+      
+      // If not found by _id, try finding via read view
+      if (!doctor) {
+        const readView = await DoctorScheduleReadView.findById(doctorId);
+        if (readView && readView.doctorId) {
+          doctor = await Doctor.findById(readView.doctorId);
+        }
+      }
+      
       if (!doctor) {
         throw new NotFoundError('Doctor not found');
       }
 
-      const isAvailable = doctor.isSlotAvailable(date, startTime, endTime);
+      // Check if doctor is active
+      if (doctor.status !== 'active' || !doctor.isAvailable) {
+        return { available: false, doctorId, date, startTime, endTime, reason: 'Doctor not available' };
+      }
+
+      // Check if slot is booked - if not booked, it's available
+      const isBooked = doctor.availability && doctor.availability.some(slot => 
+        new Date(slot.date).toDateString() === new Date(date).toDateString() &&
+        slot.startTime === startTime &&
+        slot.endTime === endTime &&
+        slot.status === 'booked'
+      );
+      
+      const isAvailable = !isBooked;
       logger.info(`Checked availability for doctor: ${doctorId} on ${date} from ${startTime} to ${endTime} - Available: ${isAvailable}`);
       
       return {
@@ -390,22 +405,7 @@ class DoctorService {
         doctor.availability = [];
       }
 
-      // Check if slot is available from read view
-      const readView = await DoctorScheduleReadView.findOne({ 
-        $or: [
-          { _id: doctorId },
-          { doctorId: doctor._id }
-        ]
-      });
-      
-      if (readView) {
-        const isAvailable = readView.isSlotAvailable(date, startTime, endTime);
-        if (!isAvailable) {
-          throw new ConflictError('Slot is not available');
-        }
-      }
-
-      // Find existing slot
+      // Check if slot is already booked
       let slot = doctor.availability.find(s => 
         new Date(s.date).toDateString() === new Date(date).toDateString() &&
         s.startTime === startTime &&
@@ -417,10 +417,10 @@ class DoctorService {
         if (slot.status === 'booked') {
           throw new ConflictError('Slot is already booked');
         }
-        // Update existing slot
+        // Update existing slot to booked
         slot.status = 'booked';
       } else {
-        // Create new slot
+        // Create new booked slot (only track booked slots)
         slot = {
           date: new Date(date),
           startTime,
@@ -493,9 +493,8 @@ class DoctorService {
         return { success: true, message: 'Slot not found or already released' };
       }
 
-      // Change status back to available
-      slot.status = 'available';
-      slot.appointmentId = null;
+      // Remove the booked slot (we only track booked slots)
+      doctor.availability.pull(slotId);
 
       await doctor.save();
       
@@ -628,18 +627,14 @@ class DoctorService {
    */
   async getFilterOptions() {
     try {
-      const [specializations, locations, conditions, symptoms] = await Promise.all([
+      const [specializations, locations] = await Promise.all([
         DoctorScheduleReadView.getSpecializations(),
         DoctorScheduleReadView.getLocations(),
-        DoctorScheduleReadView.getTreatedConditions(),
-        DoctorScheduleReadView.getTreatedSymptoms(),
       ]);
 
       return {
         specializations,
         locations,
-        conditions,
-        symptoms,
       };
     } catch (error) {
       logger.error('Error getting filter options:', error);

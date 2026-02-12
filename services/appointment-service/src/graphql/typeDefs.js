@@ -11,6 +11,7 @@ const typeDefs = gql`
 
   # Enums
   enum AppointmentStatus {
+    PENDING
     SCHEDULED
     CONFIRMED
     IN_PROGRESS
@@ -72,8 +73,8 @@ const typeDefs = gql`
     status: AppointmentStatus!
     
     # Scheduling
-    scheduledDate: DateTime!
-    scheduledTime: String!
+    date: DateTime!
+    startTime: String!
     duration: Int! # in minutes
     timeZone: String!
     
@@ -184,7 +185,7 @@ const typeDefs = gql`
     patientId: String!
     doctorId: String!
     status: AppointmentStatus!
-    scheduledDate: DateTime!
+    date: DateTime!
     type: AppointmentType!
     fee: Float!
     paymentStatus: PaymentStatus!
@@ -240,15 +241,30 @@ const typeDefs = gql`
   input BookAppointmentInput {
     patientId: String!
     doctorId: String!
-    slotId: String!
-    type: AppointmentType!
-    title: String!
-    description: String
+    date: String!
+    startTime: String!
+    endTime: String
+    duration: Int
+    reason: String!
     notes: String
+    symptoms: [String!]
+    slotId: String
+    type: AppointmentType
+    title: String
+    patientDetails: PatientDetailsInput  # Made optional - system uses authenticated user data
+    description: String
     location: AppointmentLocationInput
     isVirtual: Boolean = false
     priority: String
     tags: [String!] = []
+  }
+
+  input PatientDetailsInput {
+    firstName: String!
+    lastName: String!
+    email: String!
+    phone: String
+    dateOfBirth: DateTime
   }
 
   input AppointmentLocationInput {

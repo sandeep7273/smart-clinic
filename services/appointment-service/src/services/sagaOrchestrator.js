@@ -43,7 +43,14 @@ class SagaOrchestrator {
       sagaId,
       userId: bookingData.userId,
       doctorId: bookingData.doctorId,
+      hasAuthToken: !!authToken,
+      tokenLength: authToken ? authToken.length : 0
     });
+    
+    if (!authToken) {
+      logger.error('No auth token provided to SAGA');
+      throw new Error('Authentication token is required for booking');
+    }
 
     try {
       // Step 1: Validate booking data
@@ -58,10 +65,10 @@ class SagaOrchestrator {
     //   Step 3: Get patient details
       const patientDetails = {
         _id: bookingData.userId,
-        firstName: user.firstName || 'Unknown',
-        lastName: user.lastName || 'Patient',
-        email: user.email || '',
-        phone: user.phoneNumber || '',
+        firstName:  'Unknown',
+        lastName: 'Patient',
+        email:  '',
+        phone: '',
       }
 
       // Step 5: Reserve slot (with compensation)
@@ -72,10 +79,13 @@ class SagaOrchestrator {
       );
 
       // Step 6: Create appointment (with compensation)
+      // Use patient details from input if provided, otherwise use default patient details
+      const finalPatientDetails = bookingData.patientDetails || patientDetails;
+      
       const appointment = await this.createAppointment(
         bookingData,
         doctorDetails,
-        patientDetails,
+        finalPatientDetails,
         user
       );
 
@@ -231,6 +241,14 @@ class SagaOrchestrator {
    */
   async reserveSlot(doctorId, bookingData, authToken) {
     try {
+      logger.info('Reserving slot with doctor service', {
+        doctorId,
+        date: bookingData.date,
+        startTime: bookingData.startTime,
+        endTime: bookingData.endTime,
+        hasAuthToken: !!authToken
+      });
+      
       const slotData = {
         date: bookingData.date,
         startTime: bookingData.startTime,
@@ -261,7 +279,25 @@ class SagaOrchestrator {
 
       return result.data;
     } catch (error) {
-      logger.error('Slot reservation failed:', error);
+      logger.error('Slot reservation failed:', {
+        message: error.message,
+        code: error.code,
+        errno: error.errno,
+        syscall: error.syscall,
+        address: error.address,
+        port: error.port,
+        stack: error.stack
+      });
+      
+      // Provide more specific error messages
+      if (error.code === 'ECONNRESET') {
+        throw new Error('Doctor service connection was reset. Please ensure the doctor service is running and accessible.');
+      } else if (error.code === 'ECONNREFUSED') {
+        throw new Error('Cannot connect to doctor service. Please verify it is running on the correct port.');
+      } else if (error.code === 'ETIMEDOUT') {
+        throw new Error('Doctor service request timed out. The service may be overloaded or unreachable.');
+      }
+      
       throw error;
     }
   }
@@ -279,7 +315,7 @@ class SagaOrchestrator {
 
       const appointment = new Appointment({
         appointmentNumber,
-        userId: bookingData.userId,
+        userId: user.userId,
         patientName: `${patientDetails.firstName} ${patientDetails.lastName}`,
         patientEmail: patientDetails.email,
         patientPhone: patientDetails.phone,

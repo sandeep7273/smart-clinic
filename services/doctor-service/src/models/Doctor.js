@@ -170,11 +170,11 @@ DoctorSchema.virtual('fullName').get(function() {
   return `Dr. ${this.firstName} ${this.lastName}`;
 });
 
-// Virtual for available slots count
-DoctorSchema.virtual('availableSlotsCount').get(function() {
+// Virtual for booked slots count (we only track booked slots)
+DoctorSchema.virtual('bookedSlotsCount').get(function() {
   if (!this.availability) return 0;
   return this.availability.filter(slot => 
-    slot.status === SLOT_STATUS.AVAILABLE && 
+    slot.status === SLOT_STATUS.BOOKED && 
     new Date(slot.date) >= new Date()
   ).length;
 });
@@ -188,149 +188,10 @@ DoctorSchema.statics.findByEmail = function(email) {
   return this.findOne({ email: email.toLowerCase(), isDeleted: false });
 };
 
-DoctorSchema.statics.findBySpecialization = function(specialization) {
-  return this.find({ 
-    specializations: specialization, 
-    status: DOCTOR_STATUS.ACTIVE,
-    isDeleted: false,
-  });
-};
 
-// Comprehensive search method
-DoctorSchema.statics.search = async function(searchParams) {
-  const {
-    query, // Free text search across multiple fields
-    name, // Search by doctor's name specifically
-    specialization,
-    location, // city
-    condition,
-    symptom,
-    date,
-    minRating,
-    maxFee,
-    acceptsInsurance,
-    isAvailable,
-    page = 1,
-    limit = 10,
-    sortBy = 'rating',
-    sortOrder = 'desc',
-  } = searchParams;
-
-  const filter = {
-    status: DOCTOR_STATUS.ACTIVE,
-    isDeleted: false,
-  };
-
-  // Text search across name, specialty, conditions, symptoms using MongoDB text index
-  if (query) {
-    filter.$text = { $search: query };
-  }
-
-  // Search by doctor's name (first name or last name)
-  if (name) {
-    filter.$or = [
-      { firstName: new RegExp(name, 'i') },
-      { lastName: new RegExp(name, 'i') },
-      { $expr: { 
-        $regexMatch: { 
-          input: { $concat: ['$firstName', ' ', '$lastName'] }, 
-          regex: name, 
-          options: 'i' 
-        } 
-      }}
-    ];
-  }
-
-  // Specialization filter
-  if (specialization) {
-    filter.specializations = { $in: Array.isArray(specialization) ? specialization : [specialization] };
-  }
-
-  // Location filter (city)
-  if (location) {
-    filter['address.city'] = new RegExp(location, 'i');
-  }
-
-  // Condition filter
-  if (condition) {
-    filter.treatedConditions = { $in: Array.isArray(condition) ? condition : [condition] };
-  }
-
-  // Symptom filter
-  if (symptom) {
-    filter.treatedSymptoms = { $in: Array.isArray(symptom) ? symptom : [symptom] };
-  }
-
-  // Rating filter
-  if (minRating) {
-    filter.rating = { $gte: parseFloat(minRating) };
-  }
-
-  // Fee filter
-  if (maxFee) {
-    filter.consultationFee = { $lte: parseFloat(maxFee) };
-  }
-
-  // Insurance filter
-  if (acceptsInsurance !== undefined) {
-    filter.acceptsInsurance = acceptsInsurance;
-  }
-
-  // Date availability filter
-  if (date) {
-    const searchDate = new Date(date);
-    filter['availability'] = {
-      $elemMatch: {
-        date: {
-          $gte: new Date(searchDate.setHours(0, 0, 0, 0)),
-          $lt: new Date(searchDate.setHours(23, 59, 59, 999)),
-        },
-        status: SLOT_STATUS.AVAILABLE,
-      },
-    };
-  }
-
-  // Availability status filter
-  if (isAvailable !== undefined) {
-    if (isAvailable) {
-      filter['availability.status'] = SLOT_STATUS.AVAILABLE;
-    }
-  }
-
-  const skip = (page - 1) * limit;
-
-  // Build sort object
-  let sortObject = {};
-  if (query && !sortBy) {
-    // If text search, sort by relevance score
-    sortObject = { score: { $meta: 'textScore' } };
-  } else {
-    // Otherwise sort by specified field
-    sortObject[sortBy] = sortOrder === 'asc' ? 1 : -1;
-  }
-
-  const [doctors, total] = await Promise.all([
-    this.find(filter)
-      .select('-availability') // Exclude availability array for list view
-      .skip(skip)
-      .limit(limit)
-      .sort(sortObject)
-      .lean(),
-    this.countDocuments(filter),
-  ]);
-
-  return {
-    doctors,
-    pagination: {
-      page,
-      limit,
-      total,
-      pages: Math.ceil(total / limit),
-    },
-  };
-};
 
 // Get available doctors for specific date/time
+// Simple logic: doctor is available if the specific slot is NOT booked
 DoctorSchema.statics.findAvailable = async function(date, startTime, endTime, options = {}) {
   const { specialization, location } = options;
   
@@ -339,17 +200,6 @@ DoctorSchema.statics.findAvailable = async function(date, startTime, endTime, op
     status: DOCTOR_STATUS.ACTIVE,
     isAvailable: true,
     isDeleted: false,
-    'availability': {
-      $elemMatch: {
-        date: {
-          $gte: new Date(searchDate.setHours(0, 0, 0, 0)),
-          $lt: new Date(searchDate.setHours(23, 59, 59, 999)),
-        },
-        status: SLOT_STATUS.AVAILABLE,
-        ...(startTime && { startTime }),
-        ...(endTime && { endTime }),
-      },
-    },
   };
 
   if (specialization) {
@@ -363,64 +213,14 @@ DoctorSchema.statics.findAvailable = async function(date, startTime, endTime, op
   return this.find(filter).sort({ rating: -1 });
 };
 
-// Instance methods
-DoctorSchema.methods.addSpecialization = function(specialization) {
-  if (!this.specializations.includes(specialization)) {
-    this.specializations.push(specialization);
-  }
-  return this;
-};
 
-DoctorSchema.methods.removeSpecialization = function(specialization) {
-  this.specializations = this.specializations.filter(s => s !== specialization);
-  return this;
-};
 
 DoctorSchema.methods.addAvailabilitySlot = function(slot) {
   this.availability.push(slot);
   return this;
 };
 
-DoctorSchema.methods.updateSlotStatus = function(slotId, status, appointmentId = null) {
-  const slot = this.availability.id(slotId);
-  if (slot) {
-    slot.status = status;
-    if (appointmentId) {
-      slot.appointmentId = appointmentId;
-    }
-  }
-  return this;
-};
 
-// Get unique values for dropdowns
-DoctorSchema.statics.getSpecializations = async function() {
-  const result = await this.aggregate([
-    { $match: { status: DOCTOR_STATUS.ACTIVE, isDeleted: false } },
-    { $unwind: '$specializations' },
-    { $group: { _id: '$specializations' } },
-    { $sort: { _id: 1 } },
-  ]);
-  return result.map(r => r._id);
-};
-
-DoctorSchema.statics.getLocations = async function() {
-  const result = await this.aggregate([
-    { $match: { status: DOCTOR_STATUS.ACTIVE, isDeleted: false } },
-    { $group: { _id: '$address.city' } },
-    { $sort: { _id: 1 } },
-  ]);
-  return result.map(r => r._id);
-};
-
-DoctorSchema.statics.getTreatedConditions = async function() {
-  const result = await this.aggregate([
-    { $match: { status: DOCTOR_STATUS.ACTIVE, isDeleted: false } },
-    { $unwind: '$treatedConditions' },
-    { $group: { _id: '$treatedConditions' } },
-    { $sort: { _id: 1 } },
-  ]);
-  return result.map(r => r._id);
-};
 
 const Doctor = mongoose.model('Doctor', DoctorSchema);
 

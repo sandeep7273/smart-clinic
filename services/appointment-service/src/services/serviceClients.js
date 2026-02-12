@@ -110,6 +110,13 @@ const doctorService = {
   reserveSlot: createCircuitBreaker(
     async (doctorId, slotData, authToken) => {
       try {
+        logger.info('Calling doctor service reserveSlot', {
+          doctorId,
+          slotData,
+          hasToken: !!authToken,
+          tokenPreview: authToken ? `${authToken.substring(0, 20)}...` : 'none'
+        });
+        
         const response = await doctorServiceClient.post(
           `/api/doctors/${doctorId}/slots/reserve`,
           slotData,
@@ -117,12 +124,26 @@ const doctorService = {
             headers: {
               Authorization: `Bearer ${authToken}`,
             },
+            timeout: 10000 // 10 second timeout
           }
         );
 
         console.log(`✅ Slot reserved successfully:`, response.data);
         return response.data;
       } catch (error) {
+        // Network-level errors (ECONNRESET, ECONNREFUSED, etc.)
+        if (error.code) {
+          logger.error('Network error calling doctor service:', {
+            code: error.code,
+            errno: error.errno,
+            syscall: error.syscall,
+            message: error.message,
+            address: error.address,
+            port: error.port
+          });
+          throw new Error(`Doctor Service error: ${error.code} - ${error.message}`);
+        }
+        
         const status = error.response?.status;
         const errorData = error.response?.data;
         
@@ -132,6 +153,15 @@ const doctorService = {
           statusText: error.response?.statusText,
           data: errorData,
         });
+        
+        // 401 Unauthorized - authentication failed
+        if (status === 401) {
+          throw new BusinessError(
+            'Authentication failed with doctor service. Token may be invalid or expired.',
+            401,
+            error
+          );
+        }
         
         // 409 Conflict - Slot already booked (business error, not service failure)
         if (status === 409) {

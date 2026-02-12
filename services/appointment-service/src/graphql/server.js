@@ -8,39 +8,45 @@ const { makeExecutableSchema } = require('@graphql-tools/schema');
 const typeDefs = require('./typeDefs');
 const resolvers = require('./resolvers');
 const logger = require('../utils/logger');
+const createContext = require('./context');
 
 /**
  * Create GraphQL context
  */
-const createContext = ({ req }) => {
-  // Extract user from request headers (forwarded from API Gateway)
-  const user = req.user || {
-    userId: req.headers['x-user-id'],
-    email: req.headers['x-user-email'],
-    role: req.headers['x-user-role'],
-    tenantId: req.headers['x-tenant-id']
-  };
+// const createContext = async ({ req }) => {
+//   // Extract user from request headers (forwarded from API Gateway)
+//   // const user = req.user || {
+//   //   userId: req.headers['x-user-id'],
+//   //   email: req.headers['x-user-email'],
+//   //   role: req.headers['x-user-role'],
+//   //   tenantId: req.headers['x-tenant-id']
+//   // };
   
-  const token = req.headers.authorization?.replace('Bearer ', '') || null;
+//   const token = req.headers.authorization?.replace('Bearer ', '') || null;
+//   const decoded = await validateToken(token);
+//       const user = {
+//         userId: decoded.id,
+//         email: decoded.email,
+//         roles: decoded.roles || [],
+//       };
+//   // Extract request metadata for SAGA and Event Sourcing
+//   const correlationId = req.headers['x-correlation-id'] || 
+//                        req.headers['x-request-id'] || 
+//                        `appt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
-  // Extract request metadata for SAGA and Event Sourcing
-  const correlationId = req.headers['x-correlation-id'] || 
-                       req.headers['x-request-id'] || 
-                       `appt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+//   const causationId = req.headers['x-causation-id'] || null;
   
-  const causationId = req.headers['x-causation-id'] || null;
-  
-  return {
-    user: user.userId ? user : null,
-    token,
-    correlationId,
-    causationId,
-    userAgent: req.headers['user-agent'],
-    ip: req.ip || req.connection.remoteAddress,
-    requestId: req.id,
-    timestamp: new Date().toISOString()
-  };
-};
+//   return {
+//     user: user.userId ? user : null,
+//     token,
+//     correlationId,
+//     causationId,
+//     userAgent: req.headers['user-agent'],
+//     ip: req.ip || req.connection.remoteAddress,
+//     requestId: req.id,
+//     timestamp: new Date().toISOString()
+//   };
+// };
 
 /**
  * Create Apollo Server instance with Event Sourcing and SAGA support
