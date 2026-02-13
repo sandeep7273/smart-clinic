@@ -176,11 +176,12 @@ class DoctorService {
 
   /**
    * Comprehensive search with filters
+   * Supports lenient search across name, specialization, location, conditions, symptoms
    */
   async searchDoctors(searchParams) {
     try {
       const {
-        search, // GraphQL 'search' parameter - map to 'name' for doctor name search
+        search, // GraphQL 'search' parameter - comprehensive search across all fields
         query,
         name,
         specialty,
@@ -212,15 +213,28 @@ class DoctorService {
       // Build filters object with all available criteria
       const filters = {};
       
-      // Add filters only if they are provided
-      // Map 'search' from GraphQL to 'query' for doctor  search
-
-      if (query) filters.query = search;
+      // Primary search parameter - searches across name, specialization, location, etc.
+      // This provides lenient search functionality
+      if (search) {
+        filters.query = search; // The 'query' filter searches across multiple fields
+      }
+      
+      // Specific filters (override/supplement the general search)
+      if (name) filters.name = name;
       if (specialty) filters.specialization = specialty;
       if (specialization) filters.specialization = specialization;
-      // Map 'city' from GraphQL to 'location' for the model
-      if (city) filters.location = city;
+      
+      // Location filters
+      if (city) filters.city = city;
       if (location) filters.location = location;
+      if (state) filters.state = state;
+      
+      // Additional filters
+      if (condition) filters.condition = condition;
+      if (symptom) filters.symptom = symptom;
+      if (language) filters.language = language;
+      if (minRating) filters.minRating = parseFloat(minRating);
+      if (maxFee) filters.maxFee = parseFloat(maxFee);
       if (isAvailable !== undefined) filters.isAvailable = isAvailable === 'true' || isAvailable === true;
 
       logger.info(`Search performed with filters: ${JSON.stringify(filters)}, options: ${JSON.stringify(options)}`);

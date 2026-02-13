@@ -465,7 +465,7 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
             style={styles.searchInput}
-            placeholder="Search by doctor name..."
+            placeholder="Search by doctor name, specialty, or location..."
             value={searchQuery}
             onChangeText={setSearchQuery}
             onSubmitEditing={handleSearch}

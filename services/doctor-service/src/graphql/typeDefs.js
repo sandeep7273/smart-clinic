@@ -139,6 +139,8 @@ const typeDefs = gql`
     specialization: String
     city: String
     state: String
+    condition: String
+    symptom: String
     minRating: Float
     maxFee: Int
     language: String

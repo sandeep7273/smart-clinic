@@ -295,12 +295,20 @@ doctorScheduleReadViewSchema.statics.updateFromDoctor = async function (doctor) 
   );
 };
 
-// Comprehensive search method
+// Comprehensive search method with lenient filtering
+// Supports search across name, specialization, location, conditions, symptoms, etc.
 doctorScheduleReadViewSchema.statics.search = async function(searchParams) {
   const {
-    query, // Free text search across multiple fields
+    query, // Free text search across multiple fields (name, specialty, conditions, symptoms, location)
     specialization,
     location, // city
+    city, // alias for location
+    state,
+    condition,
+    symptom,
+    language,
+    minRating,
+    maxFee,
     isAvailable,
     page = 1,
     limit = 10,
@@ -313,9 +321,22 @@ doctorScheduleReadViewSchema.statics.search = async function(searchParams) {
     isDeleted: false,
   };
 
-  // Text search across name, specialty, conditions, symptoms using MongoDB text index
+  // Lenient text search across multiple fields using regex
+  // Searches across name, specialty, conditions, symptoms, location, bio
   if (query) {
-    filter.$text = { $search: query };
+    const searchRegex = new RegExp(query, 'i'); // Case-insensitive regex
+    filter.$or = [
+      { firstName: searchRegex },
+      { lastName: searchRegex },
+      { doctorName: searchRegex },
+      { specializations: searchRegex },
+      { treatedConditions: searchRegex },
+      { treatedSymptoms: searchRegex },
+      { 'address.city': searchRegex },
+      { 'address.state': searchRegex },
+      { bio: searchRegex },
+      { languages: searchRegex },
+    ];
   }
 
   // Specialization filter
@@ -323,11 +344,40 @@ doctorScheduleReadViewSchema.statics.search = async function(searchParams) {
     filter.specializations = { $in: Array.isArray(specialization) ? specialization : [specialization] };
   }
 
-  // Location filter (city)
-  if (location) {
-    filter['address.city'] = new RegExp(location, 'i');
+  // Location filters (city and/or state)
+  const cityFilter = city || location;
+  if (cityFilter) {
+    filter['address.city'] = new RegExp(cityFilter, 'i'); // Case-insensitive search
+  }
+  
+  if (state) {
+    filter['address.state'] = new RegExp(state, 'i'); // Case-insensitive search
   }
 
+  // Condition filter (search in treatedConditions)
+  if (condition) {
+    filter.treatedConditions = new RegExp(condition, 'i'); // Case-insensitive search
+  }
+
+  // Symptom filter (search in treatedSymptoms)
+  if (symptom) {
+    filter.treatedSymptoms = new RegExp(symptom, 'i'); // Case-insensitive search
+  }
+
+  // Language filter
+  if (language) {
+    filter.languages = new RegExp(language, 'i'); // Case-insensitive search
+  }
+
+  // Rating filter (minimum rating)
+  if (minRating !== undefined && minRating !== null) {
+    filter.rating = { $gte: parseFloat(minRating) };
+  }
+
+  // Fee filter (maximum fee)
+  if (maxFee !== undefined && maxFee !== null) {
+    filter.consultationFee = { $lte: parseFloat(maxFee) };
+  }
 
   // Availability status filter
   if (isAvailable !== undefined) {
@@ -341,13 +391,8 @@ doctorScheduleReadViewSchema.statics.search = async function(searchParams) {
 
   // Build sort object
   let sortObject = {};
-  if (query && !sortBy) {
-    // If text search, sort by relevance score
-    sortObject = { score: { $meta: 'textScore' } };
-  } else {
-    // Otherwise sort by specified field
-    sortObject[sortBy] = sortOrder === 'asc' ? 1 : -1;
-  }
+  // Sort by specified field (default: rating descending)
+  sortObject[sortBy] = sortOrder === 'asc' ? 1 : -1;
 
   const [doctors, total] = await Promise.all([
     this.find(filter)
