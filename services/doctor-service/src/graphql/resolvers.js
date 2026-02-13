@@ -10,8 +10,9 @@ const { AuthenticationError, ForbiddenError, UserInputError } = require('apollo-
 const resolvers = {
   Query: {
     // Get doctor by ID
-    getDoctor: async (parent, { id }) => {
+    getDoctor: async (parent, { id }, context) => {
       try {
+        requireAuthentication(context);
         const doctor = await doctorService.getDoctorById(id);
         return doctor;
       } catch (error) {
@@ -21,8 +22,9 @@ const resolvers = {
     },
 
     // Search doctors with filters
-    searchDoctors: async (parent, { search, filters, page, limit, sortBy, sortOrder }) => {
+    searchDoctors: async (parent, { search, filters, page, limit, sortBy, sortOrder }, context) => {
       try {
+        requireAuthentication(context);
         logger.info(`GraphQL searchDoctors called with search="${search}", filters=${JSON.stringify(filters)}, page=${page}, limit=${limit}`);
         
         const searchFilters = {
@@ -54,8 +56,9 @@ const resolvers = {
     },
 
     // Get doctors by specialization
-    getDoctorsBySpecialization: async (parent, { specialization, page, limit }) => {
+    getDoctorsBySpecialization: async (parent, { specialization, page, limit }, context) => {
       try {
+        requireAuthentication(context);
         const result = await doctorService.getDoctorsBySpecialization(specialization, page, limit);
         
         return {
@@ -76,8 +79,9 @@ const resolvers = {
     },
 
     // Get doctor availability
-    getDoctorAvailability: async (parent, { doctorId, startDate, endDate }) => {
+    getDoctorAvailability: async (parent, { doctorId, startDate, endDate }, context) => {
       try {
+        requireAuthentication(context);
         const availability = await doctorService.getDoctorAvailability(doctorId, startDate, endDate);
         return availability;
       } catch (error) {
@@ -87,8 +91,9 @@ const resolvers = {
     },
 
     // Get popular specializations
-    getPopularSpecializations: async (parent, { limit }) => {
+    getPopularSpecializations: async (parent, { limit }, context) => {
       try {
+        requireAuthentication(context);
         const specializations = await doctorService.getPopularSpecializations(limit);
         return specializations;
       } catch (error) {
@@ -107,6 +112,7 @@ const resolvers = {
       }
 
       try {
+        requireAuthentication(context);
         const doctor = await doctorService.createDoctor(input);
         return doctor;
       } catch (error) {
@@ -127,6 +133,7 @@ const resolvers = {
       }
 
       try {
+        requireAuthentication(context);
         const doctor = await doctorService.updateDoctor(id, input);
         return doctor;
       } catch (error) {
@@ -142,6 +149,7 @@ const resolvers = {
       }
 
       try {
+        requireAuthentication(context);
         const doctor = await doctorService.updateDoctorAvailability(doctorId, input, context.user);
         return doctor;
       } catch (error) {
@@ -157,6 +165,7 @@ const resolvers = {
       }
 
       try {
+        requireAuthentication(context);
         const slot = await doctorService.reserveTimeSlot(input);
         return slot;
       } catch (error) {
@@ -172,6 +181,7 @@ const resolvers = {
       }
 
       try {
+        requireAuthentication(context);
         const slot = await doctorService.releaseTimeSlot(doctorId, date, startTime);
         return slot;
       } catch (error) {
@@ -187,6 +197,7 @@ const resolvers = {
       }
 
       try {
+        requireAuthentication(context);
         const slot = await doctorService.updateSlotStatus(
           doctorId, 
           date, 
@@ -208,6 +219,7 @@ const resolvers = {
       }
 
       try {
+        requireAuthentication(context);
         await doctorService.deleteDoctor(doctorId);
         return true;
       } catch (error) {
@@ -285,5 +297,18 @@ const resolvers = {
     }
   }
 };
+
+function requireAuthentication(context) {
+  if (!context.token) {
+    throw new AuthenticationError('Authentication required');
+  }
+}
+
+function requireRole(user, allowedRoles) {
+  if (!user || !allowedRoles.includes(user.role)) {
+    throw new ForbiddenError(`Access denied. Required roles: ${allowedRoles.join(', ')}`);
+  }
+}
+
 
 module.exports = resolvers;

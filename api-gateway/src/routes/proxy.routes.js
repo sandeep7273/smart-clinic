@@ -88,8 +88,8 @@ const createProxyConfig = (serviceName, serviceUrl) => {
 
 /**
  * Auth Service Proxy
- * Public endpoints: /api/auth/register, /api/auth/login
- * Protected endpoints: /api/auth/logout, /api/auth/refresh, /api/auth/verify
+ * Public endpoints: /api/auth/register, /api/auth/login, /api/auth/refresh
+ * Protected endpoints: /api/auth/logout, /api/auth/verify, /api/auth/me
  */
 router.use(
   '/auth/register',
@@ -103,6 +103,14 @@ router.use(
   createProxyMiddleware(createProxyConfig('auth', config.services.auth))
 );
 
+// Refresh endpoint should be public (only requires refresh token in body)
+router.use(
+  '/auth/refresh',
+  authRateLimiter,
+  createProxyMiddleware(createProxyConfig('auth', config.services.auth))
+);
+
+// All other auth endpoints require authentication
 router.use(
   '/auth',
   authenticate,

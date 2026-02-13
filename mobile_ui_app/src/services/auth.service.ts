@@ -202,23 +202,35 @@ export const refreshAccessToken = async (): Promise<TokenPair | null> => {
       return null;
     }
 
-    // Call refresh endpoint
-    const response = await httpClient.post<{ accessToken: string; refreshToken: string }>(
+    console.log('🔄 Refreshing token...');
+    
+    // Call refresh endpoint through API Gateway
+    const response = await httpClient.post<{ 
+      success: boolean;
+      data: { accessToken: string; refreshToken: string } 
+    }>(
       API_ENDPOINTS.AUTH.REFRESH,
       { refreshToken }
     );
 
+    if (!response.data.success || !response.data.data) {
+      console.error('Invalid refresh response:', response.data);
+      await removeTokens();
+      return null;
+    }
+
     const newTokens: TokenPair = {
-      accessToken: response.data.accessToken,
-      refreshToken: response.data.refreshToken,
+      accessToken: response.data.data.accessToken,
+      refreshToken: response.data.data.refreshToken,
     };
 
     // Save new tokens
     await saveTokens(newTokens);
+    console.log('✅ Token refreshed and saved successfully');
 
     return newTokens;
-  } catch (error) {
-    console.error('Error refreshing token:', error);
+  } catch (error: any) {
+    console.error('❌ Error refreshing token:', error.message);
     // If refresh fails, remove tokens
     await removeTokens();
     return null;

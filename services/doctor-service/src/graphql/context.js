@@ -7,18 +7,30 @@ const { validateToken, extractTokenFromHeader } = require('../utils/auth');
 const createContext = async ({ req }) => {
   const context = {
     user: null,
+    userAgent: req.headers['user-agent'],
+    ip: req.ip || req.connection.remoteAddress,
+    requestId: req.id,
+    timestamp: new Date().toISOString(),
+    token: null, // Initialize token as null
+    correlationId : req.headers['x-correlation-id'] || 
+          req.headers['x-request-id'] || 
+          `appt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    causationId : req.headers['x-causation-id'] || null
   };
 
   try {
-    // const authHeader = req.headers.authorization;
-    // const token = extractTokenFromHeader(authHeader);
-    const token = req.headers.authorization?.replace('Bearer ', '') || null;
+    const authHeader = req.headers.authorization;
+    const token = extractTokenFromHeader(authHeader);
+
     if (token) {
-      const user = await validateToken(token);
+      const decoded = await validateToken(token);
+      context.token = token; // Set the token in context for forwarding to downstream services (even if validation failed)
       context.user = {
-        userId: user.id,
-        email: user.email,
-        role: user.role || [],
+        userId: decoded.id,
+        email: decoded.email,
+        role: decoded.role || [],
+        tenantId: decoded.tenantId || null,
+        phone: decoded.phoneNumber,
       };
     }
   } catch (error) {

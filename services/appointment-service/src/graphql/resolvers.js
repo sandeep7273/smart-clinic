@@ -45,6 +45,7 @@ const resolvers = {
      */
     appointment: async (_, { id }, context) => {
       try {
+        requireAuthentication(context);
         logger.debug('Fetching appointment via GraphQL:', { id, userId: context.user?.userId });
         
         const appointment = await AppointmentReadView.findById(id);
@@ -350,7 +351,7 @@ const resolvers = {
      */
     bookAppointment: async (_, { input }, context) => {
       try {
-        // requireAuthentication(context);
+        requireAuthentication(context);
         
         logger.info('Booking appointment via GraphQL:', {
           input,

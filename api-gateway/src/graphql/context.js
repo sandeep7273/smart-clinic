@@ -45,6 +45,7 @@ const createContext = async ({ req, res }) => {
         correlationId,
         error: error.message,
       });
+      // throw new Error('Invalid or expired token');
       // Token validation failed - user remains null, but token is still forwarded
       // to downstream services for their own validation
     }
