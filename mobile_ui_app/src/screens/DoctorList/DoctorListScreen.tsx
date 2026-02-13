@@ -105,17 +105,34 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
 
   /**
    * Fetch doctors with current filters
+   * @param page - Page number to fetch
+   * @param append - Whether to append to existing doctors or replace
+   * @param overrideFilters - Optional filter overrides (used when updating filters before state updates)
    */
-  const fetchDoctors = async (page = 1, append = false) => {
+  const fetchDoctors = async (
+    page = 1, 
+    append = false,
+    overrideFilters?: {
+      specialty?: string;
+      location?: string;
+      search?: string;
+    }
+  ) => {
     if (loading) return;
 
     try {
       setLoading(true);
       setError(null); // Clear any previous errors
 
+      // Use override filters if provided, otherwise use state
+      const activeSpecialty = overrideFilters?.specialty !== undefined ? overrideFilters.specialty : selectedSpecialty;
+      const activeLocation = overrideFilters?.location !== undefined ? overrideFilters.location : selectedLocation;
+      const activeSearch = overrideFilters?.search !== undefined ? overrideFilters.search : searchQuery;
+
+      console.log('🔍 Fetching doctors with filters:', { activeSpecialty, activeLocation, activeSearch, page });
+
       // Only use search endpoint if there's an actual search query or advanced filters
-      // Note: condition and symptom filters are not currently supported by the backend
-      const hasSearchQuery = searchQuery || selectedSpecialty || selectedLocation;
+      const hasSearchQuery = activeSearch || activeSpecialty || activeLocation;
 
       let response;
 
@@ -124,11 +141,9 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
         const searchParams: DoctorSearchParams = {
           page,
           limit: 50,
-          ...(searchQuery && { search: searchQuery }), // Fixed: use 'search' instead of 'name'
-          ...(selectedSpecialty && { specialization: selectedSpecialty }), // Fixed: use 'specialization' instead of 'specialty'
-          ...(selectedLocation && { city: selectedLocation }), // Fixed: use 'city' instead of 'location'
-          // Note: condition and symptom filters are not supported by the GraphQL backend
-          // These would need to be added to the backend schema if needed
+          ...(activeSearch && { search: activeSearch }),
+          ...(activeSpecialty && { specialization: activeSpecialty }),
+          ...(activeLocation && { city: activeLocation }),
         };
         response = await searchDoctors(searchParams);
       } else {
@@ -204,19 +219,29 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
    */
   const handleFilterSelect = (filterType: 'Speciality' | 'Location', value: string) => {
     console.log(`🔍 Filter selected: ${filterType} = ${value}`);
+    
+    let newSpecialty = selectedSpecialty;
+    let newLocation = selectedLocation;
+    
     switch (filterType) {
       case 'Speciality':
-        setSelectedSpecialty(value === selectedSpecialty ? '' : value); // Toggle off if same
+        newSpecialty = value === selectedSpecialty ? '' : value; // Toggle off if same
+        setSelectedSpecialty(newSpecialty);
         break;
       case 'Location':
-        setSelectedLocation(value === selectedLocation ? '' : value); // Toggle off if same
+        newLocation = value === selectedLocation ? '' : value; // Toggle off if same
+        setSelectedLocation(newLocation);
         break;
     }
+    
     setCurrentPage(1);
-    // Delay to let state update
-    setTimeout(() => {
-      fetchDoctors(1, false);
-    }, 100);
+    
+    // Pass the new filter values directly to fetchDoctors instead of waiting for state update
+    fetchDoctors(1, false, {
+      specialty: newSpecialty,
+      location: newLocation,
+      search: searchQuery,
+    });
   };
 
   /**
@@ -228,9 +253,13 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
     setSelectedSpecialty('');
     setSelectedLocation('');
     setCurrentPage(1);
-    setTimeout(() => {
-      fetchDoctors(1, false);
-    }, 100);
+    
+    // Pass empty filter values directly to fetchDoctors
+    fetchDoctors(1, false, {
+      specialty: '',
+      location: '',
+      search: '',
+    });
   };
 
   /**
@@ -389,49 +418,52 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
       </View>
 
       {/* Filter Tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabScrollContainer}
-        contentContainerStyle={styles.tabContainer}>
-        {(['Speciality', 'Location'] as const).map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.tab, activeTab === tab && styles.activeTab]}
-            onPress={() => setActiveTab(tab)}>
-            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-              {tab}
-              {tab === 'Speciality' && selectedSpecialty && ' ✓'}
-              {tab === 'Location' && selectedLocation && ' ✓'}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={styles.tabWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabContainer}>
+          {(['Speciality', 'Location'] as const).map(tab => (
+            <TouchableOpacity
+              key={tab}
+              style={[styles.tab, activeTab === tab && styles.activeTab]}
+              onPress={() => setActiveTab(tab)}>
+              <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
+                {tab}
+                {tab === 'Speciality' && selectedSpecialty && ' ✓'}
+                {tab === 'Location' && selectedLocation && ' ✓'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       {/* Filter Options */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterOptionsContainer}
-        contentContainerStyle={styles.filterOptionsContent}>
-        {getActiveFilterOptions().map((option, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[
-              styles.filterOption,
-              getSelectedValue() === option && styles.selectedFilterOption,
-            ]}
-            onPress={() => handleFilterSelect(activeTab, option)}>
-            <Text
+      <View style={styles.filterOptionsWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterOptionsContent}>
+          {getActiveFilterOptions().map((option, index) => (
+            <TouchableOpacity
+              key={index}
               style={[
-                styles.filterOptionText,
-                getSelectedValue() === option && styles.selectedFilterOptionText,
-              ]}>
-              {option}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+                styles.filterOption,
+                getSelectedValue() === option && styles.selectedFilterOption,
+              ]}
+              onPress={() => handleFilterSelect(activeTab, option)}>
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.filterOptionText,
+                  getSelectedValue() === option && styles.selectedFilterOptionText,
+                ]}>
+                {option}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       {/* Active Filters Indicator */}
       {hasActiveFilters() && (
@@ -439,17 +471,17 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
           <View style={styles.activeFiltersContent}>
             {searchQuery && (
               <View style={styles.activeFilterTag}>
-                <Text style={styles.activeFilterText}>Search: "{searchQuery}"</Text>
+                <Text numberOfLines={1} style={styles.activeFilterText}>Search: "{searchQuery}"</Text>
               </View>
             )}
             {selectedSpecialty && (
               <View style={styles.activeFilterTag}>
-                <Text style={styles.activeFilterText}>Specialty: {selectedSpecialty}</Text>
+                <Text numberOfLines={1} style={styles.activeFilterText}>Specialty: {selectedSpecialty}</Text>
               </View>
             )}
             {selectedLocation && (
               <View style={styles.activeFilterTag}>
-                <Text style={styles.activeFilterText}>Location: {selectedLocation}</Text>
+                <Text numberOfLines={1} style={styles.activeFilterText}>Location: {selectedLocation}</Text>
               </View>
             )}
           </View>
@@ -527,7 +559,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 50,
-    paddingBottom: 16,
+    paddingBottom: 14,
     backgroundColor: '#5A7FD8',
   },
   backButton: {
@@ -549,17 +581,19 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 40,
   },
-  tabScrollContainer: {
+  tabWrapper: {
     backgroundColor: '#FFFFFF',
+    height: 44,
+    justifyContent: 'center',
   },
   tabContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    alignItems: 'center',
   },
   tab: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     marginRight: 8,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
@@ -576,12 +610,14 @@ const styles = StyleSheet.create({
     color: '#5A7FD8',
     fontWeight: '600',
   },
-  filterOptionsContainer: {
+  filterOptionsWrapper: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
+    height: 52,
+    justifyContent: 'center',
   },
   filterOptionsContent: {
     paddingHorizontal: 16,
+    alignItems: 'center',
   },
   filterOption: {
     paddingHorizontal: 16,
@@ -591,6 +627,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     borderWidth: 1,
     borderColor: '#E0E0E0',
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   selectedFilterOption: {
     backgroundColor: '#5A7FD8',
@@ -600,6 +639,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333333',
     fontWeight: '500',
+    textAlign: 'center',
   },
   selectedFilterOptionText: {
     color: '#FFFFFF',
@@ -607,9 +647,10 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 8,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
+    minHeight: 60,
   },
   searchBar: {
     flex: 1,
@@ -657,39 +698,48 @@ const styles = StyleSheet.create({
   activeFiltersContainer: {
     backgroundColor: '#FFF9E6',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#FFE082',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minHeight: 52,
   },
   activeFiltersContent: {
     flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginRight: 8,
+    alignItems: 'center',
   },
   activeFilterTag: {
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginRight: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 14,
+    marginRight: 6,
     marginBottom: 4,
     borderWidth: 1,
     borderColor: '#FFD54F',
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   activeFilterText: {
     fontSize: 12,
     color: '#F57C00',
     fontWeight: '500',
+    textAlign: 'center',
   },
   clearFiltersButton: {
     backgroundColor: '#FF6B6B',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 14,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   clearFiltersText: {
     fontSize: 12,

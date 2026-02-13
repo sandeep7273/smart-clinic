@@ -18,7 +18,7 @@ const config = {
     accessSecret: process.env.JWT_ACCESS_SECRET || 'fallback_access_secret',
     refreshSecret: process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret',
     issuer: process.env.JWT_ISSUER || 'auth-service',
-    accessTokenExpiry: process.env.ACCESS_TOKEN_EXPIRY || '50m',
+    accessTokenExpiry: process.env.ACCESS_TOKEN_EXPIRY || '500m',
     refreshTokenExpiry: process.env.REFRESH_TOKEN_EXPIRY || '7d',
   },
 
@@ -37,7 +37,7 @@ const config = {
   // Rate Limiting
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10), // 15 minutes
-    maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10),
+    maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '1000', 10),
   },
 
   // Logging
