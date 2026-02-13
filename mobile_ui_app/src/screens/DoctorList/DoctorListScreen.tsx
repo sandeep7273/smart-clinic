@@ -79,7 +79,7 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
       console.log('🔍 Debounced search triggered for:', searchQuery);
       setCurrentPage(1);
       fetchDoctors(1, false);
-    }, 1000); // 1 second delay
+    }, 500); // 0.5 second delay
 
     // Cleanup: clear timer if searchQuery changes or component unmounts
     return () => {
