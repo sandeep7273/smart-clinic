@@ -24,7 +24,7 @@ import {
  * Get all doctors with pagination and sorting
  * Internally uses GraphQL searchDoctors with no filters
  */
-const getDoctors = async (params: DoctorListParams = {}): Promise<DoctorListResponse> => {
+export const getDoctors = async (params: DoctorListParams = {}): Promise<DoctorListResponse> => {
   const {
     page = 1,
     limit = 50,

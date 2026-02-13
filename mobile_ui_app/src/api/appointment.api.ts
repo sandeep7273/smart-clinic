@@ -161,5 +161,3 @@ export const rescheduleAppointment = async (
     throw new Error(error.response?.data?.message || error.message || 'Failed to reschedule appointment');
   }
 };
-
-

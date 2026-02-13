@@ -94,7 +94,7 @@ export default function BookAppointmentScreen({ route, navigation }: BookAppoint
     try {
       setLoading(true);
       const dateStr = selectedDate.toISOString().split('T')[0]; // Convert Date to YYYY-MM-DD
-      const response = await getDoctorAvailableSlots(dateStr, doctor.id);
+      const response = await getDoctorAvailableSlots(doctor.id, dateStr);
       if (response.success && response.data.slots) {
         setAvailableSlots(response.data.slots);
       }
@@ -373,13 +373,16 @@ export default function BookAppointmentScreen({ route, navigation }: BookAppoint
                   key={index}
                   style={[
                     styles.slotCard,
+                    !slot.available && styles.slotCardDisabled,
                     selectedSlot?.startTime === slot.startTime && styles.slotCardActive,
                   ]}
                   onPress={() => handleSlotSelect(slot)}
+                  disabled={!slot.available}
                 >
                   <Text
                     style={[
                       styles.slotTime,
+                      !slot.available && styles.slotTimeDisabled,
                       selectedSlot?.startTime === slot.startTime && styles.slotTimeActive,
                     ]}
                   >
@@ -388,6 +391,7 @@ export default function BookAppointmentScreen({ route, navigation }: BookAppoint
                   <Text
                     style={[
                       styles.slotTo,
+                      !slot.available && styles.slotToDisabled,
                       selectedSlot?.startTime === slot.startTime && styles.slotToActive,
                     ]}
                   >
@@ -396,6 +400,7 @@ export default function BookAppointmentScreen({ route, navigation }: BookAppoint
                   <Text
                     style={[
                       styles.slotTime,
+                      !slot.available && styles.slotTimeDisabled,
                       selectedSlot?.startTime === slot.startTime && styles.slotTimeActive,
                     ]}
                   >
@@ -676,6 +681,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
+  slotCardDisabled: {
+    backgroundColor: '#efefef',
+    borderColor: '#d6d6d6',
+  },
   slotCardActive: {
     backgroundColor: '#007AFF',
     borderColor: '#007AFF',
@@ -685,6 +694,9 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '600',
   },
+  slotTimeDisabled: {
+    color: '#999',
+  },
   slotTimeActive: {
     color: '#fff',
   },
@@ -692,6 +704,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#999',
     marginVertical: 2,
+  },
+  slotToDisabled: {
+    color: '#b3b3b3',
   },
   slotToActive: {
     color: '#e0e0e0',

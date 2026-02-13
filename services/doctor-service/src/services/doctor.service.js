@@ -324,25 +324,50 @@ class DoctorService {
   }
 
   /**
+   * Helper: Get doctor with fallback to read view
+   * Reusable method to fetch doctor from write model with read view fallback
+   */
+  async getDoctorWithFallback(doctorId) {
+    let doctor = await Doctor.findById(doctorId);
+    
+    // If not found by _id, try finding via read view
+    if (!doctor) {
+      const readView = await DoctorScheduleReadView.findById(doctorId);
+      if (readView && readView.doctorId) {
+        doctor = await Doctor.findById(readView.doctorId);
+      }
+    }
+    
+    if (!doctor) {
+      throw new NotFoundError('Doctor not found');
+    }
+    
+    return doctor;
+  }
+
+  /**
+   * Helper: Find a specific slot in doctor's availability
+   * Reusable method to find a slot by date and time
+   */
+  findSlot(doctor, date, startTime, endTime) {
+    if (!doctor.availability || doctor.availability.length === 0) {
+      return null;
+    }
+    
+    return doctor.availability.find(slot => 
+      new Date(slot.date).toDateString() === new Date(date).toDateString() &&
+      slot.startTime === startTime &&
+      slot.endTime === endTime
+    );
+  }
+
+  /**
    * Check doctor availability for a specific slot
    * Simple logic: available if NOT booked
    */
   async checkAvailability(doctorId, date, startTime, endTime) {
     try {
-      // Get doctor from write model to check actual bookings
-      let doctor = await Doctor.findById(doctorId);
-      
-      // If not found by _id, try finding via read view
-      if (!doctor) {
-        const readView = await DoctorScheduleReadView.findById(doctorId);
-        if (readView && readView.doctorId) {
-          doctor = await Doctor.findById(readView.doctorId);
-        }
-      }
-      
-      if (!doctor) {
-        throw new NotFoundError('Doctor not found');
-      }
+      const doctor = await this.getDoctorWithFallback(doctorId);
 
       // Check if doctor is active
       if (doctor.status !== 'active' || !doctor.isAvailable) {
@@ -350,12 +375,8 @@ class DoctorService {
       }
 
       // Check if slot is booked - if not booked, it's available
-      const isBooked = doctor.availability && doctor.availability.some(slot => 
-        new Date(slot.date).toDateString() === new Date(date).toDateString() &&
-        slot.startTime === startTime &&
-        slot.endTime === endTime &&
-        slot.status === 'booked'
-      );
+      const slot = this.findSlot(doctor, date, startTime, endTime);
+      const isBooked = slot && slot.status === 'booked';
       
       const isAvailable = !isBooked;
       logger.info(`Checked availability for doctor: ${doctorId} on ${date} from ${startTime} to ${endTime} - Available: ${isAvailable}`);
@@ -380,37 +401,19 @@ class DoctorService {
     try {
       const { doctorId, date, startTime, endTime, userId } = slotData;
       
-      console.log(`Attempting to reserve slot for doctor: ${doctorId}`);
+      logger.info(`Attempting to reserve slot for doctor: ${doctorId}`);
       
-      // Get doctor from write model (use findOne with doctorId field for read view IDs)
-      let doctor = await Doctor.findById(doctorId);
-      
-      // If not found by _id, try finding by the doctorId field from read view
-      if (!doctor) {
-        const readView = await DoctorScheduleReadView.findById(doctorId);
-        if (readView && readView.doctorId) {
-          doctor = await Doctor.findById(readView.doctorId);
-        }
-      }
-      
-      if (!doctor) {
-        console.error(`Doctor not found with ID: ${doctorId}`);
-        throw new NotFoundError('Doctor not found');
-      }
-
-      console.log(`Doctor found: ${doctor.firstName} ${doctor.lastName} (${doctor._id})`);
+      // Get doctor using reusable helper method
+      const doctor = await this.getDoctorWithFallback(doctorId);
+      logger.info(`Doctor found: ${doctor.firstName} ${doctor.lastName} (${doctor._id})`);
 
       // Initialize availability array if not exists
       if (!doctor.availability) {
         doctor.availability = [];
       }
 
-      // Check if slot is already booked
-      let slot = doctor.availability.find(s => 
-        new Date(s.date).toDateString() === new Date(date).toDateString() &&
-        s.startTime === startTime &&
-        s.endTime === endTime
-      );
+      // Check if slot exists using reusable helper method
+      let slot = this.findSlot(doctor, date, startTime, endTime);
 
       if (slot) {
         // Check if already booked
@@ -473,6 +476,57 @@ class DoctorService {
       };
     } catch (error) {
       logger.error('Error reserving time slot:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get reserved slots for a doctor
+   * Can filter by date range or get all reserved slots
+   */
+  async getReservedSlots(doctorId, options = {}) {
+    try {
+      const { date, startDate, endDate, status = 'booked' } = options;
+      
+      // Get doctor using reusable helper method
+      const doctor = await this.getDoctorWithFallback(doctorId);
+      
+      if (!doctor.availability || doctor.availability.length === 0) {
+        return [];
+      }
+      
+      let reservedSlots = doctor.availability.filter(slot => slot.status === status);
+      
+      // Filter by specific date if provided
+      if (date) {
+        reservedSlots = reservedSlots.filter(slot => 
+          new Date(slot.date).toDateString() === new Date(date).toDateString()
+        );
+      }
+      
+      // Filter by date range if provided
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        reservedSlots = reservedSlots.filter(slot => {
+          const slotDate = new Date(slot.date);
+          return slotDate >= start && slotDate <= end;
+        });
+      }
+      
+      logger.info(`Found ${reservedSlots.length} reserved slots for doctor: ${doctorId}`);
+      
+      return reservedSlots.map(slot => ({
+        slotId: slot._id,
+        date: slot.date,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        status: slot.status,
+        appointmentId: slot.appointmentId,
+        notes: slot.notes
+      }));
+    } catch (error) {
+      logger.error('Error getting reserved slots:', error);
       throw error;
     }
   }
@@ -704,6 +758,100 @@ class DoctorService {
       logger.error('Error getting doctor stats:', error);
       throw error;
     }
+  }
+
+  /**
+   * Get doctor availability with generated time slots
+   * Generates slots from 9 AM to 5 PM (30-minute intervals) and checks against booked slots
+   */
+  async getDoctorAvailability(doctorId, startDate, endDate) {
+    try {
+      // Verify doctor exists (use write model with read view fallback)
+      const doctor = await this.getDoctorWithFallback(doctorId);
+
+      logger.info('Generating availability slots:', {
+        doctorId,
+        startDate,
+        endDate
+      });
+
+      const slots = [];
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+
+      // Generate slots for each date in the range
+      for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+        const dateStr = date.toISOString().split('T')[0];
+        const daySlots = this.generateDaySlots(dateStr);
+        slots.push(...daySlots);
+      }
+
+      // Mark slots as booked or available
+      const availabilitySlots = slots.map(slot => {
+        const bookedSlot = this.findSlot(doctor, slot.date, slot.startTime, slot.endTime);
+
+        if (bookedSlot) {
+          return {
+            date: slot.date,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            status: bookedSlot.status || 'BOOKED',
+            appointmentId: bookedSlot.appointmentId?.toString() || null,
+            notes: bookedSlot.notes || null
+          };
+        }
+
+        return {
+          date: slot.date,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          status: 'AVAILABLE',
+          appointmentId: null,
+          notes: null
+        };
+      });
+
+      logger.info('Generated availability slots:', {
+        doctorId,
+        totalSlots: availabilitySlots.length,
+        availableSlots: availabilitySlots.filter(s => s.status === 'AVAILABLE').length,
+        bookedSlots: availabilitySlots.filter(s => s.status === 'BOOKED').length
+      });
+      console.log("debugging generated availability slots", availabilitySlots);
+      return availabilitySlots;
+    } catch (error) {
+      logger.error('Error getting doctor availability:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate time slots for a single day (9 AM to 5 PM, 30-minute intervals)
+   */
+  generateDaySlots(dateStr) {
+    const slots = [];
+    const startHour = 9;
+    const endHour = 17;
+    
+    for (let hour = startHour; hour < endHour; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const startTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        const endMinute = minute + 30;
+        const endHour = hour + (endMinute >= 60 ? 1 : 0);
+        const endTime = `${endHour.toString().padStart(2, '0')}:${(endMinute % 60).toString().padStart(2, '0')}`;
+        
+        slots.push({
+          date: dateStr,
+          startTime,
+          endTime,
+          status: 'AVAILABLE',
+          appointmentId: null,
+          notes: null
+        });
+      }
+    }
+    
+    return slots;
   }
 }
 
