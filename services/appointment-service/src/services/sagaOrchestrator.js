@@ -25,7 +25,7 @@ const { Appointment } = require('../models/Appointment');
 const { AppointmentReadView } = require('../models/AppointmentReadView');
 const { AppointmentEvent } = require('../models/AppointmentEvent');
 const { publishEvent } = require('../utils/eventProducer');
-const { doctorService, userService, notificationService } = require('./serviceClients');
+const { doctorService, notificationService } = require('./serviceClients');
 
 class SagaOrchestrator {
   constructor() {
@@ -86,6 +86,7 @@ class SagaOrchestrator {
         bookingData,
         doctorDetails,
         finalPatientDetails,
+        slotReservation,
         user
       );
 
@@ -112,6 +113,7 @@ class SagaOrchestrator {
         success: true,
         appointment,
         slotReservation,
+        sagaId,
       };
     } catch (error) {
       logger.error('Appointment booking SAGA failed', {
@@ -184,31 +186,6 @@ class SagaOrchestrator {
     } catch (error) {
       logger.error('Failed to get doctor details:', error);
       throw error;
-    }
-  }
-
-  /**
-   * Get patient details
-   */
-  async getPatientDetails(userId, authToken) {
-    try {
-      const result = await userService.getPatientDetails.fire(userId, authToken);
-      
-      if (!result || !result.success) {
-        throw new Error('Patient not found');
-      }
-
-      return result.data;
-    } catch (error) {
-      logger.error('Failed to get patient details:', error);
-      // If user service is down, use minimal data
-      return {
-        _id: userId,
-        firstName: 'Unknown',
-        lastName: 'Patient',
-        email: '',
-        phone: '',
-      };
     }
   }
 
@@ -305,7 +282,7 @@ class SagaOrchestrator {
   /**
    * Create appointment (Step with compensation)
    */
-  async createAppointment(bookingData, doctorDetails, patientDetails, user) {
+  async createAppointment(bookingData, doctorDetails, patientDetails, slotReservation, user) {
     try {
       // Generate appointment number
       const prefix = 'APT';
@@ -329,6 +306,7 @@ class SagaOrchestrator {
         reason: bookingData.reason,
         notes: bookingData.notes,
         symptoms: bookingData.symptoms,
+        slotId: slotReservation.slotId,
         status: 'pending',
         tenantId: user.tenantId || 'default',
         createdBy: user.userId,

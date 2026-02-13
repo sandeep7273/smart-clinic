@@ -270,45 +270,6 @@ const doctorService = {
   ),
 };
 
-/**
- * User Service Client
- */
-const userServiceClient = createHttpClient(config.userServiceUrl, 'UserService');
-
-const userService = {
-  /**
-   * Get patient details
-   */
-  getPatientDetails: createCircuitBreaker(
-    async (userId, authToken) => {
-      try {
-        const response = await userServiceClient.get(`/users/${userId}`, {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        });
-
-        return response.data;
-      } catch (error) {
-        const status = error.response?.status;
-        const errorData = error.response?.data;
-        
-        // 4xx errors - business/validation errors (e.g., patient not found)
-        if (status >= 400 && status < 500) {
-          throw new BusinessError(
-            errorData?.message || error.message,
-            status,
-            error
-          );
-        }
-        
-        // 5xx errors or network errors - actual service failures
-        throw new ServiceUnavailableError('User Service');
-      }
-    },
-    { name: 'UserService.getPatientDetails' }
-  ),
-};
 
 /**
  * Notification Service Client
@@ -398,6 +359,5 @@ const notificationService = {
 
 module.exports = {
   doctorService,
-  userService,
   notificationService,
 };

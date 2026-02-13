@@ -18,7 +18,7 @@ const createContext = async ({ req }) => {
       context.user = {
         userId: user.id,
         email: user.email,
-        roles: user.roles || [],
+        role: user.role || [],
       };
     }
   } catch (error) {

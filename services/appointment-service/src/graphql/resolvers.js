@@ -91,7 +91,7 @@ const resolvers = {
     /**
      * Get patient appointments
      */
-    patientAppointments: async (_, { patientId, status, dateFrom, dateTo, first, after }, context) => {
+    patientAppointments: async (_, { patientId, status,  first }, context) => {
       try {
         requireAuthentication(context);
         
@@ -100,39 +100,50 @@ const resolvers = {
           throw new ForbiddenError('Access denied to patient appointments');
         }
         
+        // Handle status - convert array to MongoDB query format
+        let statusFilter = {};
+        if (status && status.length > 0) {
+          // Convert GraphQL enum values back to database values
+          const dbStatuses = status.map(s => {
+            const statusMap = {
+              'PENDING': 'pending',
+              'CONFIRMED': 'confirmed',
+              'CANCELLED': 'cancelled',
+              'COMPLETED': 'completed',
+              'NO_SHOW': 'no_show',
+            };
+            return statusMap[s] || s.toLowerCase();
+          });
+          statusFilter = { status: { $in: dbStatuses } };
+        }
+        
         const filter = {
           userId: patientId,
-          ...(status && { status }),
-          ...(dateFrom && { date: { $gte: dateFrom } }),
-          ...(dateTo && { date: { ...filter.date, $lte: dateTo } })
+          ...statusFilter,
         };
+         
+        const appointments = await AppointmentReadView.search(filter)
+          // .limit(first || 20)
+          // .sort({ date: -1, startTime: -1 });
         
-        const appointments = await AppointmentReadView.find(filter)
-          .limit(first || 20)
-          .sort({ date: -1, startTime: -1 });
-        
-        const total = await AppointmentReadView.countDocuments(filter);
+        // const total = await AppointmentReadView.countDocuments(filter);
         
         return {
-          edges: appointments.map((apt) => ({
+          edges: appointments.data.map((apt) => ({
             cursor: apt._id.toString(),
             node: {
               id: apt._id.toString(),
-              patientId: apt.userId,
-              doctorId: apt.doctorId,
-              slotId: apt.slotId,
-              title: `Appointment with Dr. ${apt.doctorName}`,
+              patientId: apt.patient.id,
+              doctorId: apt.doctor.id,
+              slotId: apt.slotId || 'unknown',
+              title: `Appointment with Dr. ${apt.doctor.name}`,
               description: apt.reason,
               type: 'CONSULTATION',
               status: mapStatusToGraphQL(apt.status),
               date: apt.date,
               startTime: apt.startTime,
               duration: apt.duration,
-              timeZone: 'UTC',
-              location: null,
               isVirtual: false,
-              fee: apt.consultationFee || 0,
-              paymentStatus: 'PENDING',
               notes: apt.notes,
               tags: [],
               createdAt: apt.createdAt,
@@ -141,12 +152,12 @@ const resolvers = {
             }
           })),
           pageInfo: {
-            hasNextPage: appointments.length === (first || 20),
+            hasNextPage: appointments.data.length === (first || 20),
             hasPreviousPage: false,
-            startCursor: appointments.length > 0 ? appointments[0]._id.toString() : null,
-            endCursor: appointments.length > 0 ? appointments[appointments.length - 1]._id.toString() : null
+            startCursor: appointments.data.length > 0 ? appointments.data[0]._id.toString() : null,
+            endCursor: appointments.data.length > 0 ? appointments.data[appointments.data.length - 1]._id.toString() : null
           },
-          totalCount: total
+          totalCount: appointments.pagination.total
         };
       } catch (error) {
         logger.error('Error fetching patient appointments via GraphQL:', { patientId, error: error.message });
@@ -417,7 +428,7 @@ const resolvers = {
           success: true,
           message: 'Appointment booked successfully',
           appointment: appointmentResponse,
-          sagaId: result.appointment.sagaId || null
+          sagaId: result.sagaId || null
         };
       } catch (error) {
         logger.error('Error booking appointment via GraphQL:', { 

@@ -29,7 +29,9 @@ const createContext = async ({ req }) => {
       context.user = {
         userId: decoded.id,
         email: decoded.email,
-        roles: decoded.roles || [],
+        role: decoded.role || [],
+        tenantId: decoded.tenantId || null,
+        phone: decoded.phoneNumber,
       };
     }
   } catch (error) {
