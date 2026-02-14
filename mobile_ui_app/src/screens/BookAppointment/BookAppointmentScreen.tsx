@@ -15,7 +15,6 @@ import {
   TextInput,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Doctor } from '../../types/doctor.types';
 import { TimeSlot } from '../../types/appointment.types';
 import { bookAppointment } from '../../api/appointment.api';
 import { getDoctorAvailableSlots } from '../../api/doctor.api';

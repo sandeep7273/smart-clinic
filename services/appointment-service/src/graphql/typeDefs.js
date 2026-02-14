@@ -71,10 +71,13 @@ const typeDefs = gql`
     description: String
     type: AppointmentType!
     status: AppointmentStatus!
+    appointmentNumber: String!
     
     # Scheduling
     date: DateTime!
     startTime: String!
+    endTime: String!
+    reason: String!
     duration: Int! # in minutes
     timeZone: String!
     
@@ -212,7 +215,8 @@ const typeDefs = gql`
   type Doctor {
     id: ID!
     email: String!
-    profile: DoctorProfile
+    name: String!
+    specialization: String!
   }
 
   type TimeSlot {
@@ -230,12 +234,7 @@ const typeDefs = gql`
     dateOfBirth: DateTime
   }
 
-  type DoctorProfile {
-    firstName: String!
-    lastName: String!
-    specialization: String!
-    phone: String
-  }
+ 
 
   # Input Types
   input BookAppointmentInput {
@@ -386,14 +385,6 @@ const typeDefs = gql`
     appointmentBySlot(slotId: String!): Appointment
     
     # List queries with filtering, sorting, and pagination
-    appointments(
-      filter: AppointmentFilterInput
-      sort: AppointmentSortInput
-      first: Int
-      after: String
-      last: Int
-      before: String
-    ): AppointmentConnection!
     
     # Patient appointments
     patientAppointments(
@@ -405,15 +396,6 @@ const typeDefs = gql`
       after: String
     ): AppointmentConnection!
     
-    # Doctor appointments
-    doctorAppointments(
-      doctorId: String!
-      status: [AppointmentStatus!]
-      dateFrom: DateTime
-      dateTo: DateTime
-      first: Int = 20
-      after: String
-    ): AppointmentConnection!
     
     # Today's appointments
     todayAppointments(

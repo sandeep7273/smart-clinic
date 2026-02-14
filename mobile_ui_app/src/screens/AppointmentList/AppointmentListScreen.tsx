@@ -15,7 +15,7 @@ import {
   Alert,
 } from 'react-native';
 import { AppointmentListScreenProps } from '../../navigation/types';
-import { getPatientAppointments, getUserAppointments } from '../../api/appointment.api';
+import { getPatientAppointments } from '../../api/appointment.api';
 import { Appointment } from '../../types/appointment.types';
 import { ErrorModal } from '../../components/ErrorModal';
 import { getErrorMessage, getErrorTitle } from '../../utils/errorHandler';
@@ -132,7 +132,7 @@ const { user } = useAuth();
         <View style={styles.cardHeader}>
           <View>
             <Text style={styles.appointmentNumber}>#{item.appointmentNumber}</Text>
-            <Text style={styles.doctorName}>Dr. {item.doctorId}</Text>
+            <Text style={styles.doctorName}>Dr. {item.doctor.name}</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
             <Text style={[styles.statusText, { color: statusColors.text }]}>
@@ -153,7 +153,7 @@ const { user } = useAuth();
               {item.startTime} - {item.endTime}
             </Text>
           </View>
-          <View style={styles.infoRow}>
+          <View style={[styles.infoRow, styles.lastInfoRow]}>
             <Text style={styles.infoIcon}>📝</Text>
             <Text style={styles.infoText} numberOfLines={1}>
               {item.reason}
@@ -342,11 +342,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   cardContent: {
-    gap: 8,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 8,
+  },
+  lastInfoRow: {
+    marginBottom: 0,
   },
   infoIcon: {
     fontSize: 16,

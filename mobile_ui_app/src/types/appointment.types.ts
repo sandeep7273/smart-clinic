@@ -10,7 +10,12 @@ export interface Appointment {
   patientEmail: string;
   patientPhone: string;
   doctorId: string;
-  doctorName: string;
+  doctor: {
+    id: string;
+    name: string;
+    specialization: string[];
+  };
+  title: string;
   doctorSpecialization: string;
   date: string;
   startTime: string;

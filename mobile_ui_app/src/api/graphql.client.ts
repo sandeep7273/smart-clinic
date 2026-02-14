@@ -810,6 +810,14 @@ export const getPatientAppointmentsGraphQL = async (
             description
             status
             date
+            endTime
+            reason
+            appointmentNumber
+            doctor {
+              id
+              name
+              specialization
+            }
             startTime
             duration
             notes
@@ -841,73 +849,6 @@ export const getPatientAppointmentsGraphQL = async (
   } catch (error: any) {
     console.error('❌ Error in getPatientAppointmentsGraphQL:', error);
     throw new Error(error.message || 'Failed to get appointments');
-  }
-};
-
-/**
- * Get appointment by ID
- */
-export const getAppointmentByIdGraphQL = async (appointmentId: string) => {
-  const query = `
-    query GetAppointment($id: ID!) {
-      appointment(id: $id) {
-        id
-        patientId
-        doctorId
-        slotId
-        title
-        description
-        status
-        date
-        startTime
-        duration
-        fee
-        paymentStatus
-        notes
-        createdAt
-        bookedAt
-      }
-    }
-  `;
-
-  try {
-    const result = await graphqlClient.query(query, { id: appointmentId });
-    return result.appointment;
-  } catch (error: any) {
-    console.error('❌ Error in getAppointmentByIdGraphQL:', error);
-    throw new Error(error.message || 'Failed to get appointment');
-  }
-};
-
-/**
- * Cancel appointment
- */
-export const cancelAppointmentGraphQL = async (appointmentId: string, reason: string) => {
-  const mutation = `
-    mutation CancelAppointment($appointmentId: ID!, $reason: String) {
-      cancelAppointment(appointmentId: $appointmentId, reason: $reason) {
-        success
-        message
-        appointment {
-          id
-          status
-          date
-          startTime
-        }
-        errors {
-          message
-          code
-        }
-      }
-    }
-  `;
-
-  try {
-    const result = await graphqlClient.mutate(mutation, { appointmentId, reason });
-    return result.cancelAppointment;
-  } catch (error: any) {
-    console.error('❌ Error in cancelAppointmentGraphQL:', error);
-    throw new Error(error.message || 'Failed to cancel appointment');
   }
 };
 

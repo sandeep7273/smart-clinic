@@ -444,9 +444,9 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterOptionsContent}>
-          {getActiveFilterOptions().map((option, index) => (
+          {getActiveFilterOptions().map((option) => (
             <TouchableOpacity
-              key={index}
+              key={option}
               style={[
                 styles.filterOption,
                 getSelectedValue() === option && styles.selectedFilterOption,
