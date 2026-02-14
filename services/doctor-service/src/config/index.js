@@ -8,6 +8,7 @@ require('dotenv').config();
 const config = {
   // Server Configuration
   port: process.env.PORT || 4003,
+  grpcPort: process.env.GRPC_PORT || 50051,
   nodeEnv: process.env.NODE_ENV || 'development',
 
   // MongoDB Configuration

@@ -16,6 +16,7 @@ const {
   initializeConsumer, 
   shutdown: shutdownKafka 
 } = require('./kafka');
+const { startGrpcServer } = require('./grpc/server');
 
 // Import routes
 const doctorRoutes = require('./routes/doctor.routes');
@@ -125,6 +126,17 @@ const initializeServices = async () => {
     // Initialize GraphQL
     const apolloServer = await initializeGraphQL();
     
+    // Initialize gRPC server
+    let grpcServer = null;
+    try {
+      const grpcPort = config.grpcPort || 50051;
+      grpcServer = startGrpcServer(grpcPort);
+      logger.info(`✅ gRPC server initialized on port ${grpcPort}`);
+    } catch (grpcError) {
+      logger.error('Failed to initialize gRPC server:', grpcError);
+      // Don't exit - service can run without gRPC
+    }
+    
     // Initialize Kafka (optional - service can run without it)
     let kafkaInitialized = false;
     try {
@@ -140,8 +152,8 @@ const initializeServices = async () => {
       logger.info('💡 To enable Kafka: Start Kafka broker on localhost:9092');
     }
     
-    logger.info('All services initialized successfully', { kafkaEnabled: kafkaInitialized });
-    return { apolloServer, kafkaInitialized };
+    logger.info('All services initialized successfully', { kafkaEnabled: kafkaInitialized, grpcEnabled: !!grpcServer });
+    return { apolloServer, kafkaInitialized, grpcServer };
   } catch (error) {
     logger.error('Failed to initialize services:', error);
     process.exit(1);
@@ -152,7 +164,7 @@ const initializeServices = async () => {
 const startServer = async () => {
   try {
     // Initialize all services
-    const { apolloServer, kafkaInitialized } = await initializeServices();
+    const { apolloServer, kafkaInitialized, grpcServer } = await initializeServices();
     
     // Register error handling middleware AFTER GraphQL
     // 404 handler
@@ -165,6 +177,9 @@ const startServer = async () => {
       logger.info(`🚀 Doctor Service running on port ${config.port}`);
       logger.info(`📚 API Documentation: http://localhost:${config.port}/api-docs`);
       logger.info(`🔗 GraphQL Endpoint: http://localhost:${config.port}/graphql`);
+      if (grpcServer) {
+        logger.info(`⚡ gRPC Server: localhost:${config.grpcPort || 50051}`);
+      }
       logger.info(`🏥 Environment: ${config.nodeEnv}`);
     });
 
@@ -181,6 +196,12 @@ const startServer = async () => {
           if (apolloServer) {
             await apolloServer.stop();
             logger.info('GraphQL server stopped');
+          }
+          
+          // Shutdown gRPC server
+          if (grpcServer) {
+            grpcServer.forceShutdown();
+            logger.info('gRPC server stopped');
           }
           
           // Shutdown Kafka connections (only if initialized)

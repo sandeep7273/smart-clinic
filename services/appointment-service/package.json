@@ -23,6 +23,8 @@
   "license": "ISC",
   "dependencies": {
     "@graphql-tools/schema": "^10.0.3",
+    "@grpc/grpc-js": "^1.10.0",
+    "@grpc/proto-loader": "^0.7.10",
     "apollo-server-express": "^3.13.0",
     "axios": "^1.13.5",
     "cors": "^2.8.5",

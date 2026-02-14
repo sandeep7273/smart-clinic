@@ -1,6 +1,7 @@
 /**
  * Service Clients
  * HTTP clients for external microservices with circuit breaker pattern
+ * gRPC clients for fast inter-service communication
  */
 
 const axios = require('axios');
@@ -8,6 +9,7 @@ const config = require('../config');
 const logger = require('../utils/logger');
 const { createCircuitBreaker, BusinessError } = require('../utils/circuitBreaker');
 const { ServiceUnavailableError } = require('../utils/errors');
+const grpcDoctorClient = require('../grpc/doctorClient');
 
 /**
  * Base HTTP client configuration
@@ -66,207 +68,224 @@ const createHttpClient = (baseURL, serviceName) => {
 const doctorServiceClient = createHttpClient(config.doctorServiceUrl, 'DoctorService');
 const doctorService = {
   /**
-   * Check doctor availability for a specific slot
+   * Check doctor availability for a specific slot - Using gRPC
    */
   checkAvailability: createCircuitBreaker(
     async (doctorId, date, startTime, endTime, authToken) => {
       try {
-        const response = await doctorServiceClient.get(
-          `/api/doctors/${doctorId}/availability`,
-          {
-            params: {
-              date,
-              startTime,
-              endTime,
-            },
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-            },
-          }
+        console.log(`debugging Checking availability via gRPC for doctor: ${doctorId}`);
+        
+        // Use gRPC client
+        const response = await grpcDoctorClient.checkAvailability(
+          doctorId,
+          date,
+          startTime,
+          endTime,
+          authToken
         );
 
-        return response.data;
+        if (!response.success) {
+          throw new Error(response.message || 'Failed to check availability');
+        }
+
+        return {
+          success: response.success,
+          message: response.message,
+          data: response.data,
+        };
       } catch (error) {
-        console.error('❌ Check availability error:', {
+        console.error('❌ Check availability gRPC error:', {
           message: error.message,
-          status: error.response?.status,
-          data: error.response?.data,
+          code: error.code,
         });
         
-        if (error.response?.status === 404) {
-          throw new Error('Doctor not found');
+        // gRPC specific error handling
+        if (error.code === 'UNAVAILABLE' || error.code === 'DEADLINE_EXCEEDED') {
+          throw new ServiceUnavailableError('Doctor Service (gRPC)');
         }
         
-        const errorMessage = error.response?.data?.message || error.message;
-        throw new Error(`Doctor Service error: ${errorMessage}`);
+        const errorMessage = error.message || 'Doctor Service gRPC error';
+        throw new Error(`Doctor Service gRPC error: ${errorMessage}`);
       }
     },
-    { name: 'DoctorService.checkAvailability' }
+    { name: 'DoctorService.checkAvailability (gRPC)' }
   ),
 
   /**
-   * Reserve a slot for an appointment
+   * Reserve a slot for an appointment - Using gRPC
    */
   reserveSlot: createCircuitBreaker(
     async (doctorId, slotData, authToken) => {
       try {
-        logger.info('Calling doctor service reserveSlot', {
+        logger.info('Calling doctor service reserveSlot via gRPC', {
           doctorId,
           slotData,
           hasToken: !!authToken,
-          tokenPreview: authToken ? `${authToken.substring(0, 20)}...` : 'none'
         });
         
-        const response = await doctorServiceClient.post(
-          `/api/doctors/${doctorId}/slots/reserve`,
-          slotData,
+        // Use gRPC client with full slot data
+        const response = await grpcDoctorClient.reserveSlot(
+          doctorId,
+          slotData.slotId || slotData._id || '',
+          slotData.patientId,
+          authToken,
           {
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-            },
-            timeout: 10000 // 10 second timeout
+            date: slotData.date,
+            startTime: slotData.startTime,
+            endTime: slotData.endTime,
+            duration: slotData.duration,
           }
         );
 
-        console.log(`✅ Slot reserved successfully:`, response.data);
-        return response.data;
-      } catch (error) {
-        // Network-level errors (ECONNRESET, ECONNREFUSED, etc.)
-        if (error.code) {
-          logger.error('Network error calling doctor service:', {
-            code: error.code,
-            errno: error.errno,
-            syscall: error.syscall,
-            message: error.message,
-            address: error.address,
-            port: error.port
-          });
-          throw new Error(`Doctor Service error: ${error.code} - ${error.message}`);
+        if (!response.success) {
+          // Check for business errors (slot already booked, etc.)
+          if (response.message && response.message.includes('already booked')) {
+            throw new BusinessError(
+              response.message || 'Slot is not available',
+              409,
+              new Error(response.message)
+            );
+          }
+          
+          throw new Error(response.message || 'Failed to reserve slot');
         }
-        
-        const status = error.response?.status;
-        const errorData = error.response?.data;
-        
-        console.log('⚠️ Reserve slot response:', {
+
+        console.log(`✅ Slot reserved successfully via gRPC`);
+        return {
+          success: response.success,
+          message: response.message,
+          data: response.data,
+        };
+      } catch (error) {
+        logger.error('Reserve slot gRPC error:', {
           message: error.message,
-          status,
-          statusText: error.response?.statusText,
-          data: errorData,
+          code: error.code,
         });
         
-        // 401 Unauthorized - authentication failed
-        if (status === 401) {
-          throw new BusinessError(
-            'Authentication failed with doctor service. Token may be invalid or expired.',
-            401,
-            error
-          );
+        // gRPC specific error handling
+        if (error.code === 'UNAVAILABLE' || error.code === 'DEADLINE_EXCEEDED') {
+          throw new ServiceUnavailableError('Doctor Service (gRPC)');
         }
         
-        // 409 Conflict - Slot already booked (business error, not service failure)
-        if (status === 409) {
-          throw new BusinessError(
-            errorData?.message || 'Slot is not available',
-            409,
-            error
-          );
+        // If it's already a BusinessError, rethrow it
+        if (error instanceof BusinessError) {
+          throw error;
         }
         
-        // Other 4xx errors - business/validation errors
-        if (status >= 400 && status < 500) {
-          throw new BusinessError(
-            errorData?.message || error.message,
-            status,
-            error
-          );
-        }
-        
-        // 5xx errors or network errors - actual service failures
-        const errorMessage = errorData?.message || error.message;
-        throw new Error(`Doctor Service error: ${errorMessage}`);
+        // Other errors
+        const errorMessage = error.message || 'Doctor Service gRPC error';
+        throw new Error(`Doctor Service gRPC error: ${errorMessage}`);
       }
     },
-    { name: 'DoctorService.reserveSlot' }
+    { name: 'DoctorService.reserveSlot (gRPC)' }
   ),
 
   /**
-   * Release a reserved slot (compensation)
+   * Release a reserved slot (compensation) - Using gRPC
    */
   releaseSlot: createCircuitBreaker(
     async (doctorId, slotId, authToken) => {
       try {
-        const response = await doctorServiceClient.post(
-          `/api/doctors/${doctorId}/slots/${slotId}/release`,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-            },
-          }
+        logger.info('Calling doctor service releaseSlot via gRPC', {
+          doctorId,
+          slotId,
+        });
+        
+        // Use gRPC client
+        const response = await grpcDoctorClient.releaseSlot(
+          doctorId,
+          slotId,
+          authToken
         );
 
-        return response.data;
+        if (!response.success) {
+          // Slot not found or already released is not a critical error for compensation
+          logger.warn('Release slot returned non-success, but continuing', {
+            message: response.message,
+          });
+        }
+
+        return {
+          success: response.success,
+          message: response.message,
+        };
       } catch (error) {
-        const status = error.response?.status;
-        const errorData = error.response?.data;
+        logger.error('Release slot gRPC error:', {
+          message: error.message,
+          code: error.code,
+        });
         
-        logger.error('Failed to release slot:', error);
-        
-        // 4xx errors - business/validation errors (e.g., slot not found)
-        if (status >= 400 && status < 500) {
-          throw new BusinessError(
-            errorData?.message || error.message,
-            status,
-            error
-          );
+        // gRPC specific error handling
+        if (error.code === 'UNAVAILABLE' || error.code === 'DEADLINE_EXCEEDED') {
+          throw new ServiceUnavailableError('Doctor Service (gRPC)');
         }
         
-        // 5xx errors or network errors - actual service failures
-        throw new ServiceUnavailableError('Doctor Service');
+        // If it's already a BusinessError, rethrow it
+        if (error instanceof BusinessError) {
+          throw error;
+        }
+        
+        // For compensation actions, we might want to be more lenient
+        logger.warn('Release slot failed but continuing (compensation)', {
+          error: error.message,
+        });
+        
+        return {
+          success: false,
+          message: error.message,
+        };
       }
     },
-    { name: 'DoctorService.releaseSlot' }
+    { name: 'DoctorService.releaseSlot (gRPC)' }
   ),
 
   /**
-   * Get doctor details
+   * Get doctor details - Using gRPC for fast inter-service communication
    */
   getDoctorDetails: createCircuitBreaker(
     async (doctorId, authToken) => {
       try {
-        console.log(`debugging Fetching doctor details for ID: ${doctorId}`);
-        const response = await doctorServiceClient.get(`/api/doctors/${doctorId}`, {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        });
+        console.log(`debugging Fetching doctor details via gRPC for ID: ${doctorId}`);
+        
+        // Use gRPC client instead of HTTP
+        const response = await grpcDoctorClient.getDoctorDetails(doctorId, authToken);
 
-        return response.data;
-      } catch (error) {
-        const status = error.response?.status;
-        const errorData = error.response?.data;
-        
-        console.error('❌ Get doctor details error:', {
-          message: error.message,
-          status,
-          data: errorData,
-        });
-        
-        // 4xx errors - business/validation errors (e.g., doctor not found)
-        if (status >= 400 && status < 500) {
+        if (!response.success) {
           throw new BusinessError(
-            errorData?.message || error.message,
-            status,
-            error
+            response.message || 'Doctor not found',
+            404,
+            new Error(response.message)
           );
         }
+
+        // Convert gRPC response to match existing API format
+        return {
+          success: response.success,
+          message: response.message,
+          data: response.data,
+        };
+      } catch (error) {
+        console.error('❌ Get doctor details gRPC error:', {
+          message: error.message,
+          code: error.code,
+        });
         
-        // 5xx errors or network errors - actual service failures
-        const errorMessage = errorData?.message || error.message;
-        throw new Error(`Doctor Service error: ${errorMessage}`);
+        // gRPC specific error handling
+        if (error.code === 'UNAVAILABLE' || error.code === 'DEADLINE_EXCEEDED') {
+          throw new ServiceUnavailableError('Doctor Service (gRPC)');
+        }
+        
+        // If it's already a BusinessError, rethrow it
+        if (error instanceof BusinessError) {
+          throw error;
+        }
+        
+        // Other gRPC errors
+        const errorMessage = error.message || 'Doctor Service gRPC error';
+        throw new Error(`Doctor Service gRPC error: ${errorMessage}`);
       }
     },
-    { name: 'DoctorService.getDoctorDetails' }
+    { name: 'DoctorService.getDoctorDetails (gRPC)' }
   ),
 };
 
