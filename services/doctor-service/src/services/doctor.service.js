@@ -751,6 +751,52 @@ class DoctorService {
   }
 
   /**
+   * Get doctor locations (for filter options)
+   */
+  async getDoctorLocations(limit = 10) {
+    try {
+      // Aggregate doctors by city and state to get location statistics
+      const locations = await DoctorScheduleReadView.aggregate([
+        {
+          $match: {
+            status: 'active',
+            'address.city': { $exists: true, $ne: null },
+            'address.state': { $exists: true, $ne: null }
+          }
+        },
+        {
+          $group: {
+            _id: {
+              city: '$address.city',
+              state: '$address.state'
+            },
+            count: { $sum: 1 }
+          }
+        },
+        {
+          $sort: { count: -1 }
+        },
+        {
+          $limit: limit
+        },
+        {
+          $project: {
+            _id: 0,
+            city: '$_id.city',
+            state: '$_id.state',
+            count: 1
+          }
+        }
+      ]);
+
+      return locations;
+    } catch (error) {
+      logger.error('Error getting doctor locations:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get doctor statistics
    */
   async getDoctorStats(doctorId) {

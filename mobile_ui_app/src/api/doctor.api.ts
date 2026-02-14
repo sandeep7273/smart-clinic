@@ -9,6 +9,7 @@ import {
   getDoctorById as graphqlGetDoctorById,
   getDoctorsBySpecialization as graphqlGetDoctorsBySpecialization,
   getPopularSpecializations,
+  getDoctorLocations,
   getDoctorAvailability,
 } from './graphql.client';
 import {
@@ -19,6 +20,7 @@ import {
   FilterOptions,
   AvailableDoctorsParams,
 } from '../types/doctor.types';
+import { get } from 'react-native/Libraries/NativeComponent/NativeComponentRegistry';
 
 /**
  * Get all doctors with pagination and sorting
@@ -243,15 +245,16 @@ export const getDoctorsBySpecialization = async (
 export const getFilterOptions = async (): Promise<FilterOptions> => {
   try {
     const specializations = await getPopularSpecializations(50);
-    
+    const locations = await getDoctorLocations(); // TODO: Implement this function in GraphQL client if needed
     // Transform GraphQL response to match FilterOptions type
     return {
       success: true,
       data: {
         specializations: specializations.map((s: any) => s.specialization),
-        locations: [], // TODO: Add location query if needed
+        locations: locations.map((l: any) => ({ city: l.city, state: l.state })),
         conditions: [],
         symptoms: [],
+        languages: [], // TODO: Fetch languages if needed
       },
     };
   } catch (error: any) {
@@ -263,6 +266,7 @@ export const getFilterOptions = async (): Promise<FilterOptions> => {
         locations: [],
         conditions: [],
         symptoms: [],
+        languages: [], // TODO: Fetch languages if needed
       },
       error: error.message || 'Failed to fetch filter options',
     };

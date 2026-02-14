@@ -347,10 +347,12 @@ doctorScheduleReadViewSchema.statics.search = async function(searchParams) {
   // Location filters (city and/or state)
   const cityFilter = city || location;
   if (cityFilter) {
+    console.log(`🏙️ Filtering by city: "${cityFilter}"`);
     filter['address.city'] = new RegExp(cityFilter, 'i'); // Case-insensitive search
   }
   
   if (state) {
+    console.log(`🗺️ Filtering by state: "${state}"`);
     filter['address.state'] = new RegExp(state, 'i'); // Case-insensitive search
   }
 
@@ -394,6 +396,9 @@ doctorScheduleReadViewSchema.statics.search = async function(searchParams) {
   // Sort by specified field (default: rating descending)
   sortObject[sortBy] = sortOrder === 'asc' ? 1 : -1;
 
+  console.log('🔍 Final MongoDB filter:', JSON.stringify(filter, null, 2));
+  console.log('📄 Query pagination: page =', page, ', limit =', limit, ', skip =', skip);
+
   const [doctors, total] = await Promise.all([
     this.find(filter)
       .skip(skip)
@@ -402,6 +407,8 @@ doctorScheduleReadViewSchema.statics.search = async function(searchParams) {
       .lean(),
     this.countDocuments(filter),
   ]);
+
+  console.log(`✅ Search returned ${doctors.length} doctors (total: ${total})`);
 
   const totalPages = Math.ceil(total / limit);
   

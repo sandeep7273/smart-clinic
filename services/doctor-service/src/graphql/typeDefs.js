@@ -281,6 +281,9 @@ const typeDefs = gql`
     
     # Get popular specializations
     getPopularSpecializations(limit: Int = 10): [SpecializationStats!]!
+
+    # Get doctor locations (for search filters)
+    getDoctorLocations(limit: Int = 10): [LocationStats!]!
     
     # Get doctor statistics (admin only)
     getDoctorStats: DoctorStats!
@@ -299,6 +302,12 @@ const typeDefs = gql`
     count: Int!
     avgRating: Float!
     avgFee: Int!
+  }
+
+  type LocationStats {
+    city: String!
+    state: String!
+    count: Int!
   }
 
   type DoctorStats {

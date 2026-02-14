@@ -633,6 +633,26 @@ export const getPopularSpecializations = async (limit: number = 10) => {
   }
 };
 
+export const getDoctorLocations = async (limit: number = 10) => {
+  const query = `
+    query GetDoctorLocations($limit: Int) {
+      getDoctorLocations(limit: $limit) {
+        city
+        state
+        count
+      }
+    }
+  `;
+
+  try {
+    const result = await graphqlClient.query(query, { limit });
+    return result.getDoctorLocations;
+  } catch (error: any) {
+    console.error('❌ Error in getDoctorLocations:', error);
+    throw new Error(error.message || 'Failed to get doctor locations');
+  }
+};
+
 /**
  * Reserve a time slot (mutation)
  */

@@ -25,6 +25,12 @@ import { logoutUser } from '../../store/auth/authThunks';
 import { resetAuth } from '../../store/auth/authSlice';
 import { useAuth } from '../../context/AuthContext';
 
+// Location type for filter options
+type LocationStats = {
+  city: string;
+  state: string;
+};
+
 export default function DoctorListScreen({ navigation }: DoctorListScreenProps) {
   const dispatch = useAppDispatch();
   const { logout } = useAuth();
@@ -49,7 +55,7 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
 
   // Filter Options
   const [specialties, setSpecialties] = useState<string[]>([]);
-  const [locations, setLocations] = useState<string[]>([]);
+  const [locations, setLocations] = useState<LocationStats[]>([]);
 
   /**
    * Fetch filter options on mount
@@ -88,12 +94,23 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
   }, [searchQuery]);
 
   /**
+   * Extract city name from location display text
+   * Handles both "City, State" format and plain city name
+   */
+  const extractCityFromLocation = (location: string): string => {
+    if (!location) return '';
+    // Split by comma and take the first part (the city)
+    return location.split(',')[0].trim();
+  };
+
+  /**
    * Fetch available filter options
    */
   const fetchFilterOptions = async () => {
     try {
       const response = await getFilterOptions();
       if (response.success) {
+        console.log('Fetched filter options:', response.data);
         setSpecialties(response.data.specializations || []);
         setLocations(response.data.locations || []);
         // Note: Conditions and symptoms are not supported by the backend GraphQL schema
@@ -138,14 +155,23 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
 
       if (hasSearchQuery) {
         // Use search endpoint for actual searches
+        const extractedCity = activeLocation ? extractCityFromLocation(activeLocation) : null;
+        console.log('🏙️ Location filter:', { activeLocation, extractedCity });
+        
         const searchParams: DoctorSearchParams = {
           page,
           limit: 50,
           ...(activeSearch && { search: activeSearch }),
           ...(activeSpecialty && { specialization: activeSpecialty }),
-          ...(activeLocation && { city: activeLocation }),
+          ...(extractedCity && { city: extractedCity }),
         };
+        console.log('📤 Sending search params:', JSON.stringify(searchParams, null, 2));
         response = await searchDoctors(searchParams);
+        console.log('📥 Search response:', { 
+          success: response.success, 
+          doctorCount: response.data?.length || 0,
+          totalResults: response.pagination?.total || 0
+        });
       } else {
         // Use regular list endpoint for basic listing
         // Note: Date filtering would need backend support in the list endpoint
@@ -217,7 +243,8 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
   /**
    * Handle filter selection
    */
-  const handleFilterSelect = (filterType: 'Speciality' | 'Location', value: string) => {
+  const handleFilterSelect = (filterType: 'Speciality' | 'Location', option: string | LocationStats) => {
+    const value = getOptionDisplayText(option);
     console.log(`🔍 Filter selected: ${filterType} = ${value}`);
     
     let newSpecialty = selectedSpecialty;
@@ -381,7 +408,7 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
   /**
    * Get filter options based on active tab
    */
-  const getActiveFilterOptions = () => {
+  const getActiveFilterOptions = (): Array<string | LocationStats> => {
     switch (activeTab) {
       case 'Speciality':
         return specialties;
@@ -390,6 +417,38 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
       default:
         return [];
     }
+  };
+
+  /**
+   * Get display text for a filter option
+   */
+  const getOptionDisplayText = (option: string | LocationStats): string => {
+    if (typeof option === 'string') {
+      return option;
+    }
+    return `${option.city}, ${option.state}`;
+  };
+
+  /**
+   * Get unique key for a filter option
+   */
+  const getOptionKey = (option: string | LocationStats): string => {
+    if (typeof option === 'string') {
+      return option;
+    }
+    return `${option.city}-${option.state}`;
+  };
+
+  /**
+   * Check if option is selected
+   */
+  const isOptionSelected = (option: string | LocationStats): boolean => {
+    const selectedValue = getSelectedValue();
+    if (typeof option === 'string') {
+      return selectedValue === option;
+    }
+    // For location objects, compare the display text
+    return selectedValue === `${option.city}, ${option.state}`;
   };
 
   /**
@@ -446,19 +505,19 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
           contentContainerStyle={styles.filterOptionsContent}>
           {getActiveFilterOptions().map((option) => (
             <TouchableOpacity
-              key={option}
+              key={getOptionKey(option)}
               style={[
                 styles.filterOption,
-                getSelectedValue() === option && styles.selectedFilterOption,
+                isOptionSelected(option) && styles.selectedFilterOption,
               ]}
               onPress={() => handleFilterSelect(activeTab, option)}>
               <Text
                 numberOfLines={1}
                 style={[
                   styles.filterOptionText,
-                  getSelectedValue() === option && styles.selectedFilterOptionText,
+                  isOptionSelected(option) && styles.selectedFilterOptionText,
                 ]}>
-                {option}
+                {getOptionDisplayText(option)}
               </Text>
             </TouchableOpacity>
           ))}

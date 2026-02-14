@@ -102,6 +102,18 @@ const resolvers = {
       }
     },
 
+    // Get doctor locations (for filter options)
+    getDoctorLocations: async (parent, { limit }, context) => {
+      try {
+        requireAuthentication(context);
+        const locations = await doctorService.getDoctorLocations(limit);
+        return locations;
+      } catch (error) {
+        logger.error('Error fetching doctor locations:', error);
+        throw error;
+      }
+    },
+
   },
 
   Mutation: {
