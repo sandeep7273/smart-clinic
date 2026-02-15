@@ -3,7 +3,7 @@
  * Main screen for browsing and searching doctors
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -34,6 +34,9 @@ type LocationStats = {
 export default function DoctorListScreen({ navigation }: DoctorListScreenProps) {
   const dispatch = useAppDispatch();
   const { logout } = useAuth();
+  
+  // Track if component is mounted to prevent alerts on unmount
+  const isMountedRef = useRef(true);
 
   // State
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -56,6 +59,16 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
   // Filter Options
   const [specialties, setSpecialties] = useState<string[]>([]);
   const [locations, setLocations] = useState<LocationStats[]>([]);
+
+  /**
+   * Track component mount state
+   */
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   /**
    * Fetch filter options on mount
@@ -109,6 +122,10 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
   const fetchFilterOptions = async () => {
     try {
       const response = await getFilterOptions();
+      
+      // Only update state if component is still mounted
+      if (!isMountedRef.current) return;
+      
       if (response.success) {
         console.log('Fetched filter options:', response.data);
         setSpecialties(response.data.specializations || []);
@@ -187,6 +204,9 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
       if (response.success) {
         const newDoctors = response.data;
 
+        // Only update state if component is still mounted
+        if (!isMountedRef.current) return;
+
         if (append) {
           setDoctors(prev => [...prev, ...newDoctors]);
         } else {
@@ -197,16 +217,25 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
         setTotalPages(response.pagination.pages);
         setHasMore(response.pagination.page < response.pagination.pages);
       } else {
+        // Only update state if component is still mounted
+        if (!isMountedRef.current) return;
+        
         // Handle API error response
         const errorMessage = response.error || 'Failed to load doctors. Please check your connection.';
         setError(errorMessage);
         console.error('API Error:', errorMessage);
       }
     } catch (error: any) {
+      // Only update state if component is still mounted
+      if (!isMountedRef.current) return;
+      
       console.error('Error fetching doctors:', error);
       const errorMessage = error.message || 'Network error. Please check your connection and try again.';
       setError(errorMessage);
     } finally {
+      // Only update state if component is still mounted
+      if (!isMountedRef.current) return;
+      
       setLoading(false);
       setRefreshing(false);
       setInitialLoading(false);
@@ -308,8 +337,9 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
   /**
    * Handle doctor card press (view details)
    */
-  const handleDoctorPress = (doctor: Doctor) => {
-    const qualificationsText = doctor.qualifications && doctor.qualifications.length > 0
+  const handleDoctorPress = (doctor: Doctor) => {    // Prevent alert if component is unmounted
+    if (!isMountedRef.current) return;
+        const qualificationsText = doctor.qualifications && doctor.qualifications.length > 0
       ? doctor.qualifications.map(q => q.degree).join(', ')
       : 'Not specified';
     
@@ -324,6 +354,9 @@ export default function DoctorListScreen({ navigation }: DoctorListScreenProps) 
    * Handle logout
    */
   const handleLogout = () => {
+    // Prevent alert if component is unmounted
+    if (!isMountedRef.current) return;
+    
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       { text: 'Cancel', style: 'cancel' },
       {
