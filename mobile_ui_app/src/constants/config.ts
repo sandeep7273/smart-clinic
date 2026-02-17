@@ -23,7 +23,6 @@ export const APP_CONFIG = {
   
   // Direct Service URLs (deprecated - use API Gateway instead)
   // Doctor Service
-  DOCTOR_SERVICE_IOS_URL: 'http://localhost:4003/api',
   DOCTOR_SERVICE_ANDROID_URL: 'http://10.0.2.2:4003/api',
   DOCTOR_SERVICE_PHYSICAL_URL: 'http://192.168.1.100:4003/api', // UPDATE THIS!
   // Appointment Service
@@ -95,59 +94,11 @@ export const getApiGraphQLUrl = (): string => {
 };
 
 /**
- * Get the Doctor Service URL (direct connection, bypassing API Gateway)
- * @deprecated Use GraphQL through API Gateway instead (getApiGraphQLUrl)
- * This function is kept for backward compatibility only
- */
-export const getDoctorServiceUrl = (): string => {
-  if (APP_CONFIG.API_MODE === 'production') {
-    return APP_CONFIG.PRODUCTION_API_URL;
-  }
-  
-  // Development mode - choose URL based on platform
-  if (Platform.OS === 'ios') {
-    console.log('[Doctor Service] Platform: iOS, Using URL:', APP_CONFIG.DOCTOR_SERVICE_IOS_URL);
-    return APP_CONFIG.DOCTOR_SERVICE_IOS_URL;
-  } else if (Platform.OS === 'android') {
-    console.log('[Doctor Service] Platform: Android, Using URL:', APP_CONFIG.DOCTOR_SERVICE_ANDROID_URL);
-    return APP_CONFIG.DOCTOR_SERVICE_ANDROID_URL;
-  }
-  
-  // Fallback to localhost
-  console.log('[Doctor Service] Platform: Unknown, Using default URL');
-  return APP_CONFIG.DOCTOR_SERVICE_IOS_URL;
-};
-
-/**
- * Get the Appointment Service URL (direct connection, bypassing API Gateway)
- */
-export const getAppointmentServiceUrl = (): string => {
-  if (APP_CONFIG.API_MODE === 'production') {
-    return APP_CONFIG.PRODUCTION_API_URL;
-  }
-  
-  // Development mode - choose URL based on platform
-  if (Platform.OS === 'ios') {
-    console.log('[Appointment Service] Platform: iOS, Using URL:', APP_CONFIG.APPOINTMENT_SERVICE_IOS_URL);
-    return APP_CONFIG.APPOINTMENT_SERVICE_IOS_URL;
-  } else if (Platform.OS === 'android') {
-    console.log('[Appointment Service] Platform: Android, Using URL:', APP_CONFIG.APPOINTMENT_SERVICE_ANDROID_URL);
-    return APP_CONFIG.APPOINTMENT_SERVICE_ANDROID_URL;
-  }
-  
-  // Fallback to localhost
-  console.log('[Appointment Service] Platform: Unknown, Using default URL');
-  return APP_CONFIG.APPOINTMENT_SERVICE_IOS_URL;
-};
-
-/**
  * Export the API configuration object with base URLs
  */
 export const API_CONFIG = {
   BASE_URL: getApiBaseUrl(),
   API_GATEWAY_URL: getApiBaseUrl().replace('/api', ''), // Remove /api suffix
   GRAPHQL_URL: getApiGraphQLUrl(),
-  DOCTOR_SERVICE_URL: getDoctorServiceUrl(),
-  APPOINTMENT_SERVICE_URL: getAppointmentServiceUrl(),
   TIMEOUT: APP_CONFIG.API_TIMEOUT,
 };

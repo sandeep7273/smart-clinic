@@ -152,57 +152,6 @@ export const getDoctorById = async (id: string): Promise<DoctorDetailResponse> =
 };
 
 /**
- * Get available doctors for a specific date
- * Uses searchDoctors with isAvailable filter
- */
-export const getAvailableDoctors = async (
-  params: AvailableDoctorsParams
-): Promise<DoctorListResponse> => {
-  try {
-    const {
-      date,
-      specialization,
-      page = 1,
-      limit = 50,
-    } = params;
-
-    // Use searchDoctors with isAvailable=true filter
-    const result = await graphqlSearchDoctors({
-      isAvailable: true,
-      specialization,
-      page,
-      limit,
-      sortBy: 'rating',
-      sortOrder: 'desc',
-    });
-
-    return {
-      success: true,
-      data: result.doctors || [],
-      pagination: {
-        page: result.pagination?.page || page,
-        limit: result.pagination?.limit || limit,
-        total: result.pagination?.total || 0,
-        pages: result.pagination?.totalPages || 0,
-      },
-    };
-  } catch (error: any) {
-    console.error('Error fetching available doctors via GraphQL:', error);
-    return {
-      success: false,
-      data: [],
-      pagination: {
-        page: 1,
-        limit: params.limit || 50,
-        total: 0,
-        pages: 0,
-      },
-      error: error.message || 'Failed to fetch available doctors',
-    };
-  }
-};
-
-/**
  * Get doctors by specialization
  */
 export const getDoctorsBySpecialization = async (
@@ -338,7 +287,6 @@ export default {
   getDoctors,
   searchDoctors,
   getDoctorById,
-  getAvailableDoctors,
   getDoctorsBySpecialization,
   getFilterOptions,
   getDoctorStats,

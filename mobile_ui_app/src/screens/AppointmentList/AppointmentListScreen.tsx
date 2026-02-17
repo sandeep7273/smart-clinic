@@ -41,6 +41,7 @@ const { user } = useAuth();
       const response = await getPatientAppointments(user?.id || '', undefined, 20);
       
       if (response.success) {
+        console.log('Appointments fetched successfully:', response.data);
         setAppointments(response.data);
       }
     } catch (error: any) {
@@ -217,7 +218,7 @@ const { user } = useAuth();
         <FlatList
           data={appointments}
           renderItem={renderAppointmentItem}
-          keyExtractor={(item) => item._id}
+          keyExtractor={(item, index) => item.id?.toString() || `appointment-${index}`}
           contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl
