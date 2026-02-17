@@ -42,10 +42,11 @@ export default function DashboardScreen({ navigation }: DashboardScreenProps) {
     },
     {
       id: 'ai-search',
-      title: 'AI Search',
+      title: 'AI Assistant',
       icon: '🤖',
-      description: 'Describe your symptoms and get doctor recommendations',
-      available: false,
+      description: 'Chat with AI to find doctors based on your symptoms',
+      available: true,
+      navigate: 'AISearch',
     },
     {
       id: 'appointments',
@@ -64,7 +65,13 @@ export default function DashboardScreen({ navigation }: DashboardScreenProps) {
   ];
 
   const handleFeaturePress = (featureId: string) => {
-    Alert.alert('Coming Soon', 'This feature will be available soon!');
+    const feature = features.find(f => f.id === featureId);
+    
+    if (feature?.available && feature.navigate) {
+      navigation.navigate(feature.navigate as any);
+    } else {
+      Alert.alert('Coming Soon', 'This feature will be available soon!');
+    }
   };
 
   return (

@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package doctor;
+
+// Doctor Service
+service DoctorService {
+  // Get doctor details by ID
+  rpc GetDoctorDetails(GetDoctorDetailsRequest) returns (GetDoctorDetailsResponse);
+  
+  // Check doctor availability
+  rpc CheckAvailability(CheckAvailabilityRequest) returns (CheckAvailabilityResponse);
+  
+  // Get doctors by specialization (for AI search)
+  rpc GetDoctorsBySpecialization(GetDoctorsBySpecializationRequest) returns (GetDoctorsBySpecializationResponse);
+}
+
+// Request and Response Messages
+
+message GetDoctorDetailsRequest {
+  string doctor_id = 1;
+  string auth_token = 2;
+}
+
+message GetDoctorDetailsResponse {
+  bool success = 1;
+  string message = 2;
+  DoctorDetails data = 3;
+}
+
+message DoctorDetails {
+  string id = 1;
+  string user_id = 2;
+  string first_name = 3;
+  string last_name = 4;
+  string email = 5;
+  string phone = 6;
+  repeated string specializations = 7;
+  repeated string qualifications = 8;
+  int32 experience_years = 9;
+  string license_number = 10;
+  double consultation_fee = 11;
+  string bio = 12;
+  repeated string languages = 13;
+  string status = 14;
+  Address address = 15;
+  repeated Schedule schedules = 16;
+  string created_at = 17;
+  string updated_at = 18;
+}
+
+message Address {
+  string street = 1;
+  string city = 2;
+  string state = 3;
+  string zip_code = 4;
+  string country = 5;
+}
+
+message Schedule {
+  string day_of_week = 1;
+  string start_time = 2;
+  string end_time = 3;
+  int32 slot_duration = 4;
+  bool is_available = 5;
+}
+
+message CheckAvailabilityRequest {
+  string doctor_id = 1;
+  string date = 2;
+  string start_time = 3;
+  string end_time = 4;
+  string auth_token = 5;
+}
+
+message CheckAvailabilityResponse {
+  bool success = 1;
+  string message = 2;
+  AvailabilityData data = 3;
+}
+
+message AvailabilityData {
+  bool available = 1;
+  string reason = 2;
+}
+
+message GetDoctorsBySpecializationRequest {
+  string specialization = 1;
+  string auth_token = 2;
+  int32 limit = 3;
+  int32 page = 4;
+}
+
+message GetDoctorsBySpecializationResponse {
+  bool success = 1;
+  string message = 2;
+  repeated DoctorDetails doctors = 3;
+  int32 total_count = 4;
+}

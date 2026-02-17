@@ -15,13 +15,13 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { registerUser } from '../../store/auth/authThunks';
 import { clearError } from '../../store/auth/authSlice';
 import { validateField, isValidEmail } from '../../utils/validation';
-import { removeTokens } from '../../services/auth.service';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../../context/AuthContext';
 import styles from './Register.styles';
 
 export default function RegisterScreen({ navigation }: RegisterScreenProps) {
   const dispatch = useAppDispatch();
   const { loading, error, isAuthenticated } = useAppSelector(state => state.auth);
+  const { checkAuth } = useAuth();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -47,27 +47,13 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
     };
   }, [dispatch]);
 
-  // Navigate to login on successful registration
+  // Navigate to DoctorList on successful registration - trigger AuthContext to re-check auth
   useEffect(() => {
     if (isAuthenticated) {
-      // Clear auth data (we want user to login manually)
-      const clearAuthAndNavigate = async () => {
-        await removeTokens();
-        await AsyncStorage.removeItem('user');
-        Alert.alert(
-          'Success',
-          'Registration successful! Please login with your credentials.',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.navigate('Login'),
-            },
-          ]
-        );
-      };
-      clearAuthAndNavigate();
+      // Re-check auth in context to trigger navigation to DoctorList
+      checkAuth();
     }
-  }, [isAuthenticated, navigation]);
+  }, [isAuthenticated]);
 
   // Update form field
   const updateField = (field: string, value: string) => {

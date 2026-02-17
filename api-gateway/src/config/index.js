@@ -19,8 +19,9 @@ const config = {
     patient: process.env.PATIENT_SERVICE_URL || 'http://localhost:4002',
     doctor: process.env.DOCTOR_SERVICE_URL || 'http://localhost:4003',
     appointment: process.env.APPOINTMENT_SERVICE_URL || 'http://localhost:4004',
-    notification: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:4005',
-    search: process.env.SEARCH_SERVICE_URL || 'http://localhost:4006',
+    ai: process.env.AI_SERVICE_URL || 'http://localhost:4005',
+    notification: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:4006',
+    search: process.env.SEARCH_SERVICE_URL || 'http://localhost:4007',
   },
 
   // JWT Configuration

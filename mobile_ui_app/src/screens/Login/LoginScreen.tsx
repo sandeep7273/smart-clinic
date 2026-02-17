@@ -102,12 +102,6 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     navigation.navigate('Register');
   };
 
-  // Auto-fill for testing (only in development)
-  const handleQuickLogin = () => {
-    setEmail('patient@test.com');
-    setPassword('password123');
-  };
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -218,17 +212,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
                 <Text style={styles.registerLink}>Sign Up</Text>
               </Text>
             </TouchableOpacity>
-
-            {/* Development Quick Login */}
-            {__DEV__ && (
-              <TouchableOpacity
-                onPress={handleQuickLogin}
-                style={styles.devButton}>
-                <Text style={styles.devButtonText}>
-                  🔧 Quick Login (Dev Only)
-                </Text>
-              </TouchableOpacity>
-            )}
+            
           </View>
         </View>
       </ScrollView>

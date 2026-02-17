@@ -9,6 +9,7 @@ const fetch = require('cross-fetch');
 const logger = require('../utils/logger');
 const { createDoctorServiceSchema, checkDoctorServiceAvailability } = require('./doctorServiceProxy');
 const { createAppointmentServiceSchema, checkAppointmentServiceAvailability } = require('./appointmentServiceProxy');
+const { createAIServiceSchema, checkAIServiceAvailability } = require('./aiServiceProxy');
 
 /**
  * Stitch remote schemas from microservices
@@ -47,6 +48,21 @@ const stitchRemoteSchemas = async (config) => {
       }
     } else {
       logger.warn('⚠️ Appointment service GraphQL not available - skipping');
+    }
+    
+    // Check and add AI service schema
+    const aiServiceAvailable = await checkAIServiceAvailability();
+    if (aiServiceAvailable) {
+      const aiSchema = await createAIServiceSchema();
+      if (aiSchema) {
+        schemas.push({
+          schema: aiSchema,
+          batch: true,
+        });
+        logger.info('✅ AI service GraphQL schema added to federation');
+      }
+    } else {
+      logger.warn('⚠️ AI service GraphQL not available - skipping');
     }
     
     // If no schemas available, return null

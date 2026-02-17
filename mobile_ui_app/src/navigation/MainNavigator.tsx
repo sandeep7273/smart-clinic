@@ -11,9 +11,9 @@ import DashboardScreen from '../screens/Dashboard';
 import BookAppointmentScreen from '../screens/BookAppointment/BookAppointmentScreen';
 import BookingConfirmationScreen from '../screens/BookingConfirmation/BookingConfirmationScreen';
 import AppointmentListScreen from '../screens/AppointmentList/AppointmentListScreen';
+import AISearchScreen from '../screens/AISearch';
 // Import other screens as they are created
 // import FindDoctorScreen from '../screens/FindDoctor';
-// import AISearchScreen from '../screens/AISearch';
 // import DoctorDetailsScreen from '../screens/DoctorDetails';
 // import SelectSlotScreen from '../screens/SelectSlot';
 // import ConfirmationScreen from '../screens/Confirmation';
@@ -65,6 +65,14 @@ export const MainNavigator = () => {
         component={AppointmentListScreen}
         options={{
           title: 'My Appointments',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="AISearch" 
+        component={AISearchScreen}
+        options={{
+          title: 'AI Assistant',
           headerShown: false,
         }}
       />

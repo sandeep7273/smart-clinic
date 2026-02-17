@@ -113,8 +113,7 @@ const { user } = useAuth();
    * Handle AI Chat Assistant button
    */
   const handleAIChatAssistant = () => {
-    // TODO: Navigate to AI Chat Assistant screen
-    Alert.alert('Coming Soon', 'AI Chat Assistant feature will be available soon!');
+    navigation.navigate('AISearch');
   };
 
   /**
