@@ -199,8 +199,10 @@ const resolvers = {
           status: mappedStatus,
           date: result.appointment.date || new Date().toISOString(),
           startTime: result.appointment.startTime || '',
+          endTime: result.appointment.endTime || '',
           duration: result.appointment.duration || 30,
           notes: result.appointment.notes || '',
+          appointmentNumber: result.appointment.appointmentNumber || '',
           createdAt: result.appointment.createdAt || new Date(),
           bookedAt: result.appointment.createdAt || new Date()
         };

@@ -54,6 +54,7 @@ const sampleDoctors = [
     totalPatients: 450,
     isAvailable: true,
     status: 'active',
+    createdByUserId: '507f1f77bcf86cd799439011',
   },
   {
     userId: '507f1f77bcf86cd799439012',
@@ -99,6 +100,7 @@ const sampleDoctors = [
     totalPatients: 320,
     isAvailable: true,
     status: 'active',
+    createdByUserId: '507f1f77bcf86cd799439012',
   },
   {
     userId: '507f1f77bcf86cd799439013',
@@ -145,6 +147,7 @@ const sampleDoctors = [
     totalPatients: 680,
     isAvailable: true,
     status: 'active',
+    createdByUserId: '507f1f77bcf86cd799439013',
   },
   {
     userId: '507f1f77bcf86cd799439014',
@@ -190,6 +193,7 @@ const sampleDoctors = [
     totalPatients: 520,
     isAvailable: true,
     status: 'active',
+    createdByUserId: '507f1f77bcf86cd799439014',
   },
   {
     "userId": "507f1f77bcf86cd799439015",
@@ -235,13 +239,14 @@ const sampleDoctors = [
     "totalPatients": 280,
     "isAvailable": true,
     "status": "active",
+    "createdByUserId": "507f1f77bcf86cd799439015",
   },
 ];
 
 async function seedDatabase() {
   try {
     // Connect to database
-    await mongoose.connect(config.mongodb.uri);
+    await mongoose.connect(config.mongodbUri);
     logger.info('Connected to MongoDB');
 
     // Clear existing doctors

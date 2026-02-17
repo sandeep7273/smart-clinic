@@ -30,8 +30,8 @@ function convertDoctorToProto(doctor) {
   return {
     id: doctor._id.toString(),
     user_id: doctor.userId || '',
-    first_name: doctor.firstName || '',
-    last_name: doctor.lastName || '',
+    firstName: doctor.firstName || '',
+    lastName: doctor.lastName || '',
     email: doctor.email || '',
     phone: doctor.phone || '',
     specializations: doctor.specializations || [],
@@ -247,6 +247,85 @@ const grpcServiceImpl = {
       callback(null, {
         success: false,
         message: error.message,
+      });
+    }
+  },
+
+  /**
+   * Get doctors by specialization
+   */
+  async GetDoctorsBySpecialization(call, callback) {
+    try {
+      const { specialization, auth_token, limit, page } = call.request;
+
+      console.log('===== GetDoctorsBySpecialization Debug =====');
+      console.log('Specialization:', specialization);
+      console.log('Limit:', limit);
+      console.log('Page:', page);
+      
+      logger.info('gRPC: GetDoctorsBySpecialization called', {
+        specialization,
+        limit,
+        page,
+        hasAuth: !!auth_token,
+      });
+
+      // Build query to find doctors with this specialization
+      // Use case-insensitive regex to match both "Cardiologist" and "Cardiology"
+      const query = {
+        specializations: {
+          $elemMatch: {
+            $regex: specialization,
+            $options: 'i'  // case-insensitive
+          }
+        },
+        status: 'active',
+      };
+
+      console.log('Query:', JSON.stringify(query));
+
+      // Calculate skip for pagination
+      const skip = (page - 1) * limit;
+
+      // Get doctors from database
+      const doctors = await DoctorScheduleReadView.find(query)
+        .limit(limit || 10)
+        .skip(skip)
+        .lean();
+
+      console.log('Found doctors count:', doctors.length);
+      if (doctors.length > 0) {
+        console.log('First doctor:', {
+          name: `${doctors[0].firstName} ${doctors[0].lastName}`,
+          specializations: doctors[0].specializations
+        });
+      }
+
+      // Get total count
+      const totalCount = await DoctorScheduleReadView.countDocuments(query);
+
+      // Convert to proto format
+      const doctorsList = doctors.map(convertDoctorToProto);
+
+      logger.info('gRPC: Found doctors', {
+        count: doctors.length,
+        totalCount,
+        specialization,
+      });
+
+      callback(null, {
+        success: true,
+        message: `Found ${doctors.length} ${specialization}(s)`,
+        doctors: doctorsList,
+        total_count: totalCount,
+      });
+    } catch (error) {
+      logger.error('gRPC: GetDoctorsBySpecialization error', { error: error.message });
+      callback(null, {
+        success: false,
+        message: error.message || 'Failed to get doctors',
+        doctors: [],
+        total_count: 0,
       });
     }
   },

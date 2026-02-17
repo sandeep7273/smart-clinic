@@ -24,6 +24,9 @@ const {
   shutdown: shutdownKafka 
 } = require('./kafka');
 
+// Import gRPC server
+const { startGrpcServer } = require('./grpc/server');
+
 // Import routes
 const appointmentRoutes = require('./routes/appointment.routes');
 
@@ -119,8 +122,11 @@ const initializeServices = async () => {
     await initializeProducer();
     await initializeConsumer();
     
+    // Initialize gRPC server
+    const grpcServer = startGrpcServer(50052);
+    
     logger.info('All services initialized successfully');
-    return { apolloServer };
+    return { apolloServer, grpcServer };
   } catch (error) {
     logger.error('Failed to initialize services:', error);
     throw error;
@@ -135,7 +141,7 @@ const startServer = async () => {
     logger.info('Database connected successfully');
 
     // Initialize GraphQL and Kafka services FIRST
-    const { apolloServer } = await initializeServices();
+    const { apolloServer, grpcServer } = await initializeServices();
 
     // NOW register 404 handler AFTER GraphQL is mounted
     app.use(notFoundHandler);
@@ -170,6 +176,12 @@ const startServer = async () => {
           if (apolloServer) {
             await apolloServer.stop();
             logger.info('GraphQL server stopped');
+          }
+          
+          // Shutdown gRPC server
+          if (grpcServer) {
+            grpcServer.forceShutdown();
+            logger.info('gRPC server stopped');
           }
           
           // Shutdown Kafka connections

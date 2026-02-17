@@ -33,8 +33,8 @@ message GetDoctorDetailsResponse {
 message DoctorDetails {
   string id = 1;
   string user_id = 2;
-  string first_name = 3;
-  string last_name = 4;
+  string firstName = 3;
+  string lastName = 4;
   string email = 5;
   string phone = 6;
   repeated string specializations = 7;

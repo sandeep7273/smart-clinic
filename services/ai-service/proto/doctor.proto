@@ -10,7 +10,13 @@ service DoctorService {
   // Check doctor availability
   rpc CheckAvailability(CheckAvailabilityRequest) returns (CheckAvailabilityResponse);
   
-  // Get doctors by specialization (for AI search)
+  // Reserve a slot
+  rpc ReserveSlot(ReserveSlotRequest) returns (ReserveSlotResponse);
+  
+  // Release a slot
+  rpc ReleaseSlot(ReleaseSlotRequest) returns (ReleaseSlotResponse);
+  
+  // Get doctors by specialization
   rpc GetDoctorsBySpecialization(GetDoctorsBySpecializationRequest) returns (GetDoctorsBySpecializationResponse);
 }
 
@@ -30,8 +36,8 @@ message GetDoctorDetailsResponse {
 message DoctorDetails {
   string id = 1;
   string user_id = 2;
-  string first_name = 3;
-  string last_name = 4;
+  string firstName = 3;
+  string lastName = 4;
   string email = 5;
   string phone = 6;
   repeated string specializations = 7;
@@ -83,6 +89,40 @@ message AvailabilityData {
   string reason = 2;
 }
 
+message ReserveSlotRequest {
+  string doctor_id = 1;
+  string slot_id = 2;
+  string patient_id = 3;
+  string auth_token = 4;
+  string date = 5;
+  string start_time = 6;
+  string end_time = 7;
+  int32 duration = 8;
+}
+
+message ReserveSlotResponse {
+  bool success = 1;
+  string message = 2;
+  SlotData data = 3;
+}
+
+message SlotData {
+  string slot_id = 1;
+  string status = 2;
+}
+
+message ReleaseSlotRequest {
+  string doctor_id = 1;
+  string slot_id = 2;
+  string auth_token = 3;
+}
+
+message ReleaseSlotResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Get Doctors by Specialization Messages
 message GetDoctorsBySpecializationRequest {
   string specialization = 1;
   string auth_token = 2;

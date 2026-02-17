@@ -749,6 +749,8 @@ export const bookAppointmentGraphQL = async (appointmentData: {
           status
           date
           startTime
+          endTime
+          appointmentNumber
           duration
           notes
           createdAt
