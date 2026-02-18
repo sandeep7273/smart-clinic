@@ -19,11 +19,11 @@ const config = {
   },
 
   // External Service URLs
-  doctorServiceUrl: process.env.DOCTOR_SERVICE_URL || 'http://localhost:4003',
+  // doctorServiceUrl: process.env.DOCTOR_SERVICE_URL || 'http://localhost:4003',
   doctorGrpcUrl: process.env.DOCTOR_GRPC_URL || 'localhost:50051',
-  authServiceUrl: process.env.AUTH_SERVICE_URL || 'http://localhost:4001',
-  userServiceUrl: process.env.USER_SERVICE_URL || 'http://localhost:4002',
-  notificationServiceUrl: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:4005',
+  // API Gateway URL for service-to-service communication
+  apiGatewayUrl: process.env.API_GATEWAY_URL || 'http://localhost:3000',
+
 
   // Kafka Configuration
   kafka: {

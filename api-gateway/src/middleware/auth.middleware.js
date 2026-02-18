@@ -3,7 +3,7 @@
  * JWT token validation and user extraction
  */
 
-const { extractTokenFromHeader, verifyAccessToken } = require('../utils/jwt');
+const { extractTokenFromHeader, validateToken } = require('../utils/auth');
 const { AuthenticationError } = require('../utils/errors');
 const logger = require('../utils/logger');
 
@@ -22,10 +22,10 @@ function authenticate() {
       }
 
       // Verify token
-      const { valid, decoded, error } = verifyAccessToken(token);
+      const { decoded } = validateToken(token);
 
-      if (!valid) {
-        throw new AuthenticationError(error);
+      if (!decoded) {
+        throw new AuthenticationError('Invalid token');
       }
 
       // Attach user information to request
@@ -77,9 +77,9 @@ function optionalAuthenticate() {
       }
 
       // Verify token
-      const { valid, decoded } = verifyAccessToken(token);
+      const { decoded } = validateToken(token);
 
-      if (valid) {
+      if (decoded) {
         // Attach user information to request
         req.user = {
           userId: decoded.userId,

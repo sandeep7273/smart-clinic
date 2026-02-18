@@ -36,9 +36,6 @@ module.exports = {
   
   // External Services
   services: {
-    auth: {
-      url: process.env.AUTH_SERVICE_URL || 'http://localhost:4001'
-    },
     doctor: {
       grpcHost: process.env.DOCTOR_SERVICE_GRPC_HOST || 'localhost',
       grpcPort: parseInt(process.env.DOCTOR_SERVICE_GRPC_PORT) || 50051
@@ -48,7 +45,7 @@ module.exports = {
       grpcPort: parseInt(process.env.APPOINTMENT_SERVICE_GRPC_PORT) || 50052
     },
     apiGateway: {
-      url: process.env.API_GATEWAY_URL || 'http://localhost:4000'
+      url: process.env.API_GATEWAY_URL || 'http://localhost:3000'
     }
   },
   

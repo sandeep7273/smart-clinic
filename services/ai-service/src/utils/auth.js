@@ -13,7 +13,7 @@ const { UnauthorizedError } = require('./errors');
  */
 const validateToken = async (token) => {
   try {
-    const response = await axios.get(`${config.services.auth.url}/auth/verify`, {
+    const response = await axios.get(`${config.services.apiGateway.url}/api/auth/verify`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -25,7 +25,7 @@ const validateToken = async (token) => {
   } catch (error) {
     logger.error('Token validation failed', {
       error: error.message,
-      authServiceUrl: config.authServiceUrl,
+      apiGatewayUrl: config.apiGatewayUrl,
     });
     
     if (error.response?.status === 401) {

@@ -15,7 +15,9 @@ const config = {
   mongodbUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/doctor_db',
 
   // Auth Service Configuration
-  authServiceUrl: process.env.AUTH_SERVICE_URL || 'http://localhost:4001',
+  authServiceUrl: process.env.AUTH_SERVICE_URL || 'http://localhost:3000/api',
+  // API Gate configuration (for service-to-service communication)
+  apiGatewayUrl: process.env.API_GATEWAY_URL || 'http://localhost:3000',
 
   // Kafka Configuration
   kafkaBrokers: (process.env.KAFKA_BROKERS || 'localhost:9092').split(','),

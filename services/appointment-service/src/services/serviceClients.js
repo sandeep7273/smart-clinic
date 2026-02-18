@@ -65,7 +65,7 @@ const createHttpClient = (baseURL, serviceName) => {
 /**
  * Doctor Service Client
  */
-const doctorServiceClient = createHttpClient(config.doctorServiceUrl, 'DoctorService');
+// const doctorServiceClient = createHttpClient(config.doctorServiceUrl, 'DoctorService');
 const doctorService = {
   /**
    * Check doctor availability for a specific slot - Using gRPC

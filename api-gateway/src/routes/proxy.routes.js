@@ -110,6 +110,11 @@ router.use(
   createProxyMiddleware(createProxyConfig('auth', config.services.auth))
 );
 
+router.use(
+  '/auth/verify',
+  createProxyMiddleware(createProxyConfig('auth', config.services.auth))
+);
+
 // All other auth endpoints require authentication
 router.use(
   '/auth',
@@ -118,77 +123,5 @@ router.use(
   createProxyMiddleware(createProxyConfig('auth', config.services.auth))
 );
 
-/**
- * Patient Service Proxy
- * All endpoints require authentication
- */
-router.use(
-  '/patient',
-  authenticate,
-  generalRateLimiter,
-  createProxyMiddleware(createProxyConfig('patient', config.services.patient))
-);
-
-/**
- * Doctor Service Proxy
- * Public endpoints: GET /api/doctor (list), GET /api/doctor/:id
- * Protected endpoints: POST, PUT, DELETE (admin/doctor only)
- */
-router.use(
-  '/doctor',
-  optionalAuthenticate,
-  generalRateLimiter,
-  (req, res, next) => {
-    // Allow GET requests without authentication
-    if (req.method === 'GET') {
-      return next();
-    }
-    // Require authentication for write operations
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Authentication required',
-      });
-    }
-    next();
-  },
-  createProxyMiddleware(createProxyConfig('doctor', config.services.doctor))
-);
-
-/**
- * Appointment Service Proxy
- * All endpoints require authentication
- * Patients can only access their own appointments
- * Doctors can access appointments assigned to them
- */
-router.use(
-  '/appointment',
-  authenticate,
-  generalRateLimiter,
-  createProxyMiddleware(createProxyConfig('appointment', config.services.appointment))
-);
-
-/**
- * Notification Service Proxy
- * All endpoints require authentication
- */
-router.use(
-  '/notification',
-  authenticate,
-  generalRateLimiter,
-  createProxyMiddleware(createProxyConfig('notification', config.services.notification))
-);
-
-/**
- * Search Service Proxy
- * Public endpoints: GET /api/search/doctors
- * Protected endpoints require authentication
- */
-router.use(
-  '/search',
-  optionalAuthenticate,
-  generalRateLimiter,
-  createProxyMiddleware(createProxyConfig('search', config.services.search))
-);
 
 module.exports = router;
