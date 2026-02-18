@@ -18,6 +18,9 @@ service DoctorService {
   
   // Get doctors by specialization
   rpc GetDoctorsBySpecialization(GetDoctorsBySpecializationRequest) returns (GetDoctorsBySpecializationResponse);
+  
+  // Search doctors with filters
+  rpc SearchDoctors(SearchDoctorsRequest) returns (SearchDoctorsResponse);
 }
 
 // Request and Response Messages
@@ -135,4 +138,29 @@ message GetDoctorsBySpecializationResponse {
   string message = 2;
   repeated DoctorDetails doctors = 3;
   int32 total_count = 4;
+}
+
+// Search Doctors Messages
+message SearchDoctorsRequest {
+  string search = 1;
+  string specialization = 2;
+  string city = 3;
+  string state = 4;
+  double min_rating = 5;
+  int32 max_fee = 6;
+  string language = 7;
+  string auth_token = 8;
+  int32 limit = 9;
+  int32 page = 10;
+  string sort_by = 11;
+  string sort_order = 12;
+}
+
+message SearchDoctorsResponse {
+  bool success = 1;
+  string message = 2;
+  repeated DoctorDetails doctors = 3;
+  int32 total_count = 4;
+  int32 total_pages = 5;
+  int32 current_page = 6;
 }

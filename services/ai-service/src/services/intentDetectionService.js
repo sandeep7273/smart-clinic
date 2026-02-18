@@ -19,40 +19,113 @@ class IntentDetectionService {
     };
 
     // Specialization mapping for medical terms
+    // Maps user-friendly terms to standardized department names (as stored in DB)
     this.specializationMap = {
-      'heart': 'Cardiologist',
-      'cardiac': 'Cardiologist',
-      'cardiology': 'Cardiologist',
-      'skin': 'Dermatologist',
-      'dermatology': 'Dermatologist',
-      'bone': 'Orthopedic',
-      'joint': 'Orthopedic',
-      'orthopedic': 'Orthopedic',
-      'brain': 'Neurologist',
-      'neuro': 'Neurologist',
-      'neurology': 'Neurologist',
-      'children': 'Pediatrician',
-      'child': 'Pediatrician',
-      'pediatric': 'Pediatrician',
-      'eye': 'Ophthalmologist',
-      'vision': 'Ophthalmologist',
-      'ophthalmology': 'Ophthalmologist',
-      'ear': 'ENT Specialist',
-      'nose': 'ENT Specialist',
-      'throat': 'ENT Specialist',
-      'ent': 'ENT Specialist',
-      'mental': 'Psychiatrist',
-      'depression': 'Psychiatrist',
-      'anxiety': 'Psychiatrist',
-      'psychiatry': 'Psychiatrist',
-      'diabetes': 'Endocrinologist',
-      'thyroid': 'Endocrinologist',
-      'hormones': 'Endocrinologist',
-      'endocrinology': 'Endocrinologist',
-      'gynecology': 'Gynecologist',
-      'pregnancy': 'Gynecologist',
-      'women': 'Gynecologist',
-      'general': 'General Physician'
+      // Cardiology
+      'heart': 'Cardiology',
+      'cardiac': 'Cardiology',
+      'cardiology': 'Cardiology',
+      'cardiologist': 'Cardiology',
+      'cardiovascular': 'Cardiology',
+      
+      // Dermatology
+      'skin': 'Dermatology',
+      'dermatology': 'Dermatology',
+      'dermatologist': 'Dermatology',
+      'acne': 'Dermatology',
+      'rash': 'Dermatology',
+      
+      // Orthopedics
+      'bone': 'Orthopedics',
+      'joint': 'Orthopedics',
+      'orthopedic': 'Orthopedics',
+      'orthopedics': 'Orthopedics',
+      'orthopedist': 'Orthopedics',
+      'fracture': 'Orthopedics',
+      'arthritis': 'Orthopedics',
+      
+      // Neurology
+      'brain': 'Neurology',
+      'neuro': 'Neurology',
+      'neurology': 'Neurology',
+      'neurologist': 'Neurology',
+      'headache': 'Neurology',
+      'migraine': 'Neurology',
+      
+      // Pediatrics
+      'children': 'Pediatrics',
+      'child': 'Pediatrics',
+      'pediatric': 'Pediatrics',
+      'pediatrics': 'Pediatrics',
+      'pediatrician': 'Pediatrics',
+      'baby': 'Pediatrics',
+      'infant': 'Pediatrics',
+      
+      // Ophthalmology
+      'eye': 'Ophthalmology',
+      'vision': 'Ophthalmology',
+      'ophthalmology': 'Ophthalmology',
+      'ophthalmologist': 'Ophthalmology',
+      'glasses': 'Ophthalmology',
+      'sight': 'Ophthalmology',
+      
+      // ENT
+      'ear': 'ENT',
+      'nose': 'ENT',
+      'throat': 'ENT',
+      'ent': 'ENT',
+      'sinus': 'ENT',
+      'hearing': 'ENT',
+      
+      // Psychiatry
+      'mental': 'Psychiatry',
+      'depression': 'Psychiatry',
+      'anxiety': 'Psychiatry',
+      'psychiatry': 'Psychiatry',
+      'psychiatrist': 'Psychiatry',
+      'stress': 'Psychiatry',
+      'counseling': 'Psychiatry',
+      
+      // Endocrinology
+      'diabetes': 'Endocrinology',
+      'thyroid': 'Endocrinology',
+      'hormones': 'Endocrinology',
+      'endocrinology': 'Endocrinology',
+      'endocrinologist': 'Endocrinology',
+      'insulin': 'Endocrinology',
+      
+      // Gynecology
+      'gynecology': 'Gynecology',
+      'gynecologist': 'Gynecology',
+      'pregnancy': 'Gynecology',
+      'women': 'Gynecology',
+      'obstetrics': 'Gynecology',
+      'prenatal': 'Gynecology',
+      
+      // General Physician
+      'general': 'General Medicine',
+      'physician': 'General Medicine',
+      'gp': 'General Medicine',
+      'family doctor': 'General Medicine',
+      'checkup': 'General Medicine'
+    };
+    
+    // Reverse mapping: specialist role to department name
+    this.specialistToDepartment = {
+      'cardiologist': 'Cardiology',
+      'dermatologist': 'Dermatology',
+      'orthopedist': 'Orthopedics',
+      'orthopedic surgeon': 'Orthopedics',
+      'neurologist': 'Neurology',
+      'pediatrician': 'Pediatrics',
+      'ophthalmologist': 'Ophthalmology',
+      'ent specialist': 'ENT',
+      'psychiatrist': 'Psychiatry',
+      'endocrinologist': 'Endocrinology',
+      'gynecologist': 'Gynecology',
+      'obstetrician': 'Gynecology',
+      'general physician': 'General Medicine',
+      'family physician': 'General Medicine'
     };
   }
 
@@ -138,6 +211,49 @@ Respond in strict JSON format:
     }
     
     return null;
+  }
+
+  /**
+   * Normalize specialization to match database format
+   * Handles both "Cardiologist" -> "Cardiology" and "Cardiology" -> "Cardiology"
+   */
+  normalizeSpecialization(input) {
+    if (!input) return null;
+    
+    const lowerInput = input.toLowerCase().trim();
+    
+    // Check if it's already in the map
+    if (this.specializationMap[lowerInput]) {
+      return this.specializationMap[lowerInput];
+    }
+    
+    // Check specialist-to-department mapping
+    if (this.specialistToDepartment[lowerInput]) {
+      return this.specialistToDepartment[lowerInput];
+    }
+    
+    // Check if input matches any value (department name) directly
+    const departmentNames = [
+      'Cardiology', 'Dermatology', 'Orthopedics', 'Neurology', 
+      'Pediatrics', 'Ophthalmology', 'ENT', 'Psychiatry', 
+      'Endocrinology', 'Gynecology', 'General Medicine'
+    ];
+    
+    for (const dept of departmentNames) {
+      if (dept.toLowerCase() === lowerInput) {
+        return dept;
+      }
+    }
+    
+    // Try partial match as last resort
+    for (const [keyword, specialization] of Object.entries(this.specializationMap)) {
+      if (lowerInput.includes(keyword) || keyword.includes(lowerInput)) {
+        return specialization;
+      }
+    }
+    
+    // Return original input if no normalization found
+    return input;
   }
 
   /**

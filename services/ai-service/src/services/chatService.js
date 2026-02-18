@@ -119,10 +119,21 @@ class ChatService {
    */
   async handleSearchDoctor(message, intentResult, authToken) {
     try {
-      const specialization = intentResult.entities.specialization || 
+      let specialization = intentResult.entities.specialization || 
                            intentDetectionService.extractSpecialization(message);
+      const location = intentResult.entities.location;
+      const symptoms = intentResult.entities.symptoms;
 
-      if (!specialization) {
+      // Normalize specialization to match database format
+      if (specialization) {
+        specialization = intentDetectionService.normalizeSpecialization(specialization);
+        logger.info('Normalized specialization for search:', { 
+          original: intentResult.entities.specialization,
+          normalized: specialization 
+        });
+      }
+
+      if (!specialization && !location && !symptoms) {
         return {
           message: 'I can help you find a doctor. Which type of specialist are you looking for? (e.g., Cardiologist, Dermatologist, Pediatrician)',
           actionType: 'NONE',
@@ -130,27 +141,53 @@ class ChatService {
         };
       }
 
+      // Build search filters
+      const searchFilters = {
+        limit: 10,
+        page: 1,
+        sortBy: 'rating',
+        sortOrder: 'desc'
+      };
+
+      // Add available filters with normalized specialization
+      if (specialization) searchFilters.specialization = specialization;
+      if (location) {
+        // Try to split location into city and state if possible
+        const locationParts = location.split(',').map(p => p.trim());
+        if (locationParts.length > 1) {
+          searchFilters.city = locationParts[0];
+          searchFilters.state = locationParts[1];
+        } else {
+          searchFilters.city = location;
+        }
+      }
+
+      // Build cache key from filters
+      const cacheKey = JSON.stringify(searchFilters);
+      
       // Check cache first
-      const cachedDoctors = await redisClient.getCachedDoctorSearch(specialization);
+      const cachedDoctors = await redisClient.getCachedDoctorSearch(cacheKey);
       
       let doctors;
+      let totalCount = 0;
+
       if (cachedDoctors) {
         doctors = cachedDoctors;
-        logger.info(`Using cached doctors for specialization: ${specialization}`);
+        totalCount = doctors.length;
+        logger.info(`Using cached doctors for filters: ${cacheKey}`);
       } else {
-        // Call doctor service via gRPC
+        // Call doctor service via gRPC using SearchDoctors
         try {
-          const response = await doctorClient.getDoctorsBySpecialization(
-            specialization,
-            authToken,
-            10,
-            1
+          const response = await doctorClient.searchDoctors(
+            searchFilters,
+            authToken
           );
 
           if (response.success && response.doctors) {
             doctors = response.doctors;
+            totalCount = response.total_count || doctors.length;
             // Cache the results
-            await redisClient.cacheDoctorSearch(specialization, doctors);
+            await redisClient.cacheDoctorSearch(cacheKey, doctors);
           }
         } catch (error) {
           logger.error('Error calling doctor service:', error);
@@ -160,12 +197,21 @@ class ChatService {
 
       const doctorCount = doctors ? doctors.length : 0;
 
+      // Build response message
+      let searchDescription = [];
+      if (specialization) searchDescription.push(specialization);
+      if (location) searchDescription.push(`in ${location}`);
+      
+      const searchText = searchDescription.join(' ') || 'doctors';
+
       return {
-        message: `I found ${doctorCount} ${specialization}${doctorCount !== 1 ? 's' : ''} available. Would you like to view them?`,
+        message: `I found ${doctorCount} ${searchText} available. Would you like to view them?`,
         actionType: 'SEARCH_DOCTOR',
         payload: {
           specialization,
-          count: doctorCount
+          location,
+          count: doctorCount,
+          total: totalCount
         }
       };
     } catch (error) {

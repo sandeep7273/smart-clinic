@@ -5,6 +5,97 @@ const logger = require('../utils/logger');
 const { publishDoctorEvent, EVENT_TYPES } = require('../kafka');
 
 class DoctorService {
+  constructor() {
+    // Specialization normalization map - converts synonyms to standardized department names
+    this.specializationNormalizer = {
+      // Cardiology variations
+      'cardiologist': 'Cardiology',
+      'cardiac': 'Cardiology',
+      'heart': 'Cardiology',
+      'cardiovascular': 'Cardiology',
+      
+      // Dermatology variations
+      'dermatologist': 'Dermatology',
+      'skin': 'Dermatology',
+      
+      // Orthopedics variations
+      'orthopedist': 'Orthopedics',
+      'orthopedic': 'Orthopedics',
+      'bone': 'Orthopedics',
+      'joint': 'Orthopedics',
+      
+      // Neurology variations
+      'neurologist': 'Neurology',
+      'neuro': 'Neurology',
+      'brain': 'Neurology',
+      
+      // Pediatrics variations
+      'pediatrician': 'Pediatrics',
+      'pediatric': 'Pediatrics',
+      'children': 'Pediatrics',
+      'child': 'Pediatrics',
+      
+      // Ophthalmology variations
+      'ophthalmologist': 'Ophthalmology',
+      'eye': 'Ophthalmology',
+      'vision': 'Ophthalmology',
+      
+      // ENT variations
+      'ent specialist': 'ENT',
+      'ear nose throat': 'ENT',
+      
+      // Psychiatry variations
+      'psychiatrist': 'Psychiatry',
+      'mental': 'Psychiatry',
+      
+      // Endocrinology variations
+      'endocrinologist': 'Endocrinology',
+      'diabetes': 'Endocrinology',
+      'thyroid': 'Endocrinology',
+      
+      // Gynecology variations
+      'gynecologist': 'Gynecology',
+      'obstetrician': 'Gynecology',
+      'women': 'Gynecology',
+      
+      // General Medicine variations
+      'general physician': 'General Medicine',
+      'gp': 'General Medicine',
+      'family physician': 'General Medicine'
+    };
+  }
+
+  /**
+   * Normalize specialization to match database format
+   * Converts variations like "Cardiologist" to "Cardiology"
+   */
+  normalizeSpecialization(spec) {
+    if (!spec) return null;
+    
+    const lowerSpec = spec.toLowerCase().trim();
+    
+    // Check if it's in the normalization map
+    if (this.specializationNormalizer[lowerSpec]) {
+      return this.specializationNormalizer[lowerSpec];
+    }
+    
+    // Check if it's already a valid department name (exact match)
+    const validDepartments = [
+      'Cardiology', 'Dermatology', 'Orthopedics', 'Neurology',
+      'Pediatrics', 'Ophthalmology', 'ENT', 'Psychiatry',
+      'Endocrinology', 'Gynecology', 'General Medicine'
+    ];
+    
+    for (const dept of validDepartments) {
+      if (dept.toLowerCase() === lowerSpec) {
+        return dept;
+      }
+    }
+    
+    // Return original if no match found
+    return spec;
+  }
+
   /**
    * Create a new doctor
    */
@@ -221,8 +312,10 @@ class DoctorService {
       
       // Specific filters (override/supplement the general search)
       if (name) filters.name = name;
-      if (specialty) filters.specialization = specialty;
-      if (specialization) filters.specialization = specialization;
+      
+      // Normalize specialization before searching
+      if (specialty) filters.specialization = this.normalizeSpecialization(specialty);
+      if (specialization) filters.specialization = this.normalizeSpecialization(specialization);
       
       // Location filters
       if (city) filters.city = city;
@@ -281,6 +374,14 @@ class DoctorService {
    */
   async getDoctorsBySpecialization(specialization, options = {}) {
     try {
+      // Normalize specialization to handle variations
+      const normalizedSpecialization = this.normalizeSpecialization(specialization);
+      
+      logger.info('Searching doctors by specialization:', {
+        original: specialization,
+        normalized: normalizedSpecialization
+      });
+
       const {
         page = 1,
         limit = 10,
@@ -288,13 +389,13 @@ class DoctorService {
         sortOrder = 'desc',
       } = options;
 
-      const doctors = await DoctorScheduleReadView.findBySpecialization(specialization)
+      const doctors = await DoctorScheduleReadView.findBySpecialization(normalizedSpecialization)
         .sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 })
         .skip((page - 1) * limit)
         .limit(limit);
 
       const total = await DoctorScheduleReadView.countDocuments({
-        specializations: specialization,
+        specializations: normalizedSpecialization,
         status: 'active',
       });
 

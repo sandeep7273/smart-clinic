@@ -270,28 +270,21 @@ const grpcServiceImpl = {
         hasAuth: !!auth_token,
       });
 
-      // Build query to find doctors with this specialization
-      // Use case-insensitive regex to match both "Cardiologist" and "Cardiology"
-      const query = {
-        specializations: {
-          $elemMatch: {
-            $regex: specialization,
-            $options: 'i'  // case-insensitive
-          }
-        },
-        status: 'active',
-      };
+      // Use doctorService method (same as GraphQL resolver)
+      const result = await doctorService.getDoctorsBySpecialization(
+        specialization, 
+        page || 1, 
+        limit || 10
+      );
 
-      console.log('Query:', JSON.stringify(query));
+      console.log('Service result:', {
+        doctorsCount: result.doctors?.length,
+        totalCount: result.pagination?.total,
+      });
 
-      // Calculate skip for pagination
-      const skip = (page - 1) * limit;
-
-      // Get doctors from database
-      const doctors = await DoctorScheduleReadView.find(query)
-        .limit(limit || 10)
-        .skip(skip)
-        .lean();
+      // Extract doctors and pagination from result
+      const doctors = result.doctors || [];
+      const totalCount = result.pagination?.total || 0;
 
       console.log('Found doctors count:', doctors.length);
       if (doctors.length > 0) {
@@ -300,9 +293,6 @@ const grpcServiceImpl = {
           specializations: doctors[0].specializations
         });
       }
-
-      // Get total count
-      const totalCount = await DoctorScheduleReadView.countDocuments(query);
 
       // Convert to proto format
       const doctorsList = doctors.map(convertDoctorToProto);
@@ -320,12 +310,99 @@ const grpcServiceImpl = {
         total_count: totalCount,
       });
     } catch (error) {
-      logger.error('gRPC: GetDoctorsBySpecialization error', { error: error.message });
+      logger.error('gRPC: GetDoctorsBySpecialization error', { 
+        error: error.message,
+        stack: error.stack,
+      });
       callback(null, {
         success: false,
         message: error.message || 'Failed to get doctors',
         doctors: [],
         total_count: 0,
+      });
+    }
+  },
+
+  /**
+   * Search doctors with filters (same as GraphQL searchDoctors)
+   */
+  async SearchDoctors(call, callback) {
+    try {
+      const { search, specialization, city, state, min_rating, max_fee, language, auth_token, limit, page, sort_by, sort_order } = call.request;
+
+      logger.info('gRPC: SearchDoctors called', {
+        search,
+        specialization,
+        city,
+        state,
+        limit,
+        page,
+        sortBy: sort_by,
+        hasAuth: !!auth_token,
+      });
+
+      // Build filters object (same as GraphQL resolver)
+      const filters = {};
+      if (specialization) filters.specialization = specialization;
+      if (city) filters.city = city;
+      if (state) filters.state = state;
+      if (min_rating) filters.minRating = min_rating;
+      if (max_fee) filters.maxFee = max_fee;
+      if (language) filters.language = language;
+
+      const searchFilters = {
+        ...filters,
+        search,
+        page: page || 1,
+        limit: limit || 10,
+        sortBy: sort_by || 'rating',
+        sortOrder: sort_order || 'desc'
+      };
+
+      console.log('Search filters:', JSON.stringify(searchFilters));
+
+      // Use doctorService method (same as GraphQL resolver)
+      const result = await doctorService.searchDoctors(searchFilters);
+
+      console.log('Search result:', {
+        doctorsCount: result.doctors?.length,
+        totalCount: result.pagination?.total,
+        totalPages: result.pagination?.totalPages,
+      });
+
+      // Extract doctors and pagination from result
+      const doctors = result.doctors || [];
+      const pagination = result.pagination || {};
+
+      // Convert to proto format
+      const doctorsList = doctors.map(convertDoctorToProto);
+
+      logger.info('gRPC: Search completed', {
+        count: doctors.length,
+        totalCount: pagination.total,
+        search,
+      });
+
+      callback(null, {
+        success: true,
+        message: `Found ${doctors.length} doctor(s)`,
+        doctors: doctorsList,
+        total_count: pagination.total || 0,
+        total_pages: pagination.totalPages || 0,
+        current_page: pagination.page || 1,
+      });
+    } catch (error) {
+      logger.error('gRPC: SearchDoctors error', { 
+        error: error.message,
+        stack: error.stack,
+      });
+      callback(null, {
+        success: false,
+        message: error.message || 'Failed to search doctors',
+        doctors: [],
+        total_count: 0,
+        total_pages: 0,
+        current_page: 1,
       });
     }
   },

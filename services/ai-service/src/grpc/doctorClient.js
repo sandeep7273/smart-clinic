@@ -104,6 +104,44 @@ class DoctorGrpcClient {
       );
     });
   }
+
+  /**
+   * Search doctors with filters
+   */
+  async searchDoctors(filters, authToken) {
+    return new Promise((resolve, reject) => {
+      const request = {
+        search: filters.search || '',
+        specialization: filters.specialization || '',
+        city: filters.city || '',
+        state: filters.state || '',
+        min_rating: filters.minRating || 0,
+        max_fee: filters.maxFee || 0,
+        language: filters.language || '',
+        auth_token: authToken || '',
+        limit: filters.limit || 10,
+        page: filters.page || 1,
+        sort_by: filters.sortBy || 'rating',
+        sort_order: filters.sortOrder || 'desc'
+      };
+
+      logger.info('AI Service: Calling SearchDoctors gRPC', { filters: request });
+
+      this.client.SearchDoctors(request, (error, response) => {
+        if (error) {
+          logger.error('Error searching doctors via gRPC:', error);
+          reject(error);
+        } else {
+          logger.info('AI Service: SearchDoctors response', {
+            success: response.success,
+            count: response.doctors?.length,
+            total: response.total_count
+          });
+          resolve(response);
+        }
+      });
+    });
+  }
 }
 
 module.exports = new DoctorGrpcClient();

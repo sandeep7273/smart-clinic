@@ -67,49 +67,50 @@ const grpcServiceImpl = {
         hasAuth: !!auth_token,
       });
 
-      // Build query
-      const query = {
+      // Build query filter - using same approach as GraphQL resolver
+      const filter = {
         userId: user_id,
-        isDeleted: false,
       };
 
       // Add status filter if provided
       if (status && status.trim() !== '') {
-        query.status = status;
+        filter.status = status;
       }
 
-      // Calculate skip for pagination
-      const limitValue = limit || 10;
-      const pageValue = page || 1;
-      const skip = (pageValue - 1) * limitValue;
+      logger.info('gRPC: Query filter', { filter });
 
-      // Get appointments from database using ReadView for better performance
-      let appointments;
+      // Get appointments from database using ReadView.search() method (same as GraphQL)
+      let result;
       try {
-        appointments = await AppointmentReadView.find(query)
-          .sort({ date: -1, startTime: -1 })
-          .limit(limitValue)
-          .skip(skip)
-          .lean();
+        result = await AppointmentReadView.search(filter);
+        
+        logger.info('gRPC: Search result', {
+          hasData: !!result.data,
+          dataLength: result.data?.length,
+          hasPagination: !!result.pagination,
+          totalCount: result.pagination?.total,
+        });
       } catch (error) {
-        logger.error('Error querying AppointmentReadView, falling back to Appointment model', {
+        logger.error('Error querying AppointmentReadView.search, falling back to find method', {
           error: error.message,
         });
-        // Fallback to main Appointment model if ReadView fails
-        appointments = await Appointment.find(query)
+        // Fallback to traditional find if search method doesn't exist
+        const appointments = await AppointmentReadView.find(filter)
           .sort({ date: -1, startTime: -1 })
-          .limit(limitValue)
-          .skip(skip)
+          .limit(limit || 10)
           .lean();
+        
+        const totalCount = await AppointmentReadView.countDocuments(filter);
+        
+        result = {
+          data: appointments,
+          pagination: { total: totalCount },
+        };
       }
 
-      // Get total count
-      let totalCount;
-      try {
-        totalCount = await AppointmentReadView.countDocuments(query);
-      } catch (error) {
-        totalCount = await Appointment.countDocuments(query);
-      }
+      // Extract appointments from result
+      const appointments = result.data || [];
+      const totalCount = result.pagination?.total || 0;
 
       // Convert to proto format
       const appointmentsList = appointments.map(convertAppointmentToProto);
@@ -127,7 +128,10 @@ const grpcServiceImpl = {
         total_count: totalCount,
       });
     } catch (error) {
-      logger.error('gRPC: GetUserAppointments error', { error: error.message });
+      logger.error('gRPC: GetUserAppointments error', { 
+        error: error.message,
+        stack: error.stack,
+      });
       callback(null, {
         success: false,
         message: error.message || 'Failed to get appointments',
