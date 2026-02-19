@@ -2,19 +2,22 @@
  * Unit Tests for User Service
  */
 
-const userService = require('../../../src/services/user.service');
-const User = require('../../../src/models/user');
-const { APIError } = require('../../../src/middlewares/error.middleware');
-const { hashPassword, verifyPassword } = require('../../../src/utils/password.util');
-
-// Mock dependencies
+// Mock dependencies FIRST (before imports)
 jest.mock('../../../src/models/user');
 jest.mock('../../../src/utils/logger.util', () => ({
   error: jest.fn(),
   warn: jest.fn(),
   info: jest.fn(),
 }));
-jest.mock('../../../src/utils/password.util');
+jest.mock('../../../src/utils/password.util', () => ({
+  hashPassword: jest.fn(),
+  verifyPassword: jest.fn(),
+}));
+
+const userService = require('../../../src/services/user.service');
+const User = require('../../../src/models/user');
+const { APIError } = require('../../../src/middlewares/error.middleware');
+const { hashPassword, verifyPassword } = require('../../../src/utils/password.util');
 
 describe('User Service - Unit Tests', () => {
   beforeEach(() => {

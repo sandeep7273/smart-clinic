@@ -46,21 +46,17 @@ const authController = require('../../../src/controllers/auth.controller');
 const { validate } = require('../../../src/validators/auth.validator');
 const { authenticate } = require('../../../src/middlewares/auth.middleware');
 const { authLimiter, registerLimiter } = require('../../../src/middlewares/rateLimit.middleware');
+const authRoutes = require('../../../src/routes/auth.routes');
 
 describe('Auth Routes - Unit Tests', () => {
   let app;
-  let authRoutes;
 
   beforeEach(() => {
     jest.clearAllMocks();
     
-    // Create fresh app and routes for each test
+    // Create fresh app for each test
     app = express();
     app.use(express.json());
-    
-    // Re-require routes to get fresh instance
-    jest.resetModules();
-    authRoutes = require('../../../src/routes/auth.routes');
     app.use('/auth', authRoutes);
   });
 
