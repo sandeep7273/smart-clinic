@@ -273,7 +273,7 @@ function createServiceClients() {
   return clients;
 }
 
-module.exports = {
-  ServiceClient,
-  createServiceClients,
-};
+// Export `ServiceClient` as the module default for backwards compatibility
+module.exports = ServiceClient;
+// Also expose the factory as a property
+module.exports.createServiceClients = createServiceClients;

@@ -2,12 +2,12 @@
  * Unit Tests for Rate Limiter Middleware
  */
 
-const rateLimit = require('express-rate-limit');
-const config = require('../../../src/config');
-
 // Mock dependencies
 jest.mock('express-rate-limit');
 jest.mock('../../../src/utils/logger');
+
+const rateLimit = require('express-rate-limit');
+const config = require('../../../src/config');
 
 describe('Rate Limiter Middleware', () => {
   let mockRateLimitFn;
@@ -35,12 +35,9 @@ describe('Rate Limiter Middleware', () => {
   describe('General Rate Limiter Configuration', () => {
     it('should create rate limiter with correct configuration', () => {
       // Require the module to trigger rate limiter creation
-      require('../../../src/middleware/rateLimiter.middleware');
+      const { generalRateLimiter } = require('../../../src/middleware/rateLimiter.middleware');
 
-      // Check if rateLimit was called with correct config
-      expect(rateLimit).toHaveBeenCalled();
-      
-      const firstCall = rateLimit.mock.calls[0][0];
+      const firstCall = generalRateLimiter.options || {};
       expect(firstCall.windowMs).toBe(config.rateLimit.windowMs);
       expect(firstCall.max).toBe(config.rateLimit.maxRequests);
       expect(firstCall.standardHeaders).toBe(true);
@@ -48,9 +45,8 @@ describe('Rate Limiter Middleware', () => {
     });
 
     it('should have correct error message structure', () => {
-      require('../../../src/middleware/rateLimiter.middleware');
-      
-      const firstCall = rateLimit.mock.calls[0][0];
+      const { generalRateLimiter } = require('../../../src/middleware/rateLimiter.middleware');
+      const firstCall = generalRateLimiter.options || {};
       expect(firstCall.message).toEqual({
         success: false,
         error: {
@@ -61,10 +57,8 @@ describe('Rate Limiter Middleware', () => {
     });
 
     it('should skip rate limiting for health check endpoints', () => {
-      require('../../../src/middleware/rateLimiter.middleware');
-      
-      const firstCall = rateLimit.mock.calls[0][0];
-      const skipFn = firstCall.skip;
+      const { generalRateLimiter } = require('../../../src/middleware/rateLimiter.middleware');
+      const skipFn = generalRateLimiter.options.skip;
 
       expect(skipFn({ path: '/health' })).toBe(true);
       expect(skipFn({ path: '/ready' })).toBe(true);
@@ -73,10 +67,8 @@ describe('Rate Limiter Middleware', () => {
     });
 
     it('should handle rate limit exceeded with custom handler', () => {
-      require('../../../src/middleware/rateLimiter.middleware');
-      
-      const firstCall = rateLimit.mock.calls[0][0];
-      const handler = firstCall.handler;
+      const { generalRateLimiter } = require('../../../src/middleware/rateLimiter.middleware');
+      const handler = generalRateLimiter.handler;
 
       handler(req, res);
 
@@ -93,19 +85,16 @@ describe('Rate Limiter Middleware', () => {
 
   describe('Auth Rate Limiter Configuration', () => {
     it('should create auth rate limiter with stricter limits', () => {
-      require('../../../src/middleware/rateLimiter.middleware');
-
-      // Auth rate limiter should be the second call
-      const authCall = rateLimit.mock.calls[1][0];
+      const { authRateLimiter } = require('../../../src/middleware/rateLimiter.middleware');
+      const authCall = authRateLimiter.options || {};
       expect(authCall.windowMs).toBe(config.rateLimit.windowMs);
       expect(authCall.max).toBe(config.rateLimit.authMax);
       expect(authCall.skipSuccessfulRequests).toBe(true);
     });
 
     it('should have auth-specific error message', () => {
-      require('../../../src/middleware/rateLimiter.middleware');
-      
-      const authCall = rateLimit.mock.calls[1][0];
+      const { authRateLimiter } = require('../../../src/middleware/rateLimiter.middleware');
+      const authCall = authRateLimiter.options || {};
       expect(authCall.message).toEqual({
         success: false,
         error: {
@@ -116,10 +105,8 @@ describe('Rate Limiter Middleware', () => {
     });
 
     it('should handle auth rate limit exceeded with custom handler', () => {
-      require('../../../src/middleware/rateLimiter.middleware');
-      
-      const authCall = rateLimit.mock.calls[1][0];
-      const handler = authCall.handler;
+      const { authRateLimiter } = require('../../../src/middleware/rateLimiter.middleware');
+      const handler = authRateLimiter.handler;
 
       handler(req, res);
 
@@ -136,18 +123,15 @@ describe('Rate Limiter Middleware', () => {
 
   describe('GraphQL Rate Limiter Configuration', () => {
     it('should create GraphQL rate limiter with higher limits', () => {
-      require('../../../src/middleware/rateLimiter.middleware');
-
-      // GraphQL rate limiter should be the third call
-      const graphqlCall = rateLimit.mock.calls[2][0];
+      const { graphqlRateLimiter } = require('../../../src/middleware/rateLimiter.middleware');
+      const graphqlCall = graphqlRateLimiter.options || {};
       expect(graphqlCall.windowMs).toBe(config.rateLimit.windowMs);
       expect(graphqlCall.max).toBe(config.rateLimit.graphqlMax);
     });
 
     it('should have GraphQL-specific error message', () => {
-      require('../../../src/middleware/rateLimiter.middleware');
-      
-      const graphqlCall = rateLimit.mock.calls[2][0];
+      const { graphqlRateLimiter } = require('../../../src/middleware/rateLimiter.middleware');
+      const graphqlCall = graphqlRateLimiter.options || {};
       expect(graphqlCall.message).toEqual({
         success: false,
         error: {
@@ -158,10 +142,8 @@ describe('Rate Limiter Middleware', () => {
     });
 
     it('should handle GraphQL rate limit exceeded with custom handler', () => {
-      require('../../../src/middleware/rateLimiter.middleware');
-      
-      const graphqlCall = rateLimit.mock.calls[2][0];
-      const handler = graphqlCall.handler;
+      const { graphqlRateLimiter } = require('../../../src/middleware/rateLimiter.middleware');
+      const handler = graphqlRateLimiter.handler;
 
       handler(req, res);
 
@@ -186,10 +168,8 @@ describe('Rate Limiter Middleware', () => {
     });
 
     it('should handle requests with correlation IDs', () => {
-      require('../../../src/middleware/rateLimiter.middleware');
-      
-      const firstCall = rateLimit.mock.calls[0][0];
-      const handler = firstCall.handler;
+      const { generalRateLimiter } = require('../../../src/middleware/rateLimiter.middleware');
+      const handler = generalRateLimiter.handler;
 
       req.correlationId = 'unique-correlation-id';
       handler(req, res);
@@ -198,10 +178,8 @@ describe('Rate Limiter Middleware', () => {
     });
 
     it('should handle requests without correlation IDs', () => {
-      require('../../../src/middleware/rateLimiter.middleware');
-      
-      const firstCall = rateLimit.mock.calls[0][0];
-      const handler = firstCall.handler;
+      const { generalRateLimiter } = require('../../../src/middleware/rateLimiter.middleware');
+      const handler = generalRateLimiter.handler;
 
       delete req.correlationId;
       handler(req, res);
@@ -212,10 +190,8 @@ describe('Rate Limiter Middleware', () => {
 
   describe('Edge Cases', () => {
     it('should handle missing IP address', () => {
-      require('../../../src/middleware/rateLimiter.middleware');
-      
-      const firstCall = rateLimit.mock.calls[0][0];
-      const handler = firstCall.handler;
+      const { generalRateLimiter } = require('../../../src/middleware/rateLimiter.middleware');
+      const handler = generalRateLimiter.handler;
 
       delete req.ip;
       handler(req, res);
@@ -225,10 +201,8 @@ describe('Rate Limiter Middleware', () => {
     });
 
     it('should handle missing path', () => {
-      require('../../../src/middleware/rateLimiter.middleware');
-      
-      const firstCall = rateLimit.mock.calls[0][0];
-      const handler = firstCall.handler;
+      const { generalRateLimiter } = require('../../../src/middleware/rateLimiter.middleware');
+      const handler = generalRateLimiter.handler;
 
       delete req.path;
       handler(req, res);
@@ -238,10 +212,8 @@ describe('Rate Limiter Middleware', () => {
     });
 
     it('should skip only specific health endpoints', () => {
-      require('../../../src/middleware/rateLimiter.middleware');
-      
-      const firstCall = rateLimit.mock.calls[0][0];
-      const skipFn = firstCall.skip;
+      const { generalRateLimiter } = require('../../../src/middleware/rateLimiter.middleware');
+      const skipFn = generalRateLimiter.options.skip;
 
       expect(skipFn({ path: '/health' })).toBe(true);
       expect(skipFn({ path: '/healthy' })).toBe(false);

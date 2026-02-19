@@ -16,6 +16,8 @@ const { CircuitBreakerOpenError } = require('../utils/errors');
  * @returns {CircuitBreaker} Circuit breaker instance
  */
 function createCircuitBreaker(fn, serviceName, options = {}) {
+  // Defensive: allow callers to pass `null` or `undefined` for options
+  options = options || {};
   const breakerOptions = {
     timeout: options.timeout || config.circuitBreaker.timeout,
     errorThresholdPercentage: options.errorThresholdPercentage || config.circuitBreaker.errorThresholdPercentage,

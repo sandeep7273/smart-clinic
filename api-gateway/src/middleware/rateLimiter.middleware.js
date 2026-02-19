@@ -3,15 +3,22 @@
  * Protects APIs from abuse with tiered rate limiting
  */
 
-const rateLimit = require('express-rate-limit');
 const config = require('../config');
 const logger = require('../utils/logger');
+
+// Resolve rateLimit at runtime so jest module mocks reliably intercept it
+function getRateLimit() {
+  // Use require here so tests that mock 'express-rate-limit' (jest.mock)
+  // will have their mock used when this module is required during tests.
+  // This avoids pitfalls with hoisting and module cache ordering.
+  return require('express-rate-limit');
+}
 
 /**
  * General rate limiter for all API routes
  * 100 requests per 15 minutes
  */
-const generalRateLimiter = rateLimit({
+const generalOptions = {
   windowMs: config.rateLimit.windowMs,
   max: config.rateLimit.maxRequests,
   message: {
@@ -43,13 +50,18 @@ const generalRateLimiter = rateLimit({
     // Skip rate limiting for health check endpoints
     return req.path === '/health' || req.path === '/ready' || req.path === '/status';
   },
-});
+};
+
+const generalRateLimiter = getRateLimit()(generalOptions);
+// Expose options and handler for unit tests
+generalRateLimiter.options = generalOptions;
+generalRateLimiter.handler = generalOptions.handler;
 
 /**
  * Stricter rate limiter for authentication routes
  * 5 requests per 15 minutes
  */
-const authRateLimiter = rateLimit({
+const authOptions = {
   windowMs: config.rateLimit.windowMs,
   max: config.rateLimit.authMax,
   message: {
@@ -78,13 +90,17 @@ const authRateLimiter = rateLimit({
       },
     });
   },
-});
+};
+
+const authRateLimiter = getRateLimit()(authOptions);
+authRateLimiter.options = authOptions;
+authRateLimiter.handler = authOptions.handler;
 
 /**
  * Rate limiter for GraphQL endpoint
  * 200 requests per 15 minutes (more permissive as single endpoint handles many operations)
  */
-const graphqlRateLimiter = rateLimit({
+const graphqlOptions = {
   windowMs: config.rateLimit.windowMs,
   max: config.rateLimit.graphqlMax,
   message: {
@@ -111,7 +127,11 @@ const graphqlRateLimiter = rateLimit({
       },
     });
   },
-});
+};
+
+const graphqlRateLimiter = getRateLimit()(graphqlOptions);
+graphqlRateLimiter.options = graphqlOptions;
+graphqlRateLimiter.handler = graphqlOptions.handler;
 
 module.exports = {
   generalRateLimiter,
