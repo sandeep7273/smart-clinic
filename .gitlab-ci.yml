@@ -9,7 +9,7 @@ variables:
   CI: "true"
 
 # All jobs run in parallel since they're in the same stage
-auth_service:
+auth_service_test:
   stage: test
   needs: [auth_service_build]
   script:
@@ -27,7 +27,7 @@ auth_service:
       - test-reports/auth-service-junit.xml
       - services/auth-service/coverage/
 
-ai_service:
+ai_service_test:
   stage: test
   needs: [ai_service_build]
   script:
@@ -45,7 +45,7 @@ ai_service:
       - test-reports/ai-service-junit.xml
       - services/ai-service/coverage/
 
-doctor_service:
+doctor_service_test:
   stage: test
   needs: [doctor_service_build]
   script:
@@ -63,7 +63,7 @@ doctor_service:
       - test-reports/doctor-service-junit.xml
       - services/doctor-service/coverage/
 
-appointment_service:
+appointment_service_test:
   stage: test
   needs: [appointment_service_build]
   script:
@@ -81,7 +81,7 @@ appointment_service:
       - test-reports/appointment-service-junit.xml
       - services/appointment-service/coverage/
 
-api_gateway:
+api_gateway_test:
   stage: test
   needs: [api_gateway_build]
   script:
