@@ -328,7 +328,7 @@ export default function BookAppointmentScreen({ route, navigation }: BookAppoint
             <DateTimePicker
               value={selectedDate}
               mode="date"
-              display="default"
+              display="spinner"
               onChange={handleDateChange}
               minimumDate={getMinDate()}
               maximumDate={getMaxDate()}
