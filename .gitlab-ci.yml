@@ -1,6 +1,7 @@
 image: node:18
 
 stages:
+  - build
   - test
 
 variables:
@@ -10,6 +11,7 @@ variables:
 # All jobs run in parallel since they're in the same stage
 auth_service:
   stage: test
+  needs: [auth_service_build]
   script:
     - cd services/auth-service
     - mkdir -p $CI_PROJECT_DIR/test-reports
@@ -27,6 +29,7 @@ auth_service:
 
 ai_service:
   stage: test
+  needs: [ai_service_build]
   script:
     - cd services/ai-service
     - mkdir -p $CI_PROJECT_DIR/test-reports
@@ -44,6 +47,7 @@ ai_service:
 
 doctor_service:
   stage: test
+  needs: [doctor_service_build]
   script:
     - cd services/doctor-service
     - mkdir -p $CI_PROJECT_DIR/test-reports
@@ -61,6 +65,7 @@ doctor_service:
 
 appointment_service:
   stage: test
+  needs: [appointment_service_build]
   script:
     - cd services/appointment-service
     - mkdir -p $CI_PROJECT_DIR/test-reports
@@ -78,6 +83,7 @@ appointment_service:
 
 api_gateway:
   stage: test
+  needs: [api_gateway_build]
   script:
     - cd api-gateway
     - mkdir -p $CI_PROJECT_DIR/test-reports
@@ -95,3 +101,41 @@ api_gateway:
 
 # Note: All jobs run in parallel within the 'test' stage since services are independent.
 # To speed up runs further, consider adding caching for node_modules across jobs.
+
+# --------------------
+# Build stage - attempt to run `npm run build` where defined
+# --------------------
+auth_service_build:
+  stage: build
+  script:
+    - cd services/auth-service
+    - npm ci --silent
+    - if npm run | grep -q " build"; then npm run build; else echo "no build script"; fi
+
+ai_service_build:
+  stage: build
+  script:
+    - cd services/ai-service
+    - npm ci --silent
+    - if npm run | grep -q " build"; then npm run build; else echo "no build script"; fi
+
+doctor_service_build:
+  stage: build
+  script:
+    - cd services/doctor-service
+    - npm ci --silent
+    - if npm run | grep -q " build"; then npm run build; else echo "no build script"; fi
+
+appointment_service_build:
+  stage: build
+  script:
+    - cd services/appointment-service
+    - npm ci --silent
+    - if npm run | grep -q " build"; then npm run build; else echo "no build script"; fi
+
+api_gateway_build:
+  stage: build
+  script:
+    - cd api-gateway
+    - npm ci --silent
+    - if npm run | grep -q " build"; then npm run build; else echo "no build script"; fi
