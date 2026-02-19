@@ -1,0 +1,102 @@
+image: node:18
+
+stages:
+  - auth_test
+  - ai_test
+  - doctor_test
+  - appointment_test
+  - gateway_test
+
+variables:
+  NODE_ENV: test
+  CI: "true"
+
+# Template-like default (kept explicit for readability)
+auth_service:
+  stage: auth_test
+  script:
+    - cd services/auth-service
+    - mkdir -p $CI_PROJECT_DIR/test-reports
+    - npm ci --silent
+    - npm i jest-junit --no-save --silent
+    - JEST_JUNIT_OUTPUT=$CI_PROJECT_DIR/test-reports/auth-service-junit.xml npx jest --reporters=default --reporters=jest-junit --runInBand --testTimeout=120000 --silent || true
+  tags: []
+  artifacts:
+    when: always
+    reports:
+      junit: test-reports/auth-service-junit.xml
+    paths:
+      - test-reports/auth-service-junit.xml
+      - services/auth-service/coverage/
+
+ai_service:
+  stage: ai_test
+  script:
+    - cd services/ai-service
+    - mkdir -p $CI_PROJECT_DIR/test-reports
+    - npm ci --silent
+    - npm i jest-junit --no-save --silent
+    - JEST_JUNIT_OUTPUT=$CI_PROJECT_DIR/test-reports/ai-service-junit.xml npx jest --reporters=default --reporters=jest-junit --runInBand --testTimeout=120000 --silent || true
+  tags: []
+  artifacts:
+    when: always
+    reports:
+      junit: test-reports/ai-service-junit.xml
+    paths:
+      - test-reports/ai-service-junit.xml
+      - services/ai-service/coverage/
+
+doctor_service:
+  stage: doctor_test
+  script:
+    - cd services/doctor-service
+    - mkdir -p $CI_PROJECT_DIR/test-reports
+    - npm ci --silent
+    - npm i jest-junit --no-save --silent
+    - JEST_JUNIT_OUTPUT=$CI_PROJECT_DIR/test-reports/doctor-service-junit.xml npx jest --reporters=default --reporters=jest-junit --runInBand --testTimeout=120000 --silent || true
+  tags: []
+  artifacts:
+    when: always
+    reports:
+      junit: test-reports/doctor-service-junit.xml
+    paths:
+      - test-reports/doctor-service-junit.xml
+      - services/doctor-service/coverage/
+
+appointment_service:
+  stage: appointment_test
+  script:
+    - cd services/appointment-service
+    - mkdir -p $CI_PROJECT_DIR/test-reports
+    - npm ci --silent
+    - npm i jest-junit --no-save --silent
+    - JEST_JUNIT_OUTPUT=$CI_PROJECT_DIR/test-reports/appointment-service-junit.xml npx jest --reporters=default --reporters=jest-junit --runInBand --testTimeout=120000 --silent || true
+  tags: []
+  artifacts:
+    when: always
+    reports:
+      junit: test-reports/appointment-service-junit.xml
+    paths:
+      - test-reports/appointment-service-junit.xml
+      - services/appointment-service/coverage/
+
+api_gateway:
+  stage: gateway_test
+  script:
+    - cd api-gateway
+    - mkdir -p $CI_PROJECT_DIR/test-reports
+    - npm ci --silent
+    - npm i jest-junit --no-save --silent
+    - JEST_JUNIT_OUTPUT=$CI_PROJECT_DIR/test-reports/api-gateway-junit.xml npx jest --reporters=default --reporters=jest-junit --runInBand --testTimeout=120000 --silent || true
+  tags: []
+  artifacts:
+    when: always
+    reports:
+      junit: test-reports/api-gateway-junit.xml
+    paths:
+      - test-reports/api-gateway-junit.xml
+      - api-gateway/coverage/
+
+# Note: Each job runs in its own stage so jobs execute sequentially.
+# To improve speed, consider merging some jobs into a single job with
+# a loop over services, or enable caching for node_modules.

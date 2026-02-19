@@ -2,14 +2,14 @@
  * Unit Tests for RAGService
  */
 
-const ragService = require('../../../src/services/ragService');
-const config = require('../../../src/config');
-
 // Mock dependencies
 jest.mock('groq-sdk');
 jest.mock('chromadb');
-jest.mock('@xenova/transformers');
+jest.mock('@xenova/transformers', () => ({ pipeline: jest.fn() }));
 jest.mock('../../../src/utils/logger');
+
+let ragService;
+const config = require('../../../src/config');
 
 const Groq = require('groq-sdk');
 const { ChromaClient } = require('chromadb');
@@ -51,6 +51,14 @@ describe('RAGService', () => {
     // Mock embedder
     mockEmbedder = jest.fn();
     pipeline.mockResolvedValue(mockEmbedder);
+    // Require ragService after mocks are configured so construction uses mocked
+    // implementations.
+    delete require.cache[require.resolve('../../../src/services/ragService')];
+    ragService = require('../../../src/services/ragService');
+    // Debug: ensure the groq client on the service points to our mock instance
+    // (kept short-lived — can be removed once tests are stable).
+    // eslint-disable-next-line no-console
+    console.log('DEBUG ragService.groq present:', !!ragService && !!ragService.groq && !!ragService.groq.chat);
   });
 
   describe('initialize', () => {
@@ -352,11 +360,21 @@ describe('RAGService', () => {
       };
 
       mockGroqInstance.chat.completions.create.mockResolvedValue(mockResponse);
+      if (ragService && ragService.groq && ragService.groq.chat && ragService.groq.chat.completions) {
+        ragService.groq.chat.completions.create.mockResolvedValue(mockResponse);
+      }
+
+      // Debugging: inspect that the mocked create function is present both
+      // on the mock instance and the service's groq client.
+      // eslint-disable-next-line no-console
+      console.log('DEBUG mockGroq create exists:', !!mockGroqInstance.chat && !!mockGroqInstance.chat.completions && typeof mockGroqInstance.chat.completions.create);
+      // eslint-disable-next-line no-console
+      console.log('DEBUG service groq create exists:', !!ragService.groq && !!ragService.groq.chat && !!ragService.groq.chat.completions && typeof ragService.groq.chat.completions.create);
 
       const response = await ragService.generateResponseWithRAG(query, context);
 
       expect(response).toContain('Diabetes is a chronic condition');
-      expect(mockGroqInstance.chat.completions.create).toHaveBeenCalledWith({
+      expect(ragService.groq.chat.completions.create).toHaveBeenCalledWith({
         model: config.groq.model,
         messages: expect.arrayContaining([
           expect.objectContaining({ role: 'system' }),
@@ -382,10 +400,15 @@ describe('RAGService', () => {
       mockGroqInstance.chat.completions.create.mockResolvedValue({
         choices: [{ message: { content: 'Response about hypertension' } }]
       });
+      if (ragService && ragService.groq && ragService.groq.chat && ragService.groq.chat.completions) {
+        ragService.groq.chat.completions.create.mockResolvedValue({
+          choices: [{ message: { content: 'Response about hypertension' } }]
+        });
+      }
 
       await ragService.generateResponseWithRAG(query);
 
-      expect(mockGroqInstance.chat.completions.create).toHaveBeenCalledWith(
+      expect(ragService.groq.chat.completions.create).toHaveBeenCalledWith(
         expect.objectContaining({
           messages: expect.arrayContaining([
             expect.objectContaining({
@@ -410,6 +433,11 @@ describe('RAGService', () => {
       mockGroqInstance.chat.completions.create.mockResolvedValue({
         choices: [{ message: { content: 'General response' } }]
       });
+      if (ragService && ragService.groq && ragService.groq.chat && ragService.groq.chat.completions) {
+        ragService.groq.chat.completions.create.mockResolvedValue({
+          choices: [{ message: { content: 'General response' } }]
+        });
+      }
 
       const response = await ragService.generateResponseWithRAG(query);
 
@@ -427,10 +455,15 @@ describe('RAGService', () => {
       mockGroqInstance.chat.completions.create.mockResolvedValue({
         choices: [{ message: { content: 'Response' } }]
       });
+      if (ragService && ragService.groq && ragService.groq.chat && ragService.groq.chat.completions) {
+        ragService.groq.chat.completions.create.mockResolvedValue({
+          choices: [{ message: { content: 'Response' } }]
+        });
+      }
 
       await ragService.generateResponseWithRAG('test');
 
-      expect(mockGroqInstance.chat.completions.create).toHaveBeenCalledWith(
+      expect(ragService.groq.chat.completions.create).toHaveBeenCalledWith(
         expect.objectContaining({
           messages: expect.arrayContaining([
             expect.objectContaining({
@@ -453,6 +486,9 @@ describe('RAGService', () => {
       mockGroqInstance.chat.completions.create.mockRejectedValue(
         new Error('API Error')
       );
+      if (ragService && ragService.groq && ragService.groq.chat && ragService.groq.chat.completions) {
+        ragService.groq.chat.completions.create.mockRejectedValue(new Error('API Error'));
+      }
 
       await expect(ragService.generateResponseWithRAG('test')).rejects.toThrow(
         'API Error'
@@ -470,6 +506,11 @@ describe('RAGService', () => {
       mockGroqInstance.chat.completions.create.mockResolvedValue({
         choices: [{ message: { content: 'Response' } }]
       });
+      if (ragService && ragService.groq && ragService.groq.chat && ragService.groq.chat.completions) {
+        ragService.groq.chat.completions.create.mockResolvedValue({
+          choices: [{ message: { content: 'Response' } }]
+        });
+      }
 
       const response = await ragService.generateResponseWithRAG('test', []);
 

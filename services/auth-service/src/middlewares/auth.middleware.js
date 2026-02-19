@@ -3,7 +3,11 @@
  * Verifies JWT tokens and protects routes
  */
 
-const { verifyAccessToken } = require('../utils/jwt.util');
+function getJwtUtil() {
+  // Require at runtime so tests can mock the module before use
+  // eslint-disable-next-line global-require
+  return require('../utils/jwt.util');
+}
 const { APIError } = require('./error.middleware');
 const logger = require('../utils/logger.util');
 
@@ -21,7 +25,8 @@ function authenticate(req, res, next) {
 
     const token = authHeader.split(' ')[1];
 
-    // Verify token
+    // Verify token (require jwt util at runtime to respect test mocks)
+    const { verifyAccessToken } = getJwtUtil();
     const { valid, decoded, error } = verifyAccessToken(token);
 
     if (!valid) {

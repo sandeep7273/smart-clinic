@@ -2,7 +2,7 @@
  * Unit Tests for Database Configuration
  */
 
-const mongoose = require('mongoose');
+let mongoose;
 
 // Mock dependencies
 jest.mock('mongoose', () => ({
@@ -28,8 +28,8 @@ jest.mock('../../../src/config/env', () => ({
   isTest: jest.fn(() => false),
 }));
 
-const logger = require('../../../src/utils/logger.util');
-const config = require('../../../src/config/env');
+let logger;
+let config;
 
 describe('Database Configuration - Unit Tests', () => {
   let database;
@@ -49,6 +49,29 @@ describe('Database Configuration - Unit Tests', () => {
     process.on = jest.fn();
     
     // Require fresh instance
+    // Re-require mocked modules and ensure mocked functions exist (defensive)
+    // Re-require logger and config so we have the fresh mocked instances
+    // eslint-disable-next-line global-require
+    logger = require('../../../src/utils/logger.util');
+    // eslint-disable-next-line global-require
+    config = require('../../../src/config/env');
+    // Re-require mongoose
+    // eslint-disable-next-line global-require
+    const mongooseFresh = require('mongoose');
+    // Update outer reference so tests use the fresh mocked module
+    mongoose = mongooseFresh;
+    // Replace with jest.fn() if not already a mock function
+    if (!mongooseFresh.connect || !mongooseFresh.connect._isMockFunction) {
+      mongooseFresh.connect = jest.fn();
+    }
+    mongooseFresh.connection = mongooseFresh.connection || {};
+    if (!mongooseFresh.connection.close || !mongooseFresh.connection.close._isMockFunction) {
+      mongooseFresh.connection.close = jest.fn();
+    }
+    if (!mongooseFresh.connection.on || !mongooseFresh.connection.on._isMockFunction) {
+      mongooseFresh.connection.on = jest.fn();
+    }
+
     database = require('../../../src/config/database');
   });
 

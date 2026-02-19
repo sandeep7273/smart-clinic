@@ -1,21 +1,21 @@
 /**
  * Unit Tests for ChatService
  */
-
-const chatService = require('../../../src/services/chatService');
-const intentDetectionService = require('../../../src/services/intentDetectionService');
-const ragService = require('../../../src/services/ragService');
-const doctorClient = require('../../../src/grpc/doctorClient');
-const appointmentClient = require('../../../src/grpc/appointmentClient');
-const redisClient = require('../../../src/config/redis');
-
-// Mock dependencies
+// Mock dependencies before requiring modules so hoisted mocks prevent
+// loading ESM-only dependencies during tests.
 jest.mock('../../../src/services/intentDetectionService');
 jest.mock('../../../src/services/ragService');
 jest.mock('../../../src/grpc/doctorClient');
 jest.mock('../../../src/grpc/appointmentClient');
 jest.mock('../../../src/config/redis');
 jest.mock('../../../src/utils/logger');
+
+let chatService;
+const intentDetectionService = require('../../../src/services/intentDetectionService');
+const ragService = require('../../../src/services/ragService');
+const doctorClient = require('../../../src/grpc/doctorClient');
+const appointmentClient = require('../../../src/grpc/appointmentClient');
+const redisClient = require('../../../src/config/redis');
 
 describe('ChatService', () => {
   const mockAuthToken = 'Bearer test-token';
@@ -27,6 +27,11 @@ describe('ChatService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Require ChatService after mocks are cleared and configured so that
+    // hoisted jest.mock calls prevent loading ESM-only dependencies from
+    // `ragService` during module initialization.
+    delete require.cache[require.resolve('../../../src/services/chatService')];
+    chatService = require('../../../src/services/chatService');
     
     // Default Redis mocks
     redisClient.getContext.mockResolvedValue(mockContext);

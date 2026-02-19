@@ -2,13 +2,7 @@
  * Unit Tests for Rate Limit Middleware
  */
 
-const {
-  generalLimiter,
-  authLimiter,
-  registerLimiter,
-} = require('../../../src/middlewares/rateLimit.middleware');
-
-// Mock dependencies
+// Mock dependencies (must be hoisted before requiring the middleware)
 jest.mock('../../../src/utils/logger.util', () => ({
   warn: jest.fn(),
   error: jest.fn(),
@@ -21,6 +15,12 @@ jest.mock('../../../src/config/env', () => ({
     maxRequests: 100,
   },
 }));
+
+const {
+  generalLimiter,
+  authLimiter,
+  registerLimiter,
+} = require('../../../src/middlewares/rateLimit.middleware');
 
 const logger = require('../../../src/utils/logger.util');
 

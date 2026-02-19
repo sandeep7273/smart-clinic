@@ -139,6 +139,9 @@ userSchema.methods.cleanExpiredTokens = function () {
   this.refreshTokens = this.refreshTokens.filter((rt) => rt.expiresAt > now);
 };
 
+// Backwards-compatible alias for tests/older code
+userSchema.methods.cleanupExpiredTokens = userSchema.methods.cleanExpiredTokens;
+
 // Method to get user public profile (without sensitive data)
 userSchema.methods.toPublicJSON = function () {
   return {

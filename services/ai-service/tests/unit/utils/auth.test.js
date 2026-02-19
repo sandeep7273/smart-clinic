@@ -2,14 +2,14 @@
  * Unit Tests for Auth Utility
  */
 
+// Mock dependencies before imports
+jest.mock('axios');
+jest.mock('../../../src/utils/logger');
+
 const axios = require('axios');
 const { validateToken, extractTokenFromHeader } = require('../../../src/utils/auth');
 const config = require('../../../src/config');
 const { UnauthorizedError } = require('../../../src/utils/errors');
-
-// Mock dependencies
-jest.mock('axios');
-jest.mock('../../../src/utils/logger');
 
 describe('Auth Utility', () => {
   beforeEach(() => {

@@ -2,12 +2,12 @@
  * Unit Tests for Redis Client
  */
 
-const Redis = require('ioredis');
-const config = require('../../../src/config');
-
-// Mock dependencies
+// Mock dependencies before requiring modules
 jest.mock('ioredis');
 jest.mock('../../../src/utils/logger');
+
+const Redis = require('ioredis');
+let config;
 
 describe('RedisClient', () => {
   let redisClient;
@@ -15,7 +15,7 @@ describe('RedisClient', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.resetModules();
+    // Avoid resetting modules here to keep jest.mock mocks stable
 
     // Mock Redis instance
     mockRedisInstance = {
@@ -30,7 +30,8 @@ describe('RedisClient', () => {
 
     Redis.mockImplementation(() => mockRedisInstance);
 
-    // Require fresh instance
+    // Require fresh config and instance after mocks
+    config = require('../../../src/config');
     redisClient = require('../../../src/config/redis');
   });
 

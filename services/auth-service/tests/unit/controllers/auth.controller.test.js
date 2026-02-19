@@ -33,6 +33,46 @@ jest.mock('../../../src/utils/logger.util', () => ({
   debug: jest.fn(),
 }));
 
+// Mock mongoose to avoid real DB connections/indexing during unit tests
+jest.mock('mongoose', () => {
+  const m = {
+    connect: jest.fn().mockResolvedValue(undefined),
+    disconnect: jest.fn().mockResolvedValue(undefined),
+    connection: { close: jest.fn().mockResolvedValue(undefined), on: jest.fn(), once: jest.fn() },
+    Schema: function () {
+      const s = {};
+      s.index = jest.fn();
+      s.plugin = jest.fn();
+      s.pre = jest.fn();
+      s.post = jest.fn();
+      s.methods = {};
+      s.statics = {};
+      s.virtual = jest.fn().mockReturnValue({ get: jest.fn(), set: jest.fn() });
+      s.set = jest.fn();
+      return s;
+    },
+    model: jest.fn().mockImplementation(() => {
+      const modelFn = function (doc) { Object.assign(this, doc); };
+      modelFn.findOne = jest.fn().mockResolvedValue(null);
+      modelFn.find = jest.fn().mockResolvedValue([]);
+      modelFn.create = jest.fn().mockImplementation(async (doc) => {
+        const instance = new modelFn(doc);
+        instance.save = jest.fn().mockResolvedValue(instance);
+        return instance;
+      });
+      modelFn.findOneAndUpdate = jest.fn().mockImplementation(async (query, update) => ({ ...query, ...update }));
+      modelFn.updateOne = jest.fn().mockResolvedValue({ nModified: 1 });
+      modelFn.deleteOne = jest.fn().mockResolvedValue({ deletedCount: 1 });
+      modelFn.deleteMany = jest.fn().mockResolvedValue({});
+      modelFn.prototype.save = jest.fn().mockResolvedValue();
+      return modelFn;
+    }),
+    Types: { ObjectId: { isValid: jest.fn().mockReturnValue(true) } },
+    set: jest.fn(),
+  };
+  return m;
+});
+
 describe('Auth Controller - Unit Tests', () => {
   beforeEach(async () => {
     await User.deleteMany({});

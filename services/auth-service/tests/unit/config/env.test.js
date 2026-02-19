@@ -306,7 +306,8 @@ describe('Environment Configuration - Unit Tests', () => {
       delete process.env.JWT_ACCESS_SECRET;
       delete process.env.JWT_REFRESH_SECRET;
 
-      require('../../../src/config/env');
+      const config = require('../../../src/config/env');
+      config.validateConfig();
 
       expect(console.warn).toHaveBeenCalled();
     });
@@ -317,7 +318,8 @@ describe('Environment Configuration - Unit Tests', () => {
       delete process.env.JWT_REFRESH_SECRET;
       delete process.env.MONGODB_URI;
 
-      require('../../../src/config/env');
+      const config = require('../../../src/config/env');
+      config.validateConfig();
 
       expect(console.error).toHaveBeenCalled();
       expect(process.exit).toHaveBeenCalledWith(1);
@@ -327,7 +329,8 @@ describe('Environment Configuration - Unit Tests', () => {
       process.env.NODE_ENV = 'development';
       delete process.env.JWT_ACCESS_SECRET;
 
-      require('../../../src/config/env');
+      const config = require('../../../src/config/env');
+      config.validateConfig();
 
       expect(process.exit).not.toHaveBeenCalled();
     });
@@ -336,7 +339,8 @@ describe('Environment Configuration - Unit Tests', () => {
       process.env.NODE_ENV = 'production';
       delete process.env.JWT_ACCESS_SECRET;
 
-      require('../../../src/config/env');
+      const config = require('../../../src/config/env');
+      config.validateConfig();
 
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Configuration validation failed')
@@ -348,7 +352,8 @@ describe('Environment Configuration - Unit Tests', () => {
       process.env.JWT_ACCESS_SECRET = 'valid_secret';
       delete process.env.JWT_REFRESH_SECRET;
 
-      require('../../../src/config/env');
+      const config = require('../../../src/config/env');
+      config.validateConfig();
 
       expect(console.error).toHaveBeenCalled();
     });
@@ -359,7 +364,8 @@ describe('Environment Configuration - Unit Tests', () => {
       process.env.JWT_REFRESH_SECRET = 'valid_secret';
       delete process.env.MONGODB_URI;
 
-      require('../../../src/config/env');
+      const config = require('../../../src/config/env');
+      config.validateConfig();
 
       expect(console.error).toHaveBeenCalled();
     });

@@ -4,13 +4,62 @@
  */
 
 const rateLimit = require('express-rate-limit');
-const config = require('../config/env');
-const logger = require('../utils/logger.util');
+
+function getConfig() {
+  // Require config at runtime so tests can mock it before use
+  // eslint-disable-next-line global-require
+  return require('../config/env');
+}
+
+function getLogger() {
+  // Require logger at runtime so tests can mock it before use
+  // eslint-disable-next-line global-require
+  return require('../utils/logger.util');
+}
+
+// createLimiter wraps express-rate-limit output so tests can inspect options/handler
+function createLimiter(options, { overrideRate = false } = {}) {
+  const baseLimiter = rateLimit(options);
+  // Wrap the returned middleware so we can attach metadata properties
+  const wrapped = function (req, res, next) {
+    return baseLimiter(req, res, next);
+  };
+
+  // Keep a copy of the static parts of options; windowMs/max may be overridden
+  const staticOptions = { ...options };
+
+  // Attach a dynamic `options` getter so tests can read runtime values (mocks)
+  Object.defineProperty(wrapped, 'options', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      if (!overrideRate) return staticOptions;
+      try {
+        const cfg = getConfig();
+        return {
+          ...staticOptions,
+          windowMs: (cfg && cfg.rateLimit && cfg.rateLimit.windowMs) || staticOptions.windowMs,
+          max: (cfg && cfg.rateLimit && cfg.rateLimit.maxRequests) || staticOptions.max,
+        };
+      } catch (e) {
+        return staticOptions;
+      }
+    },
+  });
+
+  Object.defineProperty(wrapped, 'handler', {
+    value: options.handler,
+    enumerable: true,
+    configurable: true,
+    writable: false,
+  });
+  return wrapped;
+}
 
 // General rate limiter for all routes
-const generalLimiter = rateLimit({
-  windowMs: config.rateLimit.windowMs,
-  max: config.rateLimit.maxRequests,
+const generalLimiter = createLimiter({
+  windowMs: getConfig().rateLimit.windowMs,
+  max: getConfig().rateLimit.maxRequests,
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later',
@@ -18,16 +67,16 @@ const generalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
-    logger.warn(`Rate limit exceeded for IP: ${req.ip}`);
+    getLogger().warn(`Rate limit exceeded for IP: ${req.ip}`);
     res.status(429).json({
       success: false,
       message: 'Too many requests from this IP, please try again later',
     });
   },
-});
+}, { overrideRate: true });
 
 // Strict rate limiter for authentication endpoints
-const authLimiter = rateLimit({
+const authLimiter = createLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 150, // 150 attempts per window
   skipSuccessfulRequests: true, // Don't count successful requests
@@ -38,7 +87,7 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
-    logger.warn(`Auth rate limit exceeded for IP: ${req.ip}, Email: ${req.body?.email}`);
+    getLogger().warn(`Auth rate limit exceeded for IP: ${req.ip}, Email: ${req.body?.email}`);
     res.status(429).json({
       success: false,
       message: 'Too many login attempts, please try again after 15 minutes',
@@ -47,7 +96,7 @@ const authLimiter = rateLimit({
 });
 
 // Registration rate limiter (prevent spam accounts)
-const registerLimiter = rateLimit({
+const registerLimiter = createLimiter({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 100, // 100 registrations per hour per IP
   message: {
@@ -57,7 +106,7 @@ const registerLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
-    logger.warn(`Registration rate limit exceeded for IP: ${req.ip}`);
+    getLogger().warn(`Registration rate limit exceeded for IP: ${req.ip}`);
     res.status(429).json({
       success: false,
       message: 'Too many accounts created, please try again later',

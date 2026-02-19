@@ -2,17 +2,17 @@
  * Unit Tests for Auth Middleware
  */
 
-const { authenticate, authorize } = require('../../../src/middlewares/auth.middleware');
-const { verifyAccessToken } = require('../../../src/utils/jwt.util');
-const { APIError } = require('../../../src/middlewares/error.middleware');
-
-// Mock dependencies
+// Mock dependencies (hoist mocks before requiring modules)
 jest.mock('../../../src/utils/jwt.util');
 jest.mock('../../../src/utils/logger.util', () => ({
   warn: jest.fn(),
   error: jest.fn(),
   info: jest.fn(),
 }));
+
+const { authenticate, authorize } = require('../../../src/middlewares/auth.middleware');
+const jwtUtil = require('../../../src/utils/jwt.util');
+const { APIError } = require('../../../src/middlewares/error.middleware');
 
 describe('Auth Middleware - Unit Tests', () => {
   let req, res, next;
@@ -39,7 +39,7 @@ describe('Auth Middleware - Unit Tests', () => {
       };
 
       req.headers.authorization = 'Bearer valid-token-here';
-      verifyAccessToken.mockReturnValue({
+      jwtUtil.verifyAccessToken.mockReturnValue({
         valid: true,
         decoded: mockDecoded,
         error: null,
@@ -47,7 +47,7 @@ describe('Auth Middleware - Unit Tests', () => {
 
       authenticate(req, res, next);
 
-      expect(verifyAccessToken).toHaveBeenCalledWith('valid-token-here');
+      expect(jwtUtil.verifyAccessToken).toHaveBeenCalledWith('valid-token-here');
       expect(req.user).toEqual(mockDecoded);
       expect(next).toHaveBeenCalledWith();
       expect(next).toHaveBeenCalledTimes(1);
@@ -75,7 +75,7 @@ describe('Auth Middleware - Unit Tests', () => {
 
     it('should reject request with invalid token', () => {
       req.headers.authorization = 'Bearer invalid-token';
-      verifyAccessToken.mockReturnValue({
+      jwtUtil.verifyAccessToken.mockReturnValue({
         valid: false,
         decoded: null,
         error: 'Token verification failed',
@@ -91,7 +91,7 @@ describe('Auth Middleware - Unit Tests', () => {
 
     it('should reject request with expired token', () => {
       req.headers.authorization = 'Bearer expired-token';
-      verifyAccessToken.mockReturnValue({
+      jwtUtil.verifyAccessToken.mockReturnValue({
         valid: false,
         decoded: null,
         error: 'Token expired',
@@ -125,7 +125,7 @@ describe('Auth Middleware - Unit Tests', () => {
     it('should extract token correctly from Bearer header', () => {
       const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.signature';
       req.headers.authorization = `Bearer ${token}`;
-      verifyAccessToken.mockReturnValue({
+      jwtUtil.verifyAccessToken.mockReturnValue({
         valid: true,
         decoded: { userId: '123' },
         error: null,
@@ -133,12 +133,12 @@ describe('Auth Middleware - Unit Tests', () => {
 
       authenticate(req, res, next);
 
-      expect(verifyAccessToken).toHaveBeenCalledWith(token);
+      expect(jwtUtil.verifyAccessToken).toHaveBeenCalledWith(token);
     });
 
     it('should handle verification error without custom message', () => {
       req.headers.authorization = 'Bearer invalid-token';
-      verifyAccessToken.mockReturnValue({
+      jwtUtil.verifyAccessToken.mockReturnValue({
         valid: false,
         decoded: null,
         error: null,
@@ -259,7 +259,7 @@ describe('Auth Middleware - Unit Tests', () => {
       };
 
       req.headers.authorization = 'Bearer valid-token';
-      verifyAccessToken.mockReturnValue({
+      jwtUtil.verifyAccessToken.mockReturnValue({
         valid: true,
         decoded: mockDecoded,
         error: null,

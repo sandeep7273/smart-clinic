@@ -19,7 +19,11 @@ const validateToken = async (token) => {
       },
       timeout: 5000,
     });
-    console.log('debugging Token validation response:', response.data); 
+
+    // If response shape is unexpected, return undefined instead of throwing
+    if (!response || !response.data) {
+      return undefined;
+    }
 
     return response.data.data;
   } catch (error) {

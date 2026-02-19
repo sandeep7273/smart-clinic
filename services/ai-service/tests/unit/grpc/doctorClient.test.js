@@ -2,15 +2,15 @@
  * Unit Tests for Doctor gRPC Client
  */
 
+// Mock dependencies before imports
+jest.mock('@grpc/grpc-js');
+jest.mock('@grpc/proto-loader');
+jest.mock('../../../src/utils/logger');
+
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 const path = require('path');
 const config = require('../../../src/config');
-
-// Mock dependencies
-jest.mock('@grpc/grpc-js');
-jest.mock('@grpc/proto-loader');
-jest.mock('../../../src/utils/logger');
 
 describe('DoctorGrpcClient', () => {
   let doctorClient;
@@ -18,7 +18,7 @@ describe('DoctorGrpcClient', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.resetModules();
+    // Keep module mocks stable by not resetting modules here
 
     // Mock gRPC client methods
     mockGrpcClient = {

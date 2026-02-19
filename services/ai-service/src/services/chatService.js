@@ -176,6 +176,7 @@ class ChatService {
         totalCount = doctors.length;
         logger.info(`Using cached doctors for filters: ${cacheKey}`);
       } else {
+        let doctorServiceError = false;
         // Call doctor service via gRPC using SearchDoctors
         try {
           const response = await doctorClient.searchDoctors(
@@ -191,7 +192,15 @@ class ChatService {
           }
         } catch (error) {
           logger.error('Error calling doctor service:', error);
+          doctorServiceError = true;
           doctors = [];
+        }
+        if (doctorServiceError) {
+          return {
+            message: 'I can help you search for doctors. What type of specialist do you need?',
+            actionType: 'NONE',
+            payload: {}
+          };
         }
       }
 
@@ -252,7 +261,12 @@ class ChatService {
           }
         } catch (error) {
           logger.error('Error calling appointment service:', error);
-          appointments = [];
+          // If the appointment service errors out, return a helpful message
+          return {
+            message: 'I can help you view your appointments. Let me check...',
+            actionType: 'SHOW_APPOINTMENTS',
+            payload: {}
+          };
         }
       }
 

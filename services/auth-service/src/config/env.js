@@ -3,7 +3,10 @@
  * Loads and validates environment variables
  */
 
-require('dotenv').config();
+// Load .env file except during tests (Jest sets JEST_WORKER_ID)
+if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
+  require('dotenv').config();
+}
 
 const config = {
   // App
@@ -71,6 +74,12 @@ function validateConfig() {
 
   if (!config.mongodb.uri) {
     errors.push('MONGODB_URI is not set');
+  }
+
+  // In production treat the local default MongoDB URI as missing (encourage explicit config)
+  const defaultLocalUri = 'mongodb://localhost:27017/smart_appointment_auth';
+  if (config.isProduction() && config.mongodb.uri === defaultLocalUri) {
+    errors.push('MONGODB_URI is using a local default value and is not suitable for production');
   }
 
   if (config.isProduction() && errors.length > 0) {

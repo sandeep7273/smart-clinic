@@ -2,13 +2,12 @@
  * Unit Tests for IntentDetectionService
  */
 
-const intentDetectionService = require('../../../src/services/intentDetectionService');
-const config = require('../../../src/config');
-
-// Mock Groq SDK
-jest.mock('groq-sdk');
+// Mock Groq SDK and logger before imports
+jest.mock('groq-sdk', () => jest.fn());
 jest.mock('../../../src/utils/logger');
 
+let intentDetectionService;
+const config = require('../../../src/config');
 const Groq = require('groq-sdk');
 
 describe('IntentDetectionService', () => {
@@ -16,7 +15,7 @@ describe('IntentDetectionService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+    jest.resetModules();
     mockGroqInstance = {
       chat: {
         completions: {
@@ -26,6 +25,11 @@ describe('IntentDetectionService', () => {
     };
     
     Groq.mockImplementation(() => mockGroqInstance);
+
+    // Require service after configuring Groq mock so the instance uses the mocked client
+    intentDetectionService = require('../../../src/services/intentDetectionService');
+    // Force the service to use our mocked Groq instance (defensive)
+    intentDetectionService.groq = mockGroqInstance;
   });
 
   describe('detectIntent', () => {
