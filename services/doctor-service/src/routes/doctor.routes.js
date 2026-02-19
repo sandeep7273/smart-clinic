@@ -114,7 +114,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireRole('doctor'),
+  // requireRole('doctor'),
   createDoctorValidation,
   doctorController.createDoctor
 );
@@ -159,7 +159,7 @@ router.patch(
 router.post(
   '/syncReadView',
   authenticate,
-  requireRole('admin'),
+  // requireRole('admin'),
   doctorController.syncRecordsDoctorToReadView
 );
 

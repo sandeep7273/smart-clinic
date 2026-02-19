@@ -59,7 +59,10 @@ class AIServiceServer {
         useNewUrlParser: true,
         useUnifiedTopology: true
       });
-      logger.info('MongoDB connected successfully');
+      logger.info('MongoDB connected successfully', {
+        database: mongoose.connection.name,
+        host: mongoose.connection.host,
+      });
     } catch (error) {
       logger.error('MongoDB connection error:', error);
       throw error;

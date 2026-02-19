@@ -20,7 +20,10 @@ async function connectDatabase() {
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
     });
-
+    logger.info('MongoDB connected successfully', {
+        database: mongoose.connection.name,
+        host: mongoose.connection.host,
+    });
     logger.info(`✅ MongoDB connected: ${mongoose.connection.host}`);
 
     // Handle connection events

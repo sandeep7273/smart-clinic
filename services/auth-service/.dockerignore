@@ -1,7 +1,6 @@
 # Dependencies
 node_modules
 npm-debug.log
-package-lock.json
 yarn.lock
 
 # Environment files
@@ -29,8 +28,12 @@ Thumbs.db
 .gitignore
 
 # Test files
+tests
 coverage
 .nyc_output
+jest.config.js
+jest-mongodb-config.js
+globalConfig.json
 
 # Documentation
 *.md

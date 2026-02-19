@@ -2,7 +2,7 @@
  * Jest Test Setup - Doctor Service
  */
 
-process.env.NODE_ENV = 'test';
+process.env.NODE_ENV = 'production';
 process.env.MONGODB_URI = process.env.MONGO_URL || 'mongodb://localhost:27017/test_doctor';
 process.env.PORT = '4002';
 process.env.GRPC_PORT = '50052';
