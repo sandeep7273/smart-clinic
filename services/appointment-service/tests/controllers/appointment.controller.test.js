@@ -5,7 +5,7 @@ const { AppointmentReadView } = require('../../src/models/AppointmentReadView');
 const { AppointmentEvent } = require('../../src/models/AppointmentEvent');
 const SagaOrchestrator = require('../../src/services/sagaOrchestrator');
 const eventProducer = require('../../src/utils/eventProducer');
-const { NotFoundError, ConflictError } = require('../../../src/utils/errors');
+const { NotFoundError, ConflictError } = require('../../src/utils/errors');
 
 jest.mock('../../src/models/Appointment');
 jest.mock('../../src/models/AppointmentReadView');

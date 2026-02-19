@@ -1,21 +1,22 @@
 
-const { OutboxEvent } = require('../../src/models/OutboxEvent');
-const { publishEvent, publishEventDirect, processOutboxEvents } = require('../../../src/utils/eventProducer');
-const { Kafka } = require('kafkajs');
-
-jest.mock('../../../src/models/OutboxEvent');
-jest.mock('kafkajs');
-
-const mockKafka = {
-    producer: jest.fn(() => ({
-      connect: jest.fn(),
-      disconnect: jest.fn(),
-      send: jest.fn(),
-    })),
+jest.mock('../../src/models/OutboxEvent');
+jest.mock('kafkajs', () => {
+  const mockProducer = {
+    connect: jest.fn().mockResolvedValue(undefined),
+    disconnect: jest.fn().mockResolvedValue(undefined),
+    send: jest.fn().mockResolvedValue(undefined),
   };
   
-Kafka.mockImplementation(() => mockKafka);
-  
+  return {
+    Kafka: jest.fn(() => ({
+      producer: jest.fn(() => mockProducer),
+    })),
+  };
+});
+
+const { OutboxEvent } = require('../../src/models/OutboxEvent');
+const { publishEvent, publishEventDirect, processOutboxEvents } = require('../../src/utils/eventProducer');
+const { Kafka } = require('kafkajs');
 
 describe('Event Producer', () => {
   describe('publishEvent', () => {
@@ -42,10 +43,6 @@ describe('Event Producer', () => {
       ];
       OutboxEvent.getPendingEvents.mockResolvedValue(mockEvents);
       OutboxEvent.markPublished.mockResolvedValue(true);
-      
-      const producer = { send: jest.fn() };
-      mockKafka.producer.mockReturnValue(producer);
-
 
       const count = await processOutboxEvents();
 
