@@ -134,9 +134,9 @@ check_prerequisites() {
         exit 1
     fi
     
-    # Check if docker-compose is available
-    if ! command -v docker-compose &> /dev/null; then
-        print_error "docker-compose is not installed. Please install it and try again."
+    # Check if docker compose is available
+    if ! command -v docker compose &> /dev/null; then
+        print_error "docker compose is not installed. Please install it and try again."
         exit 1
     fi
     
@@ -148,7 +148,7 @@ cleanup() {
     print_header "Cleaning Up Existing Deployment"
     
     print_info "Stopping and removing containers..."
-    docker-compose down -v 2>/dev/null || true
+    docker compose down -v 2>/dev/null || true
     
     print_info "Removing dangling images..."
     docker image prune -f
@@ -218,9 +218,9 @@ verify_images() {
 start_services() {
     print_header "Starting Services"
     
-    print_info "Starting all services with docker-compose..."
+    print_info "Starting all services with docker compose..."
     
-    if docker-compose up $DETACH; then
+    if docker compose up $DETACH; then
         print_success "Services started successfully"
     else
         print_error "Failed to start services"
@@ -239,7 +239,7 @@ wait_for_health() {
     local check_interval=5
     
     while [ $elapsed -lt $max_wait ]; do
-        local unhealthy=$(docker-compose ps | grep -E "unhealthy|starting" | wc -l)
+        local unhealthy=$(docker compose ps | grep -E "unhealthy|starting" | wc -l)
         
         if [ "$unhealthy" -eq 0 ]; then
             print_success "All services are healthy"
@@ -251,14 +251,14 @@ wait_for_health() {
         print_info "Still waiting... ($elapsed/$max_wait seconds)"
     done
     
-    print_warning "Some services may still be starting. Check with: docker-compose ps"
+    print_warning "Some services may still be starting. Check with: docker compose ps"
 }
 
 # Function to display service status
 show_status() {
     print_header "Service Status"
     
-    docker-compose ps
+    docker compose ps
     
     echo ""
     print_info "Service Endpoints:"
@@ -302,7 +302,7 @@ show_deployment_logs() {
     print_info "Showing logs for all services (Press Ctrl+C to exit)..."
     echo ""
     
-    docker-compose logs -f
+    docker compose logs -f
 }
 
 # Main execution flow
@@ -341,10 +341,10 @@ main() {
         print_success "🎉 Deployment Complete!"
         echo ""
         print_info "Useful commands:"
-        echo "  • View logs:        docker-compose logs -f"
-        echo "  • Stop services:    docker-compose down"
-        echo "  • Restart service:  docker-compose restart <service-name>"
-        echo "  • Check status:     docker-compose ps"
+        echo "  • View logs:        docker compose logs -f"
+        echo "  • Stop services:    docker compose down"
+        echo "  • Restart service:  docker compose restart <service-name>"
+        echo "  • Check status:     docker compose ps"
         echo ""
         
         # Show logs if requested
