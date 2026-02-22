@@ -25,7 +25,7 @@ const validateToken = async (token) => {
   } catch (error) {
     logger.error('Token validation failed', {
       error: error.message,
-      authServiceUrl: config.authServiceUrl,
+      apiGatewayUrl: config.apiGatewayUrl,
     });
     
     if (error.response?.status === 401) {

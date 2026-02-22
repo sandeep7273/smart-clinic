@@ -14,8 +14,6 @@ const config = {
   // MongoDB Configuration
   mongodbUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/doctor_db',
 
-  // Auth Service Configuration
-  authServiceUrl: process.env.AUTH_SERVICE_URL || 'http://localhost:3000/api',
   // API Gate configuration (for service-to-service communication)
   apiGatewayUrl: process.env.API_GATEWAY_URL || 'http://localhost:3000',
 
@@ -38,7 +36,7 @@ const config = {
 };
 
 // Validate required configuration
-const requiredConfig = ['mongodbUri', 'authServiceUrl'];
+const requiredConfig = ['mongodbUri', 'apiGatewayUrl'];
 const missingConfig = requiredConfig.filter(key => !config[key]);
 
 if (missingConfig.length > 0) {

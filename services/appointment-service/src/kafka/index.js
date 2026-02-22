@@ -9,7 +9,7 @@ const logger = require('../utils/logger');
 // Kafka configuration
 const kafka = new Kafka({
   clientId: 'appointment-service',
-  brokers: [process.env.KAFKA_BROKER_URL || 'localhost:9092'],
+  brokers: process.env.KAFKA_BROKERS ? process.env.KAFKA_BROKERS.split(',') : ['localhost:9092'],
   connectionTimeout: 3000,
   requestTimeout: 30000,
   retry: {

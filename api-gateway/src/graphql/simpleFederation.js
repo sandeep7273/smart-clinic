@@ -12,16 +12,43 @@ const { createAppointmentServiceSchema, checkAppointmentServiceAvailability } = 
 const { createAIServiceSchema, checkAIServiceAvailability } = require('./aiServiceProxy');
 
 /**
- * Stitch remote schemas from microservices
+ * Wait for a service to become available with retries
+ */
+const waitForService = async (checkFn, serviceName, maxRetries = 10, delayMs = 2000) => {
+  for (let i = 0; i < maxRetries; i++) {
+    const available = await checkFn();
+    if (available) {
+      logger.info(`✅ ${serviceName} is ready (attempt ${i + 1}/${maxRetries})`);
+      return true;
+    }
+    
+    if (i < maxRetries - 1) {
+      logger.info(`⏳ Waiting for ${serviceName} to be ready... (attempt ${i + 1}/${maxRetries})`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+  
+  logger.warn(`⚠️ ${serviceName} not available after ${maxRetries} attempts`);
+  return false;
+};
+
+/**
+ * Stitch remote schemas from microservices with retry logic
  */
 const stitchRemoteSchemas = async (config) => {
   try {
-    logger.info('Starting GraphQL schema stitching...');
+    logger.info('Starting GraphQL schema stitching with service discovery...');
     
     const schemas = [];
     
-    // Check and add doctor service schema
-    const doctorServiceAvailable = await checkDoctorServiceAvailability();
+    // Check and add doctor service schema with retries
+    const doctorServiceAvailable = await waitForService(
+      checkDoctorServiceAvailability,
+      'Doctor Service',
+      5,
+      2000
+    );
+    
     if (doctorServiceAvailable) {
       const doctorSchema = await createDoctorServiceSchema();
       if (doctorSchema) {
@@ -35,8 +62,14 @@ const stitchRemoteSchemas = async (config) => {
       logger.warn('⚠️ Doctor service GraphQL not available - skipping');
     }
     
-    // Check and add appointment service schema
-    const appointmentServiceAvailable = await checkAppointmentServiceAvailability();
+    // Check and add appointment service schema with retries
+    const appointmentServiceAvailable = await waitForService(
+      checkAppointmentServiceAvailability,
+      'Appointment Service',
+      5,
+      2000
+    );
+    
     if (appointmentServiceAvailable) {
       const appointmentSchema = await createAppointmentServiceSchema();
       if (appointmentSchema) {
@@ -50,8 +83,14 @@ const stitchRemoteSchemas = async (config) => {
       logger.warn('⚠️ Appointment service GraphQL not available - skipping');
     }
     
-    // Check and add AI service schema
-    const aiServiceAvailable = await checkAIServiceAvailability();
+    // Check and add AI service schema with retries
+    const aiServiceAvailable = await waitForService(
+      checkAIServiceAvailability,
+      'AI Service',
+      5,
+      2000
+    );
+    
     if (aiServiceAvailable) {
       const aiSchema = await createAIServiceSchema();
       if (aiSchema) {

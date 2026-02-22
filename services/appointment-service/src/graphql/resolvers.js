@@ -10,7 +10,6 @@ const SagaOrchestrator = require('../services/sagaOrchestrator');
 const { Appointment } = require('../models/Appointment');
 const { AppointmentReadView } = require('../models/AppointmentReadView');
 const { AppointmentEvent } = require('../models/AppointmentEvent');
-const { app } = require('../../../../api-gateway/src/config');
 
 /**
  * Map database status values to GraphQL enum values

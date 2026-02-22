@@ -16,23 +16,15 @@ const config = {
   // Service URLs
   services: {
     auth: process.env.AUTH_SERVICE_URL || 'http://localhost:4001',
-    patient: process.env.PATIENT_SERVICE_URL || 'http://localhost:4002',
+    // patient: process.env.PATIENT_SERVICE_URL || 'http://localhost:4002',
     doctor: process.env.DOCTOR_SERVICE_URL || 'http://localhost:4003',
     appointment: process.env.APPOINTMENT_SERVICE_URL || 'http://localhost:4004',
     ai: process.env.AI_SERVICE_URL || 'http://localhost:4005',
-    notification: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:4006',
-    search: process.env.SEARCH_SERVICE_URL || 'http://localhost:4007',
-  },
-
-  // JWT Configuration
-  jwt: {
-    accessSecret: process.env.JWT_ACCESS_SECRET || 'fallback_access_secret',
-    refreshSecret: process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret',
   },
 
   // CORS Configuration
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:19006,http://localhost:3001',
+    origin: process.env.CORS_ORIGIN || 'http://localhost:19006',
     credentials: true,
   },
 
@@ -91,16 +83,6 @@ const config = {
 // Validation function
 function validateConfig() {
   const errors = [];
-
-  // Check JWT secrets in production
-  if (config.isProduction()) {
-    if (config.jwt.accessSecret === 'fallback_access_secret') {
-      errors.push('JWT_ACCESS_SECRET must be set in production');
-    }
-    if (config.jwt.refreshSecret === 'fallback-refresh-secret') {
-      errors.push('JWT_REFRESH_SECRET must be set in production');
-    }
-  }
 
   // Check if at least auth service is configured
   if (!config.services.auth) {

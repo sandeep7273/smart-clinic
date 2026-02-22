@@ -1,23 +1,30 @@
+###############################################################################
+# Docker Compose - Development Configuration
+# 
+# This configuration exposes ALL service ports for local development and debugging
+# 
+# Usage: docker-compose -f docker-compose.dev.yml up
+# 
+# WARNING: DO NOT use this configuration in production!
+# Use the default docker-compose.yml for production deployments
+###############################################################################
+
 services:
   # ============================================================================
-  # INFRASTRUCTURE SERVICES - INTERNAL ONLY
+  # INFRASTRUCTURE SERVICES
   # ============================================================================
   
   zookeeper:
     image: wurstmeister/zookeeper:latest
-    # SECURITY: Port not exposed - internal Docker network only
-    # Uncomment for local development/debugging if needed
-    # ports:
-    #   - "2181:2181"
+    ports:
+      - "2181:2181"  # Exposed for development
 
   kafka:
     image: wurstmeister/kafka:latest
     depends_on:
       - zookeeper
-    # SECURITY: Port not exposed - internal Docker network only
-    # Uncomment for local development/debugging if needed
-    # ports:
-    #   - "9092:9092"
+    ports:
+      - "9092:9092"  # Exposed for development
     environment:
       KAFKA_ADVERTISED_HOST_NAME: kafka
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -25,14 +32,29 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
 
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"  # Exposed for development
+
+  mongodb:
+    image: mongo:6.0
+    ports:
+      - "27017:27017"  # Exposed for development
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongodb_data:/data/db
+
   # ============================================================================
-  # API GATEWAY - ONLY PUBLIC-FACING SERVICE
+  # API GATEWAY - PUBLIC FACING SERVICE
   # ============================================================================
   
   api-gateway:
     image: kubsandeep/api-gateway-1000:latest
     ports:
-      - "3000:3000"  # ONLY port exposed to external access
+      - "3000:3000"
     env_file:
       - api-gateway/.env.gateway
     depends_on:
@@ -47,15 +69,13 @@ services:
     restart: unless-stopped
 
   # ============================================================================
-  # MICROSERVICES - INTERNAL ONLY (No direct external access)
+  # MICROSERVICES - ALL PORTS EXPOSED FOR DEVELOPMENT
   # ============================================================================
 
   auth-service:
     image: kubsandeep/auth-service-1001:latest
-    # SECURITY: Port not exposed - accessible only via API Gateway
-    # Uncomment for local development/debugging if needed
-    # ports:
-    #   - "4001:4001"
+    ports:
+      - "4001:4001"  # Exposed for development
     env_file:
       - services/auth-service/.env.auth
     depends_on:
@@ -71,11 +91,9 @@ services:
 
   doctor-service:
     image: kubsandeep/doctor-service-1003:latest
-    # SECURITY: Ports not exposed - accessible only via API Gateway
-    # Uncomment for local development/debugging if needed
-    # ports:
-    #   - "4003:4003"   # HTTP
-    #   - "50051:50051"  # gRPC
+    ports:
+      - "4003:4003"  # HTTP - Exposed for development
+      - "50051:50051"  # gRPC - Exposed for development
     env_file:
       - services/doctor-service/.env.doctor
     depends_on:
@@ -93,11 +111,9 @@ services:
 
   appointment-service:
     image: kubsandeep/appointment-service-1004:latest
-    # SECURITY: Ports not exposed - accessible only via API Gateway
-    # Uncomment for local development/debugging if needed
-    # ports:
-    #   - "4004:4004"   # HTTP
-    #   - "50052:50052"  # gRPC
+    ports:
+      - "4004:4004"  # HTTP - Exposed for development
+      - "50052:50052"  # gRPC - Exposed for development
     env_file:
       - services/appointment-service/.env.appointment
     depends_on:
@@ -117,10 +133,8 @@ services:
 
   ai-service:
     image: kubsandeep/ai-service-1005:latest
-    # SECURITY: Port not exposed - accessible only via API Gateway
-    # Uncomment for local development/debugging if needed
-    # ports:
-    #   - "4005:4005"
+    ports:
+      - "4005:4005"  # Exposed for development
     env_file:
       - services/ai-service/.env.ai
     depends_on:
@@ -133,29 +147,6 @@ services:
       retries: 5
       start_period: 20s
     restart: unless-stopped
-
-  # ============================================================================
-  # DATABASES & CACHE - INTERNAL ONLY
-  # ============================================================================
-
-  redis:
-    image: redis:7
-    # SECURITY: Port not exposed - internal Docker network only
-    # Uncomment for local development/debugging if needed
-    # ports:
-    #   - "6379:6379"
-
-  mongodb:
-    image: mongo:6.0
-    # SECURITY: Port not exposed - internal Docker network only
-    # Uncomment for local development/debugging if needed
-    # ports:
-    #   - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: password
-    volumes:
-      - mongodb_data:/data/db
 
 volumes:
   mongodb_data:

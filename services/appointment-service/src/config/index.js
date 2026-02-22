@@ -19,7 +19,6 @@ const config = {
   },
 
   // External Service URLs
-  // doctorServiceUrl: process.env.DOCTOR_SERVICE_URL || 'http://localhost:4003',
   doctorGrpcUrl: process.env.DOCTOR_GRPC_URL || 'localhost:50051',
   // API Gateway URL for service-to-service communication
   apiGatewayUrl: process.env.API_GATEWAY_URL || 'http://localhost:3000',

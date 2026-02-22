@@ -95,8 +95,13 @@ const createAIServiceSchema = async () => {
       body: JSON.stringify({ query: introspectionQuery }),
     });
     
-    const { data } = await introspectionResult.json();
-    const schema = buildClientSchema(data);
+    const responseData = await introspectionResult.json();
+    
+    if (!responseData || !responseData.data) {
+      throw new Error(`Invalid introspection response: ${JSON.stringify(responseData)}`);
+    }
+    
+    const schema = buildClientSchema(responseData.data);
     
     logger.info('✅ AI service schema introspected successfully');
     

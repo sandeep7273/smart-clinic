@@ -46,7 +46,7 @@ const createApolloServer = () => {
   const server = new ApolloServer({
     schema,
     context: createContext,
-    introspection: process.env.NODE_ENV !== 'production',
+    introspection: true, // Enable for API Gateway federation
     playground: process.env.NODE_ENV !== 'production',
     formatError: (error) => {
       logger.error('GraphQL Error:', {

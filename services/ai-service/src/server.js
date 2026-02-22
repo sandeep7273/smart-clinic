@@ -99,7 +99,7 @@ class AIServiceServer {
         logger.error('GraphQL Error:', error);
         return error;
       },
-      introspection: config.nodeEnv !== 'production',
+      introspection: true, // Enable for API Gateway federation
       playground: config.nodeEnv !== 'production'
     });
 
