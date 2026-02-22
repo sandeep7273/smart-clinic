@@ -32,6 +32,8 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      # Reduce memory for small EC2 instances (t2.micro/small)
+      KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
     healthcheck:
       test: ["CMD", "kafka-broker-api-versions.sh", "--bootstrap-server", "localhost:9092"]
       interval: 10s
@@ -176,6 +178,9 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: password
+      # Reduce memory for small EC2 instances
+      MONGO_INITDB_DATABASE: admin
+    command: ["mongod", "--wiredTigerCacheSizeGB", "0.25"]
     volumes:
       - mongodb_data:/data/db
     healthcheck:
