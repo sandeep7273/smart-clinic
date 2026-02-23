@@ -8,6 +8,9 @@ import { authEvents } from '../utils/authEvents';
  * Axios instance with interceptors for authentication and error handling
  */
 
+// Maximum number of retry attempts
+const MAX_RETRIES = 5;
+
 // Flag to prevent multiple simultaneous refresh attempts
 let isRefreshing = false;
 let refreshSubscribers: Array<(token: string) => void> = [];
@@ -88,18 +91,24 @@ httpClient.interceptors.response.use(
   },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
-      _retry?: boolean;
+      _retryCount?: number;
     };
 
+    // Initialize retry count
+    if (!originalRequest._retryCount) {
+      originalRequest._retryCount = 0;
+    }
+
     // Handle 401 Unauthorized - Token expired or invalid
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+    if (error.response?.status === 401 && originalRequest && originalRequest._retryCount < MAX_RETRIES) {
       // Skip refresh for auth endpoints
       if (originalRequest.url?.includes('/auth/login') || 
           originalRequest.url?.includes('/auth/register')) {
         return Promise.reject(error);
       }
 
-      originalRequest._retry = true;
+      originalRequest._retryCount += 1;
+      console.log(`🔄 [HTTP Client] Retry attempt ${originalRequest._retryCount}/${MAX_RETRIES}`);
 
       if (!isRefreshing) {
         isRefreshing = true;
@@ -141,6 +150,16 @@ httpClient.interceptors.response.use(
             isAuthError: true,
           });
         }
+      } else if (originalRequest._retryCount >= MAX_RETRIES) {
+        // Max retries exceeded
+        console.error(`❌ [HTTP Client] Max retries (${MAX_RETRIES}) exceeded`);
+        await removeTokens();
+        authEvents.emitAuthError();
+        return Promise.reject({
+          ...error,
+          message: 'Maximum retry attempts exceeded. Please try again later.',
+          isAuthError: true,
+        });
       }
 
       // Queue this request until token is refreshed
