@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { LoginScreenProps } from '../../navigation/types';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -15,6 +16,14 @@ import { loginUser } from '../../store/auth/authThunks';
 import { clearError } from '../../store/auth/authSlice';
 import { validateField } from '../../utils/validation';
 import { useAuth } from '../../context/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
+import {
+  isBiometricSupported,
+  getBiometricName,
+  isBiometricEnabled,
+  authenticateWithBiometrics,
+  saveBiometricCredentials,
+} from '../../services/biometric.service';
 import styles from './Login.styles';
 
 export default function LoginScreen({ navigation }: LoginScreenProps) {
@@ -27,9 +36,41 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
+  // Biometric state
+  const [biometricSupported, setBiometricSupported] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricName, setBiometricName] = useState('Biometric');
+  const [biometricLoading, setBiometricLoading] = useState(false);
+  const [shouldNavigate, setShouldNavigate] = useState(false);
+
   // Validation errors
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  // Check biometric availability on mount and when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      checkBiometricAvailability();
+      setShouldNavigate(false);
+    }, [])
+  );
+
+  const checkBiometricAvailability = async () => {
+    try {
+      const supported = await isBiometricSupported();
+      setBiometricSupported(supported);
+
+      if (supported) {
+        const enabled = await isBiometricEnabled();
+        setBiometricEnabled(enabled);
+
+        const name = await getBiometricName();
+        setBiometricName(name);
+      }
+    } catch (error) {
+      console.error('Error checking biometric availability:', error);
+    }
+  };
 
   // Clear errors when component unmounts
   useEffect(() => {
@@ -38,13 +79,13 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     };
   }, [dispatch]);
 
-  // Navigate on successful login - trigger AuthContext to re-check auth
+  // Navigate on successful login only after biometric setup is handled
   useEffect(() => {
-    if (isAuthenticated) {
-      // Re-check auth in context to trigger navigation
+    if (isAuthenticated && shouldNavigate) {
       checkAuth();
+      setShouldNavigate(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, shouldNavigate, checkAuth]);
 
   // Validate form
   const validateForm = (): boolean => {
@@ -86,9 +127,101 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     // Dispatch login action
     try {
       await dispatch(loginUser({ email: email.trim(), password })).unwrap();
+      
+      // Offer to enable biometric after successful login
+      if (biometricSupported && !biometricEnabled) {
+        offerBiometricSetup();
+      } else {
+        // No biometric setup needed, navigate immediately
+        setShouldNavigate(true);
+      }
     } catch (err) {
       // Error is handled by Redux state
       console.error('Login error:', err);
+    }
+  };
+
+  // Offer to enable biometric login after successful password login
+  const offerBiometricSetup = () => {
+    setTimeout(() => {
+      Alert.alert(
+        `Enable ${biometricName} Login?`,
+        `Would you like to use ${biometricName} to sign in faster next time?`,
+        [
+          {
+            text: 'Not Now',
+            style: 'cancel',
+            onPress: () => setShouldNavigate(true),
+          },
+          {
+            text: 'Enable',
+            onPress: async () => {
+              const success = await saveBiometricCredentials(email.trim(), password);
+              
+              if (success) {
+                setBiometricEnabled(true);
+                Alert.alert(
+                  'Success',
+                  `${biometricName} login has been enabled. You can now use it to sign in.`,
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => setShouldNavigate(true),
+                    },
+                  ]
+                );
+              } else {
+                console.error('Failed to enable biometric login');
+                Alert.alert(
+                  'Error',
+                  `Failed to enable ${biometricName} login. Please try again later.`,
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => setShouldNavigate(true),
+                    },
+                  ]
+                );
+              }
+            },
+          },
+        ],
+        { 
+          cancelable: false,
+          onDismiss: () => setShouldNavigate(true)
+        }
+      );
+    }, 500);
+  };
+
+  // Handle biometric login
+  const handleBiometricLogin = async () => {
+    setBiometricLoading(true);
+    dispatch(clearError());
+
+    try {
+      const credentials = await authenticateWithBiometrics();
+
+      if (credentials) {
+        // Login with retrieved credentials
+        await dispatch(
+          loginUser({
+            email: credentials.email,
+            password: credentials.password,
+          })
+        ).unwrap();
+        
+        // Navigate immediately after biometric login
+        setShouldNavigate(true);
+      }
+    } catch (err) {
+      console.error('Biometric login error:', err);
+      Alert.alert(
+        'Login Failed',
+        'Could not sign in with biometrics. Please try using your password.'
+      );
+    } finally {
+      setBiometricLoading(false);
     }
   };
 
@@ -194,6 +327,27 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
                 <Text style={styles.buttonText}>Sign In</Text>
               )}
             </TouchableOpacity>
+
+            {/* Biometric Login Button */}
+            {biometricSupported && biometricEnabled && (
+              <TouchableOpacity
+                style={[styles.biometricButton, biometricLoading && styles.buttonDisabled]}
+                onPress={handleBiometricLogin}
+                disabled={loading || biometricLoading}>
+                {biometricLoading ? (
+                  <ActivityIndicator color="#007AFF" />
+                ) : (
+                  <>
+                    <Text style={styles.biometricIcon}>
+                      {biometricName === 'Face ID' ? '👤' : '👆'}
+                    </Text>
+                    <Text style={styles.biometricButtonText}>
+                      Sign in with {biometricName}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
 
             {/* Divider */}
             <View style={styles.divider}>
