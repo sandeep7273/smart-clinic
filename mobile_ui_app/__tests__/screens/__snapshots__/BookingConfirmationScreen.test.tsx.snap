@@ -1,0 +1,812 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`BookingConfirmationScreen should match snapshot 1`] = `
+<View
+  style={
+    {
+      "backgroundColor": "#f5f5f5",
+      "flex": 1,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "alignItems": "center",
+        "backgroundColor": "#fff",
+        "borderBottomColor": "#e0e0e0",
+        "borderBottomWidth": 1,
+        "flexDirection": "row",
+        "justifyContent": "space-between",
+        "paddingBottom": 20,
+        "paddingHorizontal": 16,
+        "paddingTop": 60,
+      }
+    }
+  >
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        {
+          "alignItems": "center",
+          "height": 40,
+          "justifyContent": "center",
+          "opacity": 1,
+          "width": 40,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#007AFF",
+            "fontSize": 28,
+          }
+        }
+      >
+        ←
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#4CAF50",
+          "borderRadius": 40,
+          "height": 80,
+          "justifyContent": "center",
+          "width": 80,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#fff",
+            "fontSize": 48,
+            "fontWeight": "bold",
+          }
+        }
+      >
+        ✓
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "height": 40,
+          "justifyContent": "center",
+          "width": 40,
+        }
+      }
+    />
+  </View>
+  <RCTScrollView
+    showsVerticalScrollIndicator={false}
+    style={
+      {
+        "flex": 1,
+        "padding": 16,
+      }
+    }
+  >
+    <View>
+      <Text
+        style={
+          {
+            "color": "#333",
+            "fontSize": 28,
+            "fontWeight": "bold",
+            "marginBottom": 8,
+            "marginTop": 16,
+            "textAlign": "center",
+          }
+        }
+      >
+        Booking Confirmed
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#666",
+            "fontSize": 16,
+            "marginBottom": 24,
+            "textAlign": "center",
+          }
+        }
+      >
+        Your appointment has been successfully booked
+      </Text>
+      <View
+        style={
+          {
+            "backgroundColor": "#fff",
+            "borderRadius": 12,
+            "elevation": 3,
+            "marginBottom": 16,
+            "padding": 16,
+            "shadowColor": "#000",
+            "shadowOffset": {
+              "height": 2,
+              "width": 0,
+            },
+            "shadowOpacity": 0.1,
+            "shadowRadius": 4,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#333",
+              "fontSize": 18,
+              "fontWeight": "600",
+              "marginBottom": 16,
+            }
+          }
+        >
+          Appointment Details
+        </Text>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "borderBottomColor": "#f0f0f0",
+              "borderBottomWidth": 1,
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+              "paddingVertical": 12,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#666",
+                "fontSize": 14,
+              }
+            }
+          >
+            Appointment Number
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#333",
+                "fontSize": 14,
+                "fontWeight": "500",
+              }
+            }
+          >
+            APT-2024-001
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "borderBottomColor": "#f0f0f0",
+              "borderBottomWidth": 1,
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+              "paddingVertical": 12,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#666",
+                "fontSize": 14,
+              }
+            }
+          >
+            Date
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#333",
+                "fontSize": 14,
+                "fontWeight": "500",
+              }
+            }
+          >
+            Friday, Mar 15, 2024
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "borderBottomColor": "#f0f0f0",
+              "borderBottomWidth": 1,
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+              "paddingVertical": 12,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#666",
+                "fontSize": 14,
+              }
+            }
+          >
+            Time
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#333",
+                "fontSize": 14,
+                "fontWeight": "500",
+              }
+            }
+          >
+            09:00
+             - 
+            09:30
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "borderBottomColor": "#f0f0f0",
+              "borderBottomWidth": 1,
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+              "paddingVertical": 12,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#666",
+                "fontSize": 14,
+              }
+            }
+          >
+            Status
+          </Text>
+          <View
+            style={
+              {
+                "backgroundColor": "#FFF3E0",
+                "borderRadius": 12,
+                "paddingHorizontal": 12,
+                "paddingVertical": 6,
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#F57C00",
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                }
+              }
+            >
+              PENDING
+            </Text>
+          </View>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "backgroundColor": "#fff",
+            "borderRadius": 12,
+            "elevation": 3,
+            "marginBottom": 16,
+            "padding": 16,
+            "shadowColor": "#000",
+            "shadowOffset": {
+              "height": 2,
+              "width": 0,
+            },
+            "shadowOpacity": 0.1,
+            "shadowRadius": 4,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#333",
+              "fontSize": 18,
+              "fontWeight": "600",
+              "marginBottom": 16,
+            }
+          }
+        >
+          Doctor Information
+        </Text>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "borderBottomColor": "#f0f0f0",
+              "borderBottomWidth": 1,
+              "flexDirection": "row",
+              "marginBottom": 16,
+              "paddingBottom": 16,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#007AFF",
+                "borderRadius": 30,
+                "height": 60,
+                "justifyContent": "center",
+                "marginRight": 12,
+                "width": 60,
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#fff",
+                  "fontSize": 24,
+                  "fontWeight": "bold",
+                }
+              }
+            >
+              S
+              J
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "flex": 1,
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#333",
+                  "fontSize": 18,
+                  "fontWeight": "bold",
+                  "marginBottom": 4,
+                }
+              }
+            >
+              Dr. 
+              Sarah
+               
+              Johnson
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#666",
+                  "fontSize": 14,
+                  "marginBottom": 2,
+                }
+              }
+            >
+              Cardiology
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#666",
+                  "fontSize": 12,
+                }
+              }
+            >
+              ⭐ 
+              4.8
+               (
+              120
+               reviews)
+            </Text>
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "borderBottomColor": "#f0f0f0",
+              "borderBottomWidth": 1,
+              "marginBottom": 16,
+              "paddingBottom": 16,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#999",
+                "fontSize": 12,
+                "marginBottom": 4,
+              }
+            }
+          >
+            Clinic Address
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#333",
+                "fontSize": 14,
+                "marginBottom": 2,
+              }
+            }
+          >
+            123 Main St
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#666",
+                "fontSize": 14,
+              }
+            }
+          >
+            Boston
+            , 
+            MA
+             
+            02101
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "gap": 8,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#666",
+                  "fontSize": 14,
+                  "width": 60,
+                }
+              }
+            >
+              Phone:
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#333",
+                  "flex": 1,
+                  "fontSize": 14,
+                }
+              }
+            >
+              +1234567890
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#666",
+                  "fontSize": 14,
+                  "width": 60,
+                }
+              }
+            >
+              Email:
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#333",
+                  "flex": 1,
+                  "fontSize": 14,
+                }
+              }
+            >
+              sarah@example.com
+            </Text>
+          </View>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "backgroundColor": "#fff",
+            "borderRadius": 12,
+            "elevation": 3,
+            "marginBottom": 16,
+            "padding": 16,
+            "shadowColor": "#000",
+            "shadowOffset": {
+              "height": 2,
+              "width": 0,
+            },
+            "shadowOpacity": 0.1,
+            "shadowRadius": 4,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#333",
+              "fontSize": 18,
+              "fontWeight": "600",
+              "marginBottom": 16,
+            }
+          }
+        >
+          Reason for Visit
+        </Text>
+        <Text
+          style={
+            {
+              "color": "#333",
+              "fontSize": 14,
+              "lineHeight": 20,
+            }
+          }
+        >
+          Regular checkup
+        </Text>
+        <View
+          style={
+            {
+              "borderTopColor": "#f0f0f0",
+              "borderTopWidth": 1,
+              "marginTop": 12,
+              "paddingTop": 12,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#999",
+                "fontSize": 12,
+                "marginBottom": 8,
+              }
+            }
+          >
+            Symptoms:
+          </Text>
+          <View
+            style={
+              {
+                "flexDirection": "row",
+                "flexWrap": "wrap",
+                "gap": 8,
+              }
+            }
+          >
+            <View
+              style={
+                {
+                  "backgroundColor": "#f0f0f0",
+                  "borderRadius": 16,
+                  "paddingHorizontal": 12,
+                  "paddingVertical": 6,
+                }
+              }
+            >
+              <Text
+                style={
+                  {
+                    "color": "#666",
+                    "fontSize": 12,
+                  }
+                }
+              >
+                Fever
+              </Text>
+            </View>
+            <View
+              style={
+                {
+                  "backgroundColor": "#f0f0f0",
+                  "borderRadius": 16,
+                  "paddingHorizontal": 12,
+                  "paddingVertical": 6,
+                }
+              }
+            >
+              <Text
+                style={
+                  {
+                    "color": "#666",
+                    "fontSize": 12,
+                  }
+                }
+              >
+                Cough
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "backgroundColor": "#E3F2FD",
+            "borderRadius": 12,
+            "marginBottom": 16,
+            "padding": 16,
+          }
+        }
+      >
+        <Text
+          style={
+            {
+              "color": "#1976D2",
+              "fontSize": 16,
+              "fontWeight": "600",
+              "marginBottom": 12,
+            }
+          }
+        >
+          Important Notes
+        </Text>
+        <Text
+          style={
+            {
+              "color": "#333",
+              "fontSize": 14,
+              "lineHeight": 20,
+              "marginBottom": 8,
+            }
+          }
+        >
+          • Please arrive 10 minutes before your appointment time
+        </Text>
+        <Text
+          style={
+            {
+              "color": "#333",
+              "fontSize": 14,
+              "lineHeight": 20,
+              "marginBottom": 8,
+            }
+          }
+        >
+          • Bring your ID and insurance card (if applicable)
+        </Text>
+        <Text
+          style={
+            {
+              "color": "#333",
+              "fontSize": 14,
+              "lineHeight": 20,
+              "marginBottom": 8,
+            }
+          }
+        >
+          • You can cancel or reschedule up to 24 hours before
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "height": 80,
+          }
+        }
+      />
+    </View>
+  </RCTScrollView>
+  <View
+    style={
+      {
+        "backgroundColor": "#fff",
+        "borderTopColor": "#e0e0e0",
+        "borderTopWidth": 1,
+        "bottom": 0,
+        "left": 0,
+        "padding": 16,
+        "position": "absolute",
+        "right": 0,
+      }
+    }
+  >
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#007AFF",
+          "borderRadius": 8,
+          "opacity": 1,
+          "paddingVertical": 16,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#fff",
+            "fontSize": 16,
+            "fontWeight": "600",
+          }
+        }
+      >
+        View My Bookings
+      </Text>
+    </View>
+  </View>
+</View>
+`;
