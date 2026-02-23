@@ -40,12 +40,62 @@ export interface ChatMessage {
 }
 
 /**
+ * Doctor Information Type (for AI chat display)
+ */
+export interface DoctorInfo {
+  id: string;
+  name: string;
+  specialization: string;
+  rating?: number;
+  consultationFee?: number;
+  street?: string;
+  city?: string;
+  state?: string;
+  languages?: string[];
+  experience?: number;
+}
+
+/**
+ * Appointment Information Type (for AI chat display)
+ */
+export interface AppointmentInfo {
+  id: string;
+  doctorId: string;
+  doctorName: string;
+  specialization?: string;
+  city?: string;
+  state?: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+  type?: string;
+}
+
+/**
+ * Payload types for different actions
+ */
+export interface SearchDoctorPayload {
+  specialization?: string;
+  location?: string;
+  count: number;
+  total: number;
+  doctors?: DoctorInfo[];
+}
+
+export interface ShowAppointmentsPayload {
+  count: number;
+  hasAppointments: boolean;
+  appointments?: AppointmentInfo[];
+}
+
+/**
  * Chat Response Type
  */
 export interface ChatResponse {
   message: string;
   actionType: ActionType;
-  payload?: any;
+  payload?: SearchDoctorPayload | ShowAppointmentsPayload | any;
   disclaimer?: string;
 }
 

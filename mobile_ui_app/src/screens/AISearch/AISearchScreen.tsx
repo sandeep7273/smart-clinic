@@ -13,11 +13,19 @@ import {
 } from 'react-native';
 import { AISearchScreenProps } from '../../navigation/types';
 import { useAuth } from '../../context/AuthContext';
-import { aiChatApi, ChatMessage, ActionType } from '../../api/ai.api';
+import { 
+  aiChatApi, 
+  ChatMessage, 
+  ActionType, 
+  DoctorInfo, 
+  AppointmentInfo,
+  SearchDoctorPayload,
+  ShowAppointmentsPayload 
+} from '../../api/ai.api';
 
 interface DisplayMessage extends ChatMessage {
   actionType?: ActionType;
-  payload?: any;
+  payload?: SearchDoctorPayload | ShowAppointmentsPayload | any;
   disclaimer?: string;
 }
 
@@ -182,8 +190,150 @@ export default function AISearchScreen({ navigation }: AISearchScreenProps) {
     );
   };
 
+  const renderDoctorCard = (doctor: DoctorInfo) => {
+    // Build location string safely
+    const locationParts: string[] = [];
+    if (doctor.street && typeof doctor.street === 'string') locationParts.push(doctor.street);
+    if (doctor.city && typeof doctor.city === 'string') locationParts.push(doctor.city);
+    if (doctor.state && typeof doctor.state === 'string') locationParts.push(doctor.state);
+    const locationStr = locationParts.join(', ');
+
+    // Ensure all values are strings or numbers
+    const doctorName = doctor.name && typeof doctor.name === 'string' ? doctor.name : 'Unknown Doctor';
+    const doctorSpec = doctor.specialization && typeof doctor.specialization === 'string' ? doctor.specialization : 'General Practitioner';
+    const doctorRating = typeof doctor.rating === 'number' ? doctor.rating : 0;
+    const doctorExp = typeof doctor.experience === 'number' ? doctor.experience : 0;
+    const doctorFee = typeof doctor.consultationFee === 'number' ? doctor.consultationFee : 0;
+    const doctorLangs = Array.isArray(doctor.languages) ? doctor.languages.filter(l => typeof l === 'string') : [];
+
+    return (
+      <View key={doctor.id} style={styles.infoCard}>
+        <Text style={styles.cardTitle}>{doctorName}</Text>
+        <Text style={styles.cardSubtitle}>{doctorSpec}</Text>
+        {doctorRating > 0 && (
+          <Text style={styles.cardDetail}>⭐ {doctorRating.toFixed(1)}</Text>
+        )}
+        {doctorExp > 0 && (
+          <Text style={styles.cardDetail}>📅 {doctorExp} years experience</Text>
+        )}
+        {doctorFee > 0 && (
+          <Text style={styles.cardDetail}>💰 ₹{doctorFee} consultation fee</Text>
+        )}
+        {locationStr.length > 0 && (
+          <Text style={styles.cardDetail}>📍 {locationStr}</Text>
+        )}
+        {doctorLangs.length > 0 && (
+          <Text style={styles.cardDetail}>🗣️ {doctorLangs.join(', ')}</Text>
+        )}
+      </View>
+    );
+  };
+
+  const renderAppointmentCard = (appointment: AppointmentInfo) => {
+    const formatDate = (dateStr: string) => {
+      try {
+        if (!dateStr) return 'Date not available';
+        return new Date(dateStr).toLocaleDateString('en-US', {
+          weekday: 'short',
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      } catch {
+        return dateStr || 'Date not available';
+      }
+    };
+
+    const formatTime = (timeStr: string) => {
+      try {
+        if (!timeStr) return '';
+        // Handle HH:MM:SS or HH:MM format
+        const [hours, minutes] = timeStr.split(':');
+        const hour = parseInt(hours);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const displayHour = hour % 12 || 12;
+        return `${displayHour}:${minutes} ${ampm}`;
+      } catch {
+        return timeStr || '';
+      }
+    };
+
+    const getStatusColor = (status: string) => {
+      switch (status?.toLowerCase()) {
+        case 'confirmed':
+        case 'scheduled':
+          return '#4CAF50';
+        case 'pending':
+          return '#FF9500';
+        case 'cancelled':
+          return '#F44336';
+        case 'completed':
+          return '#2196F3';
+        default:
+          return '#666';
+      }
+    };
+
+    // Extract safe values
+    const doctorName = appointment.doctorName && typeof appointment.doctorName === 'string' 
+      ? appointment.doctorName 
+      : 'Unknown Doctor';
+    const specialization = appointment.specialization && typeof appointment.specialization === 'string'
+      ? appointment.specialization
+      : '';
+    const status = appointment.status && typeof appointment.status === 'string'
+      ? appointment.status
+      : 'unknown';
+    const appointmentType = appointment.type && typeof appointment.type === 'string'
+      ? appointment.type
+      : '';
+    
+    // Build location string safely
+    const locationParts: string[] = [];
+    if (appointment.city && typeof appointment.city === 'string') locationParts.push(appointment.city);
+    if (appointment.state && typeof appointment.state === 'string') locationParts.push(appointment.state);
+    const locationStr = locationParts.join(', ');
+
+    const formattedDate = formatDate(appointment.date || '');
+    const formattedStartTime = formatTime(appointment.startTime || '');
+    const formattedEndTime = formatTime(appointment.endTime || '');
+
+    return (
+      <View key={appointment.id} style={styles.infoCard}>
+        <View style={styles.appointmentHeader}>
+          <Text style={styles.cardTitle}>{doctorName}</Text>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(status) }]}>
+            <Text style={styles.statusText}>{status}</Text>
+          </View>
+        </View>
+        {specialization.length > 0 && (
+          <Text style={styles.cardSubtitle}>{specialization}</Text>
+        )}
+        <Text style={styles.cardDetail}>📅 {formattedDate}</Text>
+        {formattedStartTime && formattedEndTime && (
+          <Text style={styles.cardDetail}>
+            🕐 {formattedStartTime} - {formattedEndTime}
+          </Text>
+        )}
+        {locationStr.length > 0 && (
+          <Text style={styles.cardDetail}>
+            📍 {locationStr}
+          </Text>
+        )}
+        {appointmentType.length > 0 && (
+          <Text style={styles.cardDetail}>📋 {appointmentType}</Text>
+        )}
+      </View>
+    );
+  };
+
   const renderMessage = (message: DisplayMessage) => {
     const isUser = message.role === 'user';
+
+    // Log payload for debugging
+    if (!isUser && message.payload) {
+      console.log('AI Message Payload:', JSON.stringify(message.payload, null, 2));
+    }
 
     return (
       <View
@@ -210,6 +360,20 @@ export default function AISearchScreen({ navigation }: AISearchScreenProps) {
           
           {message.disclaimer && (
             <Text style={styles.disclaimer}>⚠️ {message.disclaimer}</Text>
+          )}
+
+          {/* Render doctor cards if available */}
+          {!isUser && message.payload && 'doctors' in message.payload && message.payload.doctors && message.payload.doctors.length > 0 && (
+            <View style={styles.cardsContainer}>
+              {message.payload.doctors.map((doctor: DoctorInfo) => renderDoctorCard(doctor))}
+            </View>
+          )}
+
+          {/* Render appointment cards if available */}
+          {!isUser && message.payload && 'appointments' in message.payload && message.payload.appointments && message.payload.appointments.length > 0 && (
+            <View style={styles.cardsContainer}>
+              {message.payload.appointments.map((appointment: AppointmentInfo) => renderAppointmentCard(appointment))}
+            </View>
           )}
 
           {message.actionType && message.actionType !== ActionType.NONE && (
@@ -488,5 +652,49 @@ const styles = StyleSheet.create({
   },
   sendButtonText: {
     fontSize: 20,
+  },
+  cardsContainer: {
+    marginTop: 12,
+  },
+  infoCard: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#007AFF',
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 6,
+  },
+  cardDetail: {
+    fontSize: 13,
+    color: '#555',
+    marginBottom: 3,
+  },
+  appointmentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
 });

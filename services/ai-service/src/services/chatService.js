@@ -213,6 +213,36 @@ class ChatService {
       
       const searchText = searchDescription.join(' ') || 'doctors';
 
+      // Limit doctors to top 5 for display in chat
+      const displayDoctors = doctors ? doctors.slice(0, 5).map(doctor => {
+        // Log doctor data for debugging
+        logger.info('Mapping doctor data:', {
+          id: doctor.id,
+          hasFirstName: !!doctor.firstName,
+          hasLastName: !!doctor.lastName,
+          hasSpecializations: !!doctor.specializations,
+          hasAddress: !!doctor.address
+        });
+
+        const doctorName = `${doctor.firstName || ''} ${doctor.lastName || ''}`.trim() || doctor.name || 'Unknown Doctor';
+        const doctorSpec = Array.isArray(doctor.specializations) && doctor.specializations.length > 0
+          ? doctor.specializations[0]
+          : (doctor.specialization || 'General Practitioner');
+
+        return {
+          id: doctor.id || doctor.doctor_id || '',
+          name: doctorName,
+          specialization: doctorSpec,
+          rating: parseFloat(doctor.average_rating || doctor.rating || 0),
+          consultationFee: parseFloat(doctor.consultation_fee || doctor.consultationFee || 0),
+          city: doctor.address?.city || doctor.city || '',
+          state: doctor.address?.state || doctor.state || '',
+          street: doctor.address?.street || doctor.street || '',
+          languages: Array.isArray(doctor.languages) ? doctor.languages : [],
+          experience: parseInt(doctor.experience_years || doctor.experience || 0, 10)
+        };
+      }) : [];
+
       return {
         message: `I found ${doctorCount} ${searchText} available. Would you like to view them?`,
         actionType: 'SEARCH_DOCTOR',
@@ -220,7 +250,8 @@ class ChatService {
           specialization,
           location,
           count: doctorCount,
-          total: totalCount
+          total: totalCount,
+          doctors: displayDoctors
         }
       };
     } catch (error) {
@@ -279,12 +310,77 @@ class ChatService {
         responseMessage = `You have ${appointmentCount} appointment${appointmentCount !== 1 ? 's' : ''}. Would you like to view them?`;
       }
 
+      // Limit appointments to top 5 for display in chat
+      // Fetch doctor details for each appointment
+      const displayAppointments = await Promise.all(
+        appointments.slice(0, 5).map(async (appointment) => {
+          let doctorInfo = {
+            name: appointment.doctor?.name || 'Unknown Doctor',
+            specialization: appointment.doctor?.specialization || '',
+            city: '',
+            state: ''
+          };
+
+          // Fetch doctor details if we have doctorId
+          if (appointment.doctor_id) {
+            try {
+              const doctorResponse = await doctorClient.getDoctorDetails(
+                appointment.doctor_id,
+                authToken
+              );
+              
+              if (doctorResponse.success && doctorResponse.data) {
+                const doctor = doctorResponse.data;
+                doctorInfo = {
+                  name: `${doctor.firstName || ''} ${doctor.lastName || ''}`.trim() || appointment.doctor?.name || 'Unknown Doctor',
+                  specialization: Array.isArray(doctor.specializations) ? doctor.specializations[0] : appointment.doctor?.specialization || 'General Practitioner',
+                  city: doctor.address?.city || '',
+                  state: doctor.address?.state || ''
+                };
+              }
+            } catch (error) {
+              logger.warn('Failed to fetch doctor details for appointment:', {
+                appointmentId: appointment.id,
+                doctorId: appointment.doctorId,
+                error: error.message
+              });
+            }
+          }
+
+          logger.info('Mapped appointment data:', {
+            id: appointment.id,
+            doctorId: appointment.doctorId,
+            doctorName: doctorInfo.name,
+            specialization: doctorInfo.specialization,
+            date: appointment.date,
+            startTime: appointment.startTime,
+            endTime: appointment.endTime,
+            status: appointment.status
+          });
+
+          return {
+            id: appointment.appointment_id || appointment.id,
+            doctorId: appointment.doctorId,
+            doctorName: doctorInfo.name,
+            specialization: doctorInfo.specialization,
+            city: doctorInfo.city,
+            state: doctorInfo.state,
+            date: appointment.appointment_date || appointment.date,
+            startTime: appointment.start_time || appointment.startTime,
+            endTime: appointment.end_time || appointment.endTime,
+            status: appointment.status,
+            type: appointment.appointment_type || appointment.type
+          };
+        })
+      );
+
       return {
         message: responseMessage,
         actionType: 'SHOW_APPOINTMENTS',
         payload: {
           count: appointmentCount,
-          hasAppointments: appointmentCount > 0
+          hasAppointments: appointmentCount > 0,
+          appointments: displayAppointments
         }
       };
     } catch (error) {

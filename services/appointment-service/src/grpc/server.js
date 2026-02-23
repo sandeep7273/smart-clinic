@@ -28,8 +28,8 @@ const appointmentProto = grpc.loadPackageDefinition(packageDefinition).appointme
 function convertAppointmentToProto(appointment) {
   return {
     id: appointment._id ? appointment._id.toString() : appointment.id || '',
-    patient_id: appointment.userId || appointment.patientId || '',
-    doctor_id: appointment.doctorId || '',
+    patient_id: appointment.userId || appointment.patient?.id || '',
+    doctor_id: appointment.doctor?.id || '',
     slot_id: appointment.slotId || '',
     title: appointment.title || `Appointment with Dr. ${appointment.doctor?.name || 'Doctor'}`,
     description: appointment.notes || appointment.reason || '',
