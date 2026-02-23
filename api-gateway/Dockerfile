@@ -1,40 +1,49 @@
 # Multi-stage Dockerfile for API Gateway Service
-# Stage 1: Base image with system dependencies
 FROM node:20-alpine AS base
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
-
-# Create app directory with proper permissions
-RUN mkdir -p /home/node/app && chown -R node:node /home/node/app
-
-WORKDIR /home/node/app
-
-# Stage 2: Dependencies installation
+# Stage 1: Dependencies installation
 FROM base AS deps
+WORKDIR /app
 
 # Copy package files
-COPY --chown=node:node package*.json ./
+COPY package*.json ./
 
-# Install production dependencies only
-RUN npm ci --only=production && \
-    npm cache clean --force
+# Install production dependencies only and clean up
+RUN npm ci --omit=dev --production && \
+    npm cache clean --force && \
+    # Remove unnecessary files from node_modules
+    find node_modules -type f -name '*.md' -delete && \
+    find node_modules -type f -name 'LICENSE*' -delete && \
+    find node_modules -type d -name 'test' -exec rm -rf {} + 2>/dev/null || true && \
+    find node_modules -type d -name 'tests' -exec rm -rf {} + 2>/dev/null || true && \
+    find node_modules -type d -name 'docs' -exec rm -rf {} + 2>/dev/null || true && \
+    find node_modules -type d -name 'examples' -exec rm -rf {} + 2>/dev/null || true
 
-# Stage 3: Production runner
+# Stage 2: Production runner
 FROM base AS runner
+WORKDIR /app
 
 # Set production environment
 ENV NODE_ENV=production \
     PORT=3000
 
-# Copy production dependencies from deps stage
-COPY --from=deps --chown=node:node /home/node/app/node_modules ./node_modules
+# Install dumb-init and create user in single layer
+RUN apk add --no-cache dumb-init && \
+    addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 expressjs
 
-# Copy application source
-COPY --chown=node:node . .
+# Copy production dependencies from deps stage
+COPY --from=deps --chown=expressjs:nodejs /app/node_modules ./node_modules
+
+# Copy only necessary application source
+COPY --chown=expressjs:nodejs src ./src
+COPY --chown=expressjs:nodejs package.json ./
+
+# Create logs directory with proper permissions
+RUN mkdir -p logs && chown -R expressjs:nodejs logs
 
 # Use non-root user for security
-USER node
+USER expressjs
 
 # Expose the application port
 EXPOSE 3000

@@ -11,11 +11,14 @@ coverage/
 __tests__/
 test/
 tests/
+.nyc_output/
+jest.config.js
 
 # Development files
 .env.local
 .env.development
 .env.test
+.env.staging
 *.local
 
 # IDE and editor files
@@ -25,11 +28,16 @@ tests/
 *.swo
 *~
 .DS_Store
+.editorconfig
+.eslintrc*
+.prettierrc*
+.stylelintrc*
 
 # Git
 .git/
 .gitignore
 .gitattributes
+.gitmodules
 
 # Documentation
 README.md
@@ -43,24 +51,55 @@ docs/
 .github/
 .circleci/
 Jenkinsfile
+.travis.yml
+azure-pipelines.yml
 
 # Build artifacts
 dist/
 build/
 *.log
 logs/
+tmp/
+temp/
+.cache/
 
 # Docker
 Dockerfile*
 docker-compose*.yml
 .dockerignore
+docker-build.sh
 
 # Scripts
 scripts/
 *.sh
 
 # Other
-.editorconfig
-.eslintrc*
-.prettierrc*
 .npmrc
+.nvmrc
+.node-version
+
+# OS files
+Thumbs.db
+*.bak
+*.tmp
+*.swp
+
+# Large media files
+*.mp4
+*.avi
+*.mov
+*.mp3
+*.wav
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+
+# Archive files
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z

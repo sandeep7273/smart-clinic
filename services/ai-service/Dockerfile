@@ -8,8 +8,20 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install production dependencies and aggressively clean up
+RUN npm ci --omit=dev --production && \
+    npm cache clean --force && \
+    # Remove unnecessary files from node_modules (especially AI libs have lots)
+    find node_modules -type f -name '*.md' -delete && \
+    find node_modules -type f -name 'LICENSE*' -delete && \
+    find node_modules -type f -name '*.ts' -delete && \
+    find node_modules -type f -name '*.map' -delete && \
+    find node_modules -type d -name 'test' -exec rm -rf {} + 2>/dev/null || true && \
+    find node_modules -type d -name 'tests' -exec rm -rf {} + 2>/dev/null || true && \
+    find node_modules -type d -name 'docs' -exec rm -rf {} + 2>/dev/null || true && \
+    find node_modules -type d -name 'examples' -exec rm -rf {} + 2>/dev/null || true && \
+    find node_modules -type d -name 'benchmark' -exec rm -rf {} + 2>/dev/null || true && \
+    find node_modules -type d -name '.github' -exec rm -rf {} + 2>/dev/null || true
 
 # Production image
 FROM base AS runner
@@ -19,20 +31,18 @@ WORKDIR /app
 ENV NODE_ENV=production \
     PORT=4005
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
-
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs && \
+# Install dumb-init and create user in single layer
+RUN apk add --no-cache dumb-init && \
+    addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 expressjs
 
 # Copy dependencies from deps stage
 COPY --from=deps --chown=expressjs:nodejs /app/node_modules ./node_modules
 
-# Copy application source
+# Copy only necessary application files
 COPY --chown=expressjs:nodejs src ./src
 COPY --chown=expressjs:nodejs proto ./proto
-COPY --chown=expressjs:nodejs package*.json ./
+COPY --chown=expressjs:nodejs package.json ./
 
 # Create logs and cache directories with proper permissions
 RUN mkdir -p logs cache && chown -R expressjs:nodejs logs cache
