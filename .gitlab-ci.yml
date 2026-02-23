@@ -1,12 +1,19 @@
 image: node:18
 
+# Include GitLab SAST template for security scanning
+include:
+  - template: Security/SAST.gitlab-ci.yml
+
 stages:
   - build
   - test
+  - security
 
 variables:
   NODE_ENV: test
   CI: "true"
+  # SAST configuration
+  SAST_EXCLUDED_PATHS: "node_modules/,test/,tests/,__tests__/,coverage/,docs/,*.md"
 
 # All jobs run in parallel since they're in the same stage
 auth_service_test:
