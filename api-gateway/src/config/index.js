@@ -31,16 +31,16 @@ const config = {
   // Rate Limiting
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10), // 15 minutes
-    maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10),
-    authMax: parseInt(process.env.AUTH_RATE_LIMIT_MAX || '5', 10),
-    graphqlMax: parseInt(process.env.GRAPHQL_RATE_LIMIT_MAX || '200', 10),
+    maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '60', 10), // 60 requests per 15 min
+    authMax: parseInt(process.env.AUTH_RATE_LIMIT_MAX || '5', 10), // 5 auth attempts per 15 min
+    graphqlMax: parseInt(process.env.GRAPHQL_RATE_LIMIT_MAX || '100', 10), // 100 GraphQL requests per 15 min
   },
 
   // Circuit Breaker Configuration
   circuitBreaker: {
-    timeout: parseInt(process.env.CIRCUIT_BREAKER_TIMEOUT || '3000', 10),
-    errorThresholdPercentage: parseInt(process.env.CIRCUIT_BREAKER_ERROR_THRESHOLD || '50', 10),
-    resetTimeout: parseInt(process.env.CIRCUIT_BREAKER_RESET_TIMEOUT || '30000', 10),
+    timeout: parseInt(process.env.CIRCUIT_BREAKER_TIMEOUT || '10000', 10), // 10 seconds
+    errorThresholdPercentage: parseInt(process.env.CIRCUIT_BREAKER_ERROR_THRESHOLD || '60', 10), // 60% error threshold
+    resetTimeout: parseInt(process.env.CIRCUIT_BREAKER_RESET_TIMEOUT || '60000', 10), // 60 seconds
   },
 
   // Cache Configuration
