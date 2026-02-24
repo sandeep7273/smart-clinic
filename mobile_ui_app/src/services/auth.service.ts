@@ -238,6 +238,29 @@ export const refreshAccessToken = async (): Promise<TokenPair | null> => {
 };
 
 /**
+ * Decode base64url string (used in JWT) to plain text
+ * React Native compatible - uses atob instead of Buffer
+ */
+const base64UrlDecode = (str: string): string => {
+  // Convert base64url to base64
+  let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  
+  // Add padding if needed
+  const padding = base64.length % 4;
+  if (padding) {
+    base64 += '='.repeat(4 - padding);
+  }
+  
+  // Decode using atob (available in React Native)
+  try {
+    return atob(base64);
+  } catch (error) {
+    console.error('Base64 decode error:', error);
+    throw error;
+  }
+};
+
+/**
  * Decode JWT token to get expiration time
  * Returns expiration timestamp in milliseconds
  */
@@ -252,24 +275,25 @@ export const getTokenExpiration = (token: string): number | null => {
     const parts = token.split('.');
     if (parts.length === 3) {
       try {
-        // Decode the payload (second part of JWT)
-        const payload = JSON.parse(
-          Buffer.from(parts[1], 'base64').toString('utf-8')
-        );
+        // Decode the payload (second part of JWT) using React Native compatible method
+        const decodedPayload = base64UrlDecode(parts[1]);
+        const payload = JSON.parse(decodedPayload);
         
         // JWT exp is in seconds, convert to milliseconds
         if (payload.exp) {
+          console.log('✅ JWT token decoded successfully, exp:', new Date(payload.exp * 1000).toISOString());
           return payload.exp * 1000;
         }
       } catch (decodeError) {
-        console.warn('Could not decode JWT token, using default expiry');
+        console.warn('⚠️ Could not decode JWT token, using default expiry:', decodeError);
       }
     }
     
     // Fallback: return 15 minutes validity (matching backend ACCESS_TOKEN_EXPIRY)
+    console.log('ℹ️ Using default token expiry: 15 minutes');
     return Date.now() + 15 * 60 * 1000;
   } catch (error) {
-    console.error('Error decoding token:', error);
+    console.error('❌ Error decoding token:', error);
     return Date.now() + 15 * 60 * 1000;
   }
 };
