@@ -11,34 +11,34 @@ export const APP_CONFIG = {
   
   // API Gateway URLs
   // iOS Simulator: Use localhost
-  IOS_SIMULATOR_URL: 'http://localhost:3000/api',
-  IOS_SIMULATOR_GRAPHQL_URL: 'http://localhost:3000/graphql',
+  IOS_SIMULATOR_URL: 'http://3.104.74.129:3000/api',
+  IOS_SIMULATOR_GRAPHQL_URL: 'http://3.104.74.129:3000/graphql',
   // Android Emulator: Use 10.0.2.2 (special alias to host machine)
-  ANDROID_EMULATOR_URL: 'http://10.0.2.2:3000/api',
-  ANDROID_EMULATOR_GRAPHQL_URL: 'http://10.0.2.2:3000/graphql',
+  ANDROID_EMULATOR_URL: 'http://3.104.74.129:3000/api',
+  ANDROID_EMULATOR_GRAPHQL_URL: 'http://3.104.74.129:3000/graphql',
   // Physical Device: Use your computer's local IP (update this!)
   // Find your IP: macOS: ifconfig | grep "inet " | grep -v 127.0.0.1
-  PHYSICAL_DEVICE_URL: 'http://192.168.1.100:3000/api', // UPDATE THIS!
-  PHYSICAL_DEVICE_GRAPHQL_URL: 'http://192.168.1.100:3000/graphql', // UPDATE THIS!
+  PHYSICAL_DEVICE_URL: 'http://3.104.74.129:3000/api', // UPDATE THIS!
+  PHYSICAL_DEVICE_GRAPHQL_URL: 'http://3.104.74.129:3000/graphql', // UPDATE THIS!
   
   // Direct Service URLs (deprecated - use API Gateway instead)
   // Doctor Service
-  DOCTOR_SERVICE_ANDROID_URL: 'http://10.0.2.2:4003/api',
-  DOCTOR_SERVICE_PHYSICAL_URL: 'http://192.168.1.100:4003/api', // UPDATE THIS!
+  // DOCTOR_SERVICE_ANDROID_URL: 'http://10.0.2.2:4003/api',
+  // DOCTOR_SERVICE_PHYSICAL_URL: 'http://192.168.1.100:4003/api', // UPDATE THIS!
   // Appointment Service
-  APPOINTMENT_SERVICE_IOS_URL: 'http://localhost:4004',
-  APPOINTMENT_SERVICE_ANDROID_URL: 'http://10.0.2.2:4004',
-  APPOINTMENT_SERVICE_PHYSICAL_URL: 'http://192.168.1.100:4004', // UPDATE THIS!
+  // APPOINTMENT_SERVICE_IOS_URL: 'http://localhost:4004',
+  // APPOINTMENT_SERVICE_ANDROID_URL: 'http://10.0.2.2:4004',
+  // APPOINTMENT_SERVICE_PHYSICAL_URL: 'http://192.168.1.100:4004', // UPDATE THIS!
   
   // Production URL
-  PRODUCTION_API_URL: 'https://api.smartappointment.com/api',
-  PRODUCTION_GRAPHQL_URL: 'https://api.smartappointment.com/graphql',
+  PRODUCTION_API_URL: 'http://3.104.74.129:3000/api',
+  PRODUCTION_GRAPHQL_URL: 'http://3.104.74.129:3000/graphql',
   
   // Timeout settings (increased for debugging)
   API_TIMEOUT: 30000,
   
   // Feature flags
-  ENABLE_BIOMETRICS: false,
+  ENABLE_BIOMETRICS: true,
   ENABLE_AI_SEARCH: true,
 };
 
