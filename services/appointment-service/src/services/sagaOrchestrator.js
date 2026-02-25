@@ -295,6 +295,7 @@ class SagaOrchestrator {
         userId: user.userId,
         patientName: `${patientDetails.firstName} ${patientDetails.lastName}`,
         patientEmail: patientDetails.email,
+        patientId: bookingData.userId, // Use userId from booking data for patientId
         patientPhone: patientDetails.phone,
         doctorId: bookingData.doctorId,
         doctorName: `${doctorDetails.firstName} ${doctorDetails.lastName}`,

@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BIOMETRIC_CREDENTIALS_SERVICE = 'com.smartappointment.biometric';
 const BIOMETRIC_ENABLED_KEY = '@biometric_enabled';
+const BIOMETRIC_EMAIL_KEY = '@biometric_email';
 
 export type BiometryType = 
   | 'TouchID' 
@@ -65,6 +66,7 @@ export const getBiometricName = async (): Promise<string> => {
 
 /**
  * Save user credentials for biometric login
+ * Overwrites any existing credentials
  */
 export const saveBiometricCredentials = async (
   email: string,
@@ -78,17 +80,28 @@ export const saveBiometricCredentials = async (
       return false;
     }
 
-    // Save credentials with biometric protection
+    // Remove any existing credentials first
+    try {
+      await Keychain.resetGenericPassword({
+        service: BIOMETRIC_CREDENTIALS_SERVICE,
+      });
+    } catch (resetError) {
+      // Ignore error if no credentials exist
+      console.log('No existing credentials to remove');
+    }
+
+    // Save new credentials with biometric protection
     await Keychain.setGenericPassword(email, password, {
       service: BIOMETRIC_CREDENTIALS_SERVICE,
       accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
       accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_ANY,
     });
 
-    // Mark biometric as enabled
+    // Store the email and mark biometric as enabled
+    await AsyncStorage.setItem(BIOMETRIC_EMAIL_KEY, email);
     await AsyncStorage.setItem(BIOMETRIC_ENABLED_KEY, 'true');
 
-    console.log('✅ Biometric credentials saved');
+    console.log('✅ Biometric credentials saved for:', email);
     return true;
   } catch (error) {
     console.error('Error saving biometric credentials:', error);
@@ -150,14 +163,41 @@ export const authenticateWithBiometrics = async (
 
 /**
  * Check if biometric login is enabled
+ * Optionally check for a specific email
  */
-export const isBiometricEnabled = async (): Promise<boolean> => {
+export const isBiometricEnabled = async (email?: string): Promise<boolean> => {
   try {
     const enabled = await AsyncStorage.getItem(BIOMETRIC_ENABLED_KEY);
-    return enabled === 'true';
+    
+    if (enabled !== 'true') {
+      return false;
+    }
+    
+    // If email is provided, check if it matches the stored email
+    if (email) {
+      const storedEmail = await AsyncStorage.getItem(BIOMETRIC_EMAIL_KEY);
+      if (storedEmail && storedEmail !== email) {
+        console.log('Biometric enabled for different user:', storedEmail, '!==', email);
+        return false;
+      }
+    }
+    
+    return true;
   } catch (error) {
     console.error('Error checking if biometric is enabled:', error);
     return false;
+  }
+};
+
+/**
+ * Get the email associated with stored biometric credentials
+ */
+export const getBiometricEmail = async (): Promise<string | null> => {
+  try {
+    return await AsyncStorage.getItem(BIOMETRIC_EMAIL_KEY);
+  } catch (error) {
+    console.error('Error getting biometric email:', error);
+    return null;
   }
 };
 
@@ -171,8 +211,9 @@ export const disableBiometricLogin = async (): Promise<boolean> => {
       service: BIOMETRIC_CREDENTIALS_SERVICE,
     });
 
-    // Mark as disabled
+    // Mark as disabled and remove stored email
     await AsyncStorage.removeItem(BIOMETRIC_ENABLED_KEY);
+    await AsyncStorage.removeItem(BIOMETRIC_EMAIL_KEY);
 
     console.log('✅ Biometric login disabled');
     return true;

@@ -23,6 +23,7 @@ import {
   isBiometricEnabled,
   authenticateWithBiometrics,
   saveBiometricCredentials,
+  getBiometricEmail,
 } from '../../services/biometric.service';
 import styles from './Login.styles';
 
@@ -55,17 +56,40 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     }, [])
   );
 
+  // Re-check biometric availability when email changes
+  useEffect(() => {
+    if (email.trim()) {
+      checkBiometricAvailability();
+    } else {
+      // Reset biometric enabled state if no email
+      setBiometricEnabled(false);
+    }
+  }, [email]);
+
   const checkBiometricAvailability = async () => {
     try {
       const supported = await isBiometricSupported();
       setBiometricSupported(supported);
 
       if (supported) {
-        const enabled = await isBiometricEnabled();
+        // Check if biometric is enabled for the current email
+        const currentEmail = email.trim();
+        const enabled = currentEmail 
+          ? await isBiometricEnabled(currentEmail)
+          : await isBiometricEnabled();
+        
         setBiometricEnabled(enabled);
 
         const name = await getBiometricName();
         setBiometricName(name);
+        
+        // Log for debugging
+        if (currentEmail) {
+          const storedEmail = await getBiometricEmail();
+          console.log('🔍 Biometric check for:', currentEmail);
+          console.log('🔍 Stored email:', storedEmail);
+          console.log('🔍 Enabled:', enabled);
+        }
       }
     } catch (error) {
       console.error('Error checking biometric availability:', error);
@@ -128,8 +152,11 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     try {
       await dispatch(loginUser({ email: email.trim(), password })).unwrap();
       
-      // Offer to enable biometric after successful login
-      if (biometricSupported && !biometricEnabled) {
+      // Re-check if biometric is enabled for THIS specific user
+      const isEnabledForThisUser = await isBiometricEnabled(email.trim());
+      
+      // Offer to enable biometric if not enabled for this user
+      if (biometricSupported && !isEnabledForThisUser) {
         offerBiometricSetup();
       } else {
         // No biometric setup needed, navigate immediately
@@ -156,10 +183,12 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           {
             text: 'Enable',
             onPress: async () => {
+              console.log('💾 Saving biometric credentials for:', email.trim());
               const success = await saveBiometricCredentials(email.trim(), password);
               
               if (success) {
                 setBiometricEnabled(true);
+                console.log('✅ Biometric enabled for new user:', email.trim());
                 Alert.alert(
                   'Success',
                   `${biometricName} login has been enabled. You can now use it to sign in.`,
