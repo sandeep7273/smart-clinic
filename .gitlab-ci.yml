@@ -4,6 +4,11 @@
 # Jobs only run when files inside that service's directory change.
 # =============================================================================
 
+# Run pipeline only on commits to the develop branch
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+
 image: node:20-alpine
 
 include:
@@ -110,7 +115,7 @@ auth-service:docker-build:
     SERVICE_NAME: auth-service
     SERVICE_DIR: services/auth-service
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == "develop"
       changes:
         - services/auth-service/**/*
 
@@ -147,7 +152,7 @@ doctor-service:docker-build:
     SERVICE_NAME: doctor-service
     SERVICE_DIR: services/doctor-service
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == "develop"
       changes:
         - services/doctor-service/**/*
 
@@ -184,7 +189,7 @@ appointment-service:docker-build:
     SERVICE_NAME: appointment-service
     SERVICE_DIR: services/appointment-service
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == "develop"
       changes:
         - services/appointment-service/**/*
 
@@ -221,7 +226,7 @@ ai-service:docker-build:
     SERVICE_NAME: ai-service
     SERVICE_DIR: services/ai-service
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == "develop"
       changes:
         - services/ai-service/**/*
 
@@ -258,6 +263,6 @@ api-gateway:docker-build:
     SERVICE_NAME: api-gateway
     SERVICE_DIR: api-gateway
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == "develop"
       changes:
         - api-gateway/**/*
