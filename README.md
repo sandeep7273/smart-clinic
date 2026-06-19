@@ -1,2 +1,0 @@
-Smart Clinic - Healthcare management
- 
