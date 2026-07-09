@@ -3,13 +3,20 @@
  * Proxies requests to backend microservices
  */
 
-const express = require('express');
-const { createProxyMiddleware } = require('http-proxy-middleware');
-const config = require('../config');
-const { authenticate, optionalAuthenticate, authorize } = require('../middleware/auth.middleware');
-const { generalRateLimiter, authRateLimiter } = require('../middleware/rateLimiter.middleware');
-const logger = require('../utils/logger');
-const { getCorrelationId } = require('../utils/correlationId');
+const express = require("express");
+const { createProxyMiddleware } = require("http-proxy-middleware");
+const config = require("../config");
+const {
+  authenticate,
+  optionalAuthenticate,
+  authorize,
+} = require("../middleware/auth.middleware");
+const {
+  generalRateLimiter,
+  authRateLimiter,
+} = require("../middleware/rateLimiter.middleware");
+const logger = require("../utils/logger");
+const { getCorrelationId } = require("../utils/correlationId");
 
 const router = express.Router();
 
@@ -26,17 +33,22 @@ const createProxyConfig = (serviceName, serviceUrl) => {
     timeout: 30000, // 30 second timeout
     proxyTimeout: 30000,
     onProxyReq: (proxyReq, req, res) => {
+      // Strip Origin/Referer so backend microservices don't run their own
+      // CORS checks – CORS is enforced at the gateway boundary only.
+      proxyReq.removeHeader("origin");
+      proxyReq.removeHeader("referer");
+
       // Forward correlation ID
       const correlationId = getCorrelationId(req);
-      proxyReq.setHeader('x-correlation-id', correlationId);
+      proxyReq.setHeader("x-correlation-id", correlationId);
 
       // Forward user info from JWT
       if (req.user) {
-        proxyReq.setHeader('x-user-id', req.user.userId || req.user.id);
-        proxyReq.setHeader('x-user-email', req.user.email);
-        proxyReq.setHeader('x-user-role', req.user.role);
+        proxyReq.setHeader("x-user-id", req.user.userId || req.user.id);
+        proxyReq.setHeader("x-user-email", req.user.email);
+        proxyReq.setHeader("x-user-role", req.user.role);
         if (req.user.tenantId) {
-          proxyReq.setHeader('x-tenant-id', req.user.tenantId);
+          proxyReq.setHeader("x-tenant-id", req.user.tenantId);
         }
       }
 
@@ -44,13 +56,13 @@ const createProxyConfig = (serviceName, serviceUrl) => {
       // This is necessary because body-parser consumes the stream
       if (req.body && Object.keys(req.body).length > 0) {
         const bodyData = JSON.stringify(req.body);
-        proxyReq.setHeader('Content-Type', 'application/json');
-        proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+        proxyReq.setHeader("Content-Type", "application/json");
+        proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
         proxyReq.write(bodyData);
       }
 
       // Log proxy request
-      logger.debug('Proxying request', {
+      logger.debug("Proxying request", {
         correlationId,
         service: serviceName,
         method: req.method,
@@ -61,7 +73,7 @@ const createProxyConfig = (serviceName, serviceUrl) => {
     onProxyRes: (proxyRes, req, res) => {
       // Log proxy response
       const correlationId = getCorrelationId(req);
-      logger.debug('Proxy response received', {
+      logger.debug("Proxy response received", {
         correlationId,
         service: serviceName,
         statusCode: proxyRes.statusCode,
@@ -70,7 +82,7 @@ const createProxyConfig = (serviceName, serviceUrl) => {
     },
     onError: (err, req, res) => {
       const correlationId = getCorrelationId(req);
-      logger.error('Proxy error', {
+      logger.error("Proxy error", {
         correlationId,
         service: serviceName,
         error: err.message,
@@ -92,36 +104,35 @@ const createProxyConfig = (serviceName, serviceUrl) => {
  * Protected endpoints: /api/auth/logout, /api/auth/verify, /api/auth/me
  */
 router.use(
-  '/auth/register',
+  "/auth/register",
   authRateLimiter,
-  createProxyMiddleware(createProxyConfig('auth', config.services.auth))
+  createProxyMiddleware(createProxyConfig("auth", config.services.auth)),
 );
 
 router.use(
-  '/auth/login',
+  "/auth/login",
   authRateLimiter,
-  createProxyMiddleware(createProxyConfig('auth', config.services.auth))
+  createProxyMiddleware(createProxyConfig("auth", config.services.auth)),
 );
 
 // Refresh endpoint should be public (only requires refresh token in body)
 router.use(
-  '/auth/refresh',
+  "/auth/refresh",
   authRateLimiter,
-  createProxyMiddleware(createProxyConfig('auth', config.services.auth))
+  createProxyMiddleware(createProxyConfig("auth", config.services.auth)),
 );
 
 router.use(
-  '/auth/verify',
-  createProxyMiddleware(createProxyConfig('auth', config.services.auth))
+  "/auth/verify",
+  createProxyMiddleware(createProxyConfig("auth", config.services.auth)),
 );
 
 // All other auth endpoints require authentication
 router.use(
-  '/auth',
+  "/auth",
   authenticate,
   generalRateLimiter,
-  createProxyMiddleware(createProxyConfig('auth', config.services.auth))
+  createProxyMiddleware(createProxyConfig("auth", config.services.auth)),
 );
-
 
 module.exports = router;

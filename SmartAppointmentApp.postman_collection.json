@@ -1,0 +1,909 @@
+{
+  "info": {
+    "_postman_id": "61406766-82dd-47b0-bfd1-5f582bf3448b",
+    "name": "SmartAppointmentApp",
+    "description": "Complete API collection for the Smart Appointment System microservices.\n\n**Services:**\n- Auth Service (port 4001)\n- Doctor Service (port 4003)\n- Appointment Service (port 4004)\n- API Gateway (port 3000)\n\n**Quick Start:**\n1. Run the `login` request under AuthService — it auto-sets `accessToken`, `refreshToken`, and `userId` collection variables.\n2. All protected routes use `{{accessToken}}` automatically via the collection-level Bearer auth.\n3. After creating a doctor, copy the `_id` into the `doctorId` variable. After booking, copy into `appointmentId`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "49212612",
+    "_collection_link": "https://go.postman.co/collection/49212612-61406766-82dd-47b0-bfd1-5f582bf3448b?source=collection_link"
+  },
+  "variable": [
+    {
+      "key": "authServiceUrl",
+      "value": "http://localhost:4001",
+      "type": "string"
+    },
+    {
+      "key": "doctorServiceUrl",
+      "value": "http://localhost:4003",
+      "type": "string"
+    },
+    {
+      "key": "appointmentServiceUrl",
+      "value": "http://localhost:4004",
+      "type": "string"
+    },
+    {
+      "key": "apiGatewayUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    { "key": "accessToken", "value": "", "type": "string" },
+    { "key": "refreshToken", "value": "", "type": "string" },
+    { "key": "userId", "value": "", "type": "string" },
+    { "key": "doctorId", "value": "", "type": "string" },
+    { "key": "appointmentId", "value": "", "type": "string" },
+    { "key": "slotId", "value": "", "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "AuthService",
+      "description": "Direct calls to Auth Service on port 4001",
+      "item": [
+        {
+          "name": "health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{authServiceUrl}}/health",
+              "host": ["{{authServiceUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.data) {",
+                  "        pm.collectionVariables.set('accessToken', res.data.accessToken);",
+                  "        pm.collectionVariables.set('refreshToken', res.data.refreshToken);",
+                  "        if (res.data.user) {",
+                  "            pm.collectionVariables.set('userId', res.data.user._id || res.data.user.id);",
+                  "        }",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Doe\",\n  \"email\": \"jane.doe@example.com\",\n  \"password\": \"Password123\",\n  \"phoneNumber\": \"+1-555-0101\",\n  \"dateOfBirth\": \"1990-05-15\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{authServiceUrl}}/auth/register",
+              "host": ["{{authServiceUrl}}"],
+              "path": ["auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.data) {",
+                  "        pm.collectionVariables.set('accessToken', res.data.accessToken);",
+                  "        pm.collectionVariables.set('refreshToken', res.data.refreshToken);",
+                  "        if (res.data.user) {",
+                  "            pm.collectionVariables.set('userId', res.data.user._id || res.data.user.id);",
+                  "        }",
+                  "        console.log('Tokens set successfully');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"jane.doe@example.com\",\n  \"password\": \"Password123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{authServiceUrl}}/auth/login",
+              "host": ["{{authServiceUrl}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "refreshToken",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{authServiceUrl}}/auth/refresh",
+              "host": ["{{authServiceUrl}}"],
+              "path": ["auth", "refresh"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{authServiceUrl}}/auth/logout",
+              "host": ["{{authServiceUrl}}"],
+              "path": ["auth", "logout"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "verify",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{authServiceUrl}}/auth/verify",
+              "host": ["{{authServiceUrl}}"],
+              "path": ["auth", "verify"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "getMe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{authServiceUrl}}/auth/me",
+              "host": ["{{authServiceUrl}}"],
+              "path": ["auth", "me"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "getUsers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{authServiceUrl}}/auth/all",
+              "host": ["{{authServiceUrl}}"],
+              "path": ["auth", "all"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "APIGateway",
+      "description": "Calls routed through the API Gateway on port 3000. Auth routes are proxied to Auth Service.",
+      "item": [
+        {
+          "name": "health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiGatewayUrl}}/health",
+              "host": ["{{apiGatewayUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "status (ready)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiGatewayUrl}}/ready",
+              "host": ["{{apiGatewayUrl}}"],
+              "path": ["ready"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "auth/register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.data) {",
+                  "        pm.collectionVariables.set('accessToken', res.data.accessToken);",
+                  "        pm.collectionVariables.set('refreshToken', res.data.refreshToken);",
+                  "        if (res.data.user) {",
+                  "            pm.collectionVariables.set('userId', res.data.user._id || res.data.user.id);",
+                  "        }",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Doe\",\n  \"email\": \"jane.doe@example.com\",\n  \"password\": \"Password123\",\n  \"phoneNumber\": \"+1-555-0101\",\n  \"dateOfBirth\": \"1990-05-15\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{apiGatewayUrl}}/api/auth/register",
+              "host": ["{{apiGatewayUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "auth/login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.data) {",
+                  "        pm.collectionVariables.set('accessToken', res.data.accessToken);",
+                  "        pm.collectionVariables.set('refreshToken', res.data.refreshToken);",
+                  "        if (res.data.user) {",
+                  "            pm.collectionVariables.set('userId', res.data.user._id || res.data.user.id);",
+                  "        }",
+                  "        console.log('Tokens set via gateway');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"jane.doe@example.com\",\n  \"password\": \"Password123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{apiGatewayUrl}}/api/auth/login",
+              "host": ["{{apiGatewayUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "auth/refresh",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{apiGatewayUrl}}/api/auth/refresh",
+              "host": ["{{apiGatewayUrl}}"],
+              "path": ["api", "auth", "refresh"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "verify",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiGatewayUrl}}/api/auth/verify",
+              "host": ["{{apiGatewayUrl}}"],
+              "path": ["api", "auth", "verify"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "auth/me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiGatewayUrl}}/api/auth/me",
+              "host": ["{{apiGatewayUrl}}"],
+              "path": ["api", "auth", "me"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "DoctorService",
+      "description": "Direct calls to Doctor Service on port 4003. All routes require Bearer auth except /health.",
+      "item": [
+        {
+          "name": "health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{doctorServiceUrl}}/health",
+              "host": ["{{doctorServiceUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "getAllDoctors",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{doctorServiceUrl}}/api/doctors?page=1&limit=10&sortBy=rating&sortOrder=desc",
+              "host": ["{{doctorServiceUrl}}"],
+              "path": ["api", "doctors"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "sortBy", "value": "rating" },
+                { "key": "sortOrder", "value": "desc" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "searchDoctors",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{doctorServiceUrl}}/api/doctors/search?specialty=Cardiology&page=1&limit=10",
+              "host": ["{{doctorServiceUrl}}"],
+              "path": ["api", "doctors", "search"],
+              "query": [
+                { "key": "specialty", "value": "Cardiology" },
+                { "key": "query", "value": "", "disabled": true },
+                { "key": "name", "value": "", "disabled": true },
+                { "key": "location", "value": "", "disabled": true },
+                { "key": "condition", "value": "", "disabled": true },
+                { "key": "symptom", "value": "", "disabled": true },
+                { "key": "date", "value": "", "disabled": true },
+                { "key": "minRating", "value": "", "disabled": true },
+                { "key": "maxFee", "value": "", "disabled": true },
+                { "key": "acceptsInsurance", "value": "", "disabled": true },
+                { "key": "isAvailable", "value": "", "disabled": true },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "sortBy", "value": "rating", "disabled": true },
+                { "key": "sortOrder", "value": "desc", "disabled": true }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "getAvailableDoctors",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{doctorServiceUrl}}/api/doctors/available?page=1&limit=10",
+              "host": ["{{doctorServiceUrl}}"],
+              "path": ["api", "doctors", "available"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "getFilterOptions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{doctorServiceUrl}}/api/doctors/filters/options",
+              "host": ["{{doctorServiceUrl}}"],
+              "path": ["api", "doctors", "filters", "options"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "getDoctorsBySpecialization",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{doctorServiceUrl}}/api/doctors/specialization/Cardiology",
+              "host": ["{{doctorServiceUrl}}"],
+              "path": ["api", "doctors", "specialization", "Cardiology"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "createDoctor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.data && res.data._id) {",
+                  "        pm.collectionVariables.set('doctorId', res.data._id);",
+                  "        console.log('doctorId set:', res.data._id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Smith\",\n  \"email\": \"dr.john.smith@clinic.com\",\n  \"phone\": \"+1-555-0100\",\n  \"specializations\": [\"Cardiology\"],\n  \"experience\": 10,\n  \"consultationFee\": 150.00,\n  \"address\": {\n    \"street\": \"123 Medical Blvd\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"zipCode\": \"10001\",\n    \"country\": \"USA\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{doctorServiceUrl}}/api/doctors",
+              "host": ["{{doctorServiceUrl}}"],
+              "path": ["api", "doctors"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "getDoctorById",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{doctorServiceUrl}}/api/doctors/{{doctorId}}",
+              "host": ["{{doctorServiceUrl}}"],
+              "path": ["api", "doctors", "{{doctorId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "getDoctorStats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{doctorServiceUrl}}/api/doctors/{{doctorId}}/stats",
+              "host": ["{{doctorServiceUrl}}"],
+              "path": ["api", "doctors", "{{doctorId}}", "stats"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "getDoctorAvailability",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{doctorServiceUrl}}/api/doctors/{{doctorId}}/availability?date=2026-07-15",
+              "host": ["{{doctorServiceUrl}}"],
+              "path": ["api", "doctors", "{{doctorId}}", "availability"],
+              "query": [
+                { "key": "date", "value": "2026-07-15" },
+                { "key": "startTime", "value": "09:00", "disabled": true },
+                { "key": "endTime", "value": "17:00", "disabled": true }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "addSlot",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-07-15\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"10:00\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{doctorServiceUrl}}/api/doctors/{{doctorId}}/slots",
+              "host": ["{{doctorServiceUrl}}"],
+              "path": ["api", "doctors", "{{doctorId}}", "slots"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "reserveSlot",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-07-15\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"10:00\",\n  \"userId\": \"{{userId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{doctorServiceUrl}}/api/doctors/{{doctorId}}/slots/reserve",
+              "host": ["{{doctorServiceUrl}}"],
+              "path": ["api", "doctors", "{{doctorId}}", "slots", "reserve"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "updateSlotStatus",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"available\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{doctorServiceUrl}}/api/doctors/{{doctorId}}/slots/{{slotId}}",
+              "host": ["{{doctorServiceUrl}}"],
+              "path": ["api", "doctors", "{{doctorId}}", "slots", "{{slotId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "releaseSlot",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{doctorServiceUrl}}/api/doctors/{{doctorId}}/slots/{{slotId}}/release",
+              "host": ["{{doctorServiceUrl}}"],
+              "path": [
+                "api",
+                "doctors",
+                "{{doctorId}}",
+                "slots",
+                "{{slotId}}",
+                "release"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "updateDoctor",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+1-555-0199\",\n  \"consultationFee\": 175.00,\n  \"experience\": 11\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{doctorServiceUrl}}/api/doctors/{{doctorId}}",
+              "host": ["{{doctorServiceUrl}}"],
+              "path": ["api", "doctors", "{{doctorId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "deleteDoctor",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{doctorServiceUrl}}/api/doctors/{{doctorId}}",
+              "host": ["{{doctorServiceUrl}}"],
+              "path": ["api", "doctors", "{{doctorId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "syncReadView",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{doctorServiceUrl}}/api/doctors/syncReadView",
+              "host": ["{{doctorServiceUrl}}"],
+              "path": ["api", "doctors", "syncReadView"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "AppointmentService",
+      "description": "Direct calls to Appointment Service on port 4004. All routes require Bearer auth except /health.",
+      "item": [
+        {
+          "name": "health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{appointmentServiceUrl}}/health",
+              "host": ["{{appointmentServiceUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "bookAppointment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.data && res.data._id) {",
+                  "        pm.collectionVariables.set('appointmentId', res.data._id);",
+                  "        console.log('appointmentId set:', res.data._id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"doctorId\": \"{{doctorId}}\",\n  \"date\": \"2026-07-15\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"10:30\",\n  \"duration\": 30,\n  \"reason\": \"Regular health checkup\",\n  \"notes\": \"First visit\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{appointmentServiceUrl}}/api/appointments",
+              "host": ["{{appointmentServiceUrl}}"],
+              "path": ["api", "appointments"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "getAllAppointments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{appointmentServiceUrl}}/api/appointments?page=1&limit=10",
+              "host": ["{{appointmentServiceUrl}}"],
+              "path": ["api", "appointments"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "status", "value": "", "disabled": true },
+                { "key": "startDate", "value": "", "disabled": true },
+                { "key": "endDate", "value": "", "disabled": true },
+                { "key": "userId", "value": "{{userId}}", "disabled": true },
+                {
+                  "key": "doctorId",
+                  "value": "{{doctorId}}",
+                  "disabled": true
+                },
+                { "key": "search", "value": "", "disabled": true }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "getAppointmentById",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{appointmentServiceUrl}}/api/appointments/{{appointmentId}}",
+              "host": ["{{appointmentServiceUrl}}"],
+              "path": ["api", "appointments", "{{appointmentId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "updateAppointment",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Patient requested extended consultation time\",\n  \"status\": \"confirmed\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{appointmentServiceUrl}}/api/appointments/{{appointmentId}}",
+              "host": ["{{appointmentServiceUrl}}"],
+              "path": ["api", "appointments", "{{appointmentId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "cancelAppointment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cancelReason\": \"Patient has conflicting schedule\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{appointmentServiceUrl}}/api/appointments/{{appointmentId}}/cancel",
+              "host": ["{{appointmentServiceUrl}}"],
+              "path": ["api", "appointments", "{{appointmentId}}", "cancel"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "confirmAppointment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{appointmentServiceUrl}}/api/appointments/{{appointmentId}}/confirm",
+              "host": ["{{appointmentServiceUrl}}"],
+              "path": ["api", "appointments", "{{appointmentId}}", "confirm"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "completeAppointment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{appointmentServiceUrl}}/api/appointments/{{appointmentId}}/complete",
+              "host": ["{{appointmentServiceUrl}}"],
+              "path": ["api", "appointments", "{{appointmentId}}", "complete"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "getPatientAppointments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{appointmentServiceUrl}}/api/appointments/patient/{{userId}}?page=1&limit=10",
+              "host": ["{{appointmentServiceUrl}}"],
+              "path": ["api", "appointments", "patient", "{{userId}}"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "status", "value": "", "disabled": true },
+                { "key": "startDate", "value": "", "disabled": true },
+                { "key": "endDate", "value": "", "disabled": true }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "getDoctorAppointments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{appointmentServiceUrl}}/api/appointments/doctor/{{doctorId}}?page=1&limit=10",
+              "host": ["{{appointmentServiceUrl}}"],
+              "path": ["api", "appointments", "doctor", "{{doctorId}}"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "status", "value": "", "disabled": true },
+                { "key": "startDate", "value": "", "disabled": true },
+                { "key": "endDate", "value": "", "disabled": true }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "getAppointmentHistory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{appointmentServiceUrl}}/api/appointments/{{appointmentId}}/history",
+              "host": ["{{appointmentServiceUrl}}"],
+              "path": ["api", "appointments", "{{appointmentId}}", "history"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "getAppointmentStats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{appointmentServiceUrl}}/api/appointments/stats/overview",
+              "host": ["{{appointmentServiceUrl}}"],
+              "path": ["api", "appointments", "stats", "overview"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

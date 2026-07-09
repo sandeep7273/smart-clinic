@@ -1,0 +1,71 @@
+# Observability Stack — local development
+#
+# Provides:
+#   Jaeger    http://localhost:16686  – distributed trace UI
+#   Prometheus http://localhost:9090  – metrics scraper + query
+#   Grafana   http://localhost:3001   – dashboards  (admin / admin)
+#
+# Usage:
+#   docker-compose -f docker-compose.observability.yml up -d
+#
+# Configure services to export traces:
+#   OTLP_ENDPOINT=http://localhost:4318   (Jaeger OTLP HTTP receiver)
+#   All /metrics endpoints are scraped automatically by Prometheus.
+
+services:
+  # ── Jaeger all-in-one (trace collection + UI) ──────────────────────────────
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    container_name: smart-clinic-jaeger
+    ports:
+      - "16686:16686" # UI
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP  ← services send here
+      - "14268:14268" # Jaeger Thrift HTTP (legacy)
+      - "9411:9411" # Zipkin-compatible
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+      SPAN_STORAGE_TYPE: memory
+    restart: unless-stopped
+    networks: [observability]
+
+  # ── Prometheus (metrics collection) ──────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    container_name: smart-clinic-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+      - "--storage.tsdb.retention.time=7d"
+    restart: unless-stopped
+    networks: [observability]
+
+  # ── Grafana (dashboards) ───────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: smart-clinic-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on: [prometheus, jaeger]
+    restart: unless-stopped
+    networks: [observability]
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  observability:
+    driver: bridge

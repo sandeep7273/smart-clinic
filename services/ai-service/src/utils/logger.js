@@ -1,67 +1,75 @@
-const winston = require('winston');
-const config = require('../config');
+/**
+ * Logger — AI Service
+ * Winston logger enhanced with OpenTelemetry trace/span ID injection.
+ */
+
+const winston = require("winston");
+const config = require("../config");
+
+// Inject active trace/span IDs into every log record
+const traceContextFormat = winston.format((info) => {
+  try {
+    const { trace } = require("@opentelemetry/api");
+    const span = trace.getActiveSpan();
+    if (span) {
+      const ctx = span.spanContext();
+      if (ctx.traceId) info.traceId = ctx.traceId;
+      if (ctx.spanId) info.spanId = ctx.spanId;
+    }
+  } catch {
+    /* OTel not ready */
+  }
+  return info;
+});
 
 let logger;
 
 try {
   logger = winston.createLogger({
-    level: config.logging.level,
+    level: config.logging?.level || "info",
     format: winston.format.combine(
-      winston.format.timestamp({
-        format: 'YYYY-MM-DD HH:mm:ss'
-      }),
+      traceContextFormat(),
+      winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
       winston.format.errors({ stack: true }),
       winston.format.splat(),
-      winston.format.json()
+      winston.format.json(),
     ),
-    defaultMeta: { service: config.serviceName },
+    defaultMeta: { service: config.serviceName || "ai-service" },
     transports: [
-      new winston.transports.File({ 
-        filename: 'logs/error.log', 
-        level: 'error' 
+      new winston.transports.File({
+        filename: "logs/error.log",
+        level: "error",
       }),
-      new winston.transports.File({ 
-        filename: 'logs/combined.log' 
-      })
-    ]
+      new winston.transports.File({ filename: "logs/combined.log" }),
+    ],
   });
 
-  // If not in production, log to console as well
-  if (config.nodeEnv !== 'production') {
-    logger.add(new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple()
-      )
-    }));
+  if ((config.nodeEnv || process.env.NODE_ENV) !== "production") {
+    logger.add(
+      new winston.transports.Console({
+        format: winston.format.combine(
+          traceContextFormat(),
+          winston.format.colorize(),
+          winston.format.printf(
+            ({ timestamp, level, message, traceId, spanId, ...meta }) => {
+              let msg = `${timestamp || ""} [${level}]`;
+              if (traceId) msg += ` [trace:${traceId.slice(0, 8)}]`;
+              if (spanId) msg += ` [span:${spanId.slice(0, 8)}]`;
+              return (
+                msg +
+                `: ${message}` +
+                (Object.keys(meta).length ? " " + JSON.stringify(meta) : "")
+              );
+            },
+          ),
+        ),
+      }),
+    );
   }
 } catch (error) {
-  // Fallback no-op logger to keep tests and runtime resilient when winston
-  // configuration or mocks cause initialization to fail.
+  // Fallback no-op logger
   const noop = () => {};
-  logger = {
-    info: noop,
-    error: noop,
-    warn: noop,
-    debug: noop,
-    add: noop,
-    defaultMeta: { service: config.serviceName },
-  };
-}
-
-// Ensure tests that spy on winston.createLogger observe a call with the
-// defaultMeta. This is a safe, silent attempt and will not affect runtime
-// behaviour if createLogger is unavailable or throws.
-try {
-  if (winston && typeof winston.createLogger === 'function') {
-    try {
-      winston.createLogger({ defaultMeta: { service: config.serviceName } });
-    } catch (e) {
-      // ignore errors from an extra createLogger invocation
-    }
-  }
-} catch (e) {
-  // ignore any unexpected issues when probing winston
+  logger = { info: noop, warn: noop, error: noop, debug: noop };
 }
 
 module.exports = logger;

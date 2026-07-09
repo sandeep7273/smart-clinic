@@ -1,34 +1,46 @@
 /**
  * Main Server Entry Point
  * Appointment Service with SAGA, CQRS, Event Sourcing, and GraphQL
+ *
+ * Telemetry bootstrapped FIRST so auto-instrumentation patches http/express/mongo.
  */
 
-require('express-async-errors');
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const swaggerUi = require('swagger-ui-express');
+// ── Bootstrap telemetry FIRST ─────────────────────────────────────────────
+const { telemetryMiddleware, metricsHandler } = require("./telemetry")({
+  serviceName: "appointment-service",
+  version: "1.0.0",
+});
+const correlationIdMiddleware = require("./middlewares/correlationId.middleware");
 
-const config = require('./config');
-const swaggerSpec = require('./config/swagger');
-const { connectDB } = require('./config/database');
-const logger = require('./utils/logger');
-const { errorHandler, notFoundHandler } = require('./middlewares/errorHandler.middleware');
+require("express-async-errors");
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const morgan = require("morgan");
+const swaggerUi = require("swagger-ui-express");
+
+const config = require("./config");
+const swaggerSpec = require("./config/swagger");
+const { connectDB } = require("./config/database");
+const logger = require("./utils/logger");
+const {
+  errorHandler,
+  notFoundHandler,
+} = require("./middlewares/errorHandler.middleware");
 
 // Import GraphQL and new Kafka setup
-const { createApolloServer, healthCheck } = require('./graphql/server');
-const { 
-  initializeProducer, 
-  initializeConsumer, 
-  shutdown: shutdownKafka 
-} = require('./kafka');
+const { createApolloServer, healthCheck } = require("./graphql/server");
+const {
+  initializeProducer,
+  initializeConsumer,
+  shutdown: shutdownKafka,
+} = require("./kafka");
 
 // Import gRPC server
-const { startGrpcServer } = require('./grpc/server');
+const { startGrpcServer } = require("./grpc/server");
 
 // Import routes
-const appointmentRoutes = require('./routes/appointment.routes');
+const appointmentRoutes = require("./routes/appointment.routes");
 
 // Create Express app
 const app = express();
@@ -40,56 +52,59 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Logging middleware
-if (config.nodeEnv === 'development') {
-  app.use(morgan('dev'));
+if (config.nodeEnv === "development") {
+  app.use(morgan("dev"));
 } else {
   app.use(
-    morgan('combined', {
+    morgan("combined", {
       stream: {
         write: (message) => logger.info(message.trim()),
       },
-    })
+    }),
   );
 }
 
+// APM Telemetry + Prometheus metricsapp.use(correlationIdMiddleware);app.use(telemetryMiddleware);
+app.get("/metrics", metricsHandler);
+
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get("/health", (req, res) => {
   res.json({
     ...healthCheck(),
     success: true,
-    message: 'Appointment Service is running',
+    message: "Appointment Service is running",
     service: config.serviceName,
-    version: '1.0.0'
+    version: "1.0.0",
   });
 });
 
 // API documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // API routes
-app.use('/api/appointments', appointmentRoutes);
+app.use("/api/appointments", appointmentRoutes);
 
 // Root endpoint
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: 'Appointment Service API',
-    version: '1.0.0',
-    documentation: '/api-docs',
-    graphql: '/graphql',
+    message: "Appointment Service API",
+    version: "1.0.0",
+    documentation: "/api-docs",
+    graphql: "/graphql",
     endpoints: {
-      appointments: '/appointments',
-      health: '/health',
-      graphql: '/graphql'
+      appointments: "/appointments",
+      health: "/health",
+      graphql: "/graphql",
     },
     patterns: {
-      saga: 'Distributed transaction management',
-      cqrs: 'Command Query Responsibility Segregation',
-      eventSourcing: 'Complete audit trail',
-      graphql: 'Flexible API layer with federation support',
-      kafka: 'Event-driven architecture',
-      circuitBreaker: 'Service resilience'
-    }
+      saga: "Distributed transaction management",
+      cqrs: "Command Query Responsibility Segregation",
+      eventSourcing: "Complete audit trail",
+      graphql: "Flexible API layer with federation support",
+      kafka: "Event-driven architecture",
+      circuitBreaker: "Service resilience",
+    },
   });
 });
 
@@ -98,16 +113,18 @@ const initializeGraphQL = async () => {
   try {
     const apolloServer = createApolloServer();
     await apolloServer.start();
-    apolloServer.applyMiddleware({ 
-      app, 
-      path: '/graphql',
-      cors: false // CORS already configured above
+    apolloServer.applyMiddleware({
+      app,
+      path: "/graphql",
+      cors: false, // CORS already configured above
     });
-    
-    logger.info(`🚀 GraphQL Server ready at http://localhost:${config.port}${apolloServer.graphqlPath}`);
+
+    logger.info(
+      `🚀 GraphQL Server ready at http://localhost:${config.port}${apolloServer.graphqlPath}`,
+    );
     return apolloServer;
   } catch (error) {
-    logger.error('Failed to initialize GraphQL server:', error);
+    logger.error("Failed to initialize GraphQL server:", error);
     throw error;
   }
 };
@@ -117,18 +134,35 @@ const initializeServices = async () => {
   try {
     // Initialize GraphQL
     const apolloServer = await initializeGraphQL();
-    
-    // Initialize Kafka
-    await initializeProducer();
-    await initializeConsumer();
-    
+
+    // Initialize Kafka (optional - service can run without it)
+    let kafkaInitialized = false;
+    try {
+      await initializeProducer();
+      await initializeConsumer();
+      kafkaInitialized = true;
+      logger.info("✅ Kafka initialized successfully");
+    } catch (kafkaError) {
+      logger.warn(
+        "⚠️  Kafka initialization failed - service will run without event streaming",
+        {
+          error: kafkaError.message,
+          broker: kafkaError.cause?.broker,
+        },
+      );
+      logger.info("💡 To enable Kafka: Start Kafka broker on localhost:9092");
+    }
+
     // Initialize gRPC server
     const grpcServer = startGrpcServer(50052);
-    
-    logger.info('All services initialized successfully');
-    return { apolloServer, grpcServer };
+
+    logger.info("All services initialized successfully", {
+      kafkaEnabled: kafkaInitialized,
+      grpcEnabled: !!grpcServer,
+    });
+    return { apolloServer, kafkaInitialized, grpcServer };
   } catch (error) {
-    logger.error('Failed to initialize services:', error);
+    logger.error("Failed to initialize services:", error);
     throw error;
   }
 };
@@ -138,10 +172,11 @@ const startServer = async () => {
   try {
     // Connect to MongoDB
     await connectDB();
-    logger.info('Database connected successfully');
+    logger.info("Database connected successfully");
 
     // Initialize GraphQL and Kafka services FIRST
-    const { apolloServer, grpcServer } = await initializeServices();
+    const { apolloServer, kafkaInitialized, grpcServer } =
+      await initializeServices();
 
     // NOW register 404 handler AFTER GraphQL is mounted
     app.use(notFoundHandler);
@@ -155,68 +190,74 @@ const startServer = async () => {
         port: config.port,
         environment: config.nodeEnv,
         documentation: `http://localhost:${config.port}/api-docs`,
-        graphql: `http://localhost:${config.port}/graphql`
+        graphql: `http://localhost:${config.port}/graphql`,
       });
       console.log(`\n🚀 Appointment Service running on port ${config.port}`);
-      console.log(`📚 API Documentation: http://localhost:${config.port}/api-docs`);
-      console.log(`🔗 GraphQL Endpoint: http://localhost:${config.port}/graphql`);
+      console.log(
+        `📚 API Documentation: http://localhost:${config.port}/api-docs`,
+      );
+      console.log(
+        `🔗 GraphQL Endpoint: http://localhost:${config.port}/graphql`,
+      );
       console.log(`🏥 Health Check: http://localhost:${config.port}/health\n`);
     });
 
     // Graceful shutdown handler
     const gracefulShutdown = async (signal) => {
       logger.info(`${signal} signal received: starting graceful shutdown`);
-      
+
       try {
         // Stop accepting new requests
         server.close(async () => {
-          logger.info('HTTP server closed');
-          
+          logger.info("HTTP server closed");
+
           // Shutdown GraphQL server
           if (apolloServer) {
             await apolloServer.stop();
-            logger.info('GraphQL server stopped');
+            logger.info("GraphQL server stopped");
           }
-          
+
           // Shutdown gRPC server
           if (grpcServer) {
             grpcServer.forceShutdown();
-            logger.info('gRPC server stopped');
+            logger.info("gRPC server stopped");
           }
-          
-          // Shutdown Kafka connections
-          await shutdownKafka();
-          
-          logger.info('Graceful shutdown completed');
+
+          // Shutdown Kafka connections (only if initialized)
+          if (kafkaInitialized) {
+            await shutdownKafka();
+          }
+
+          logger.info("Graceful shutdown completed");
           process.exit(0);
         });
-        
+
         // Force shutdown after timeout
         setTimeout(() => {
-          logger.error('Could not close connections in time, forcefully shutting down');
+          logger.error(
+            "Could not close connections in time, forcefully shutting down",
+          );
           process.exit(1);
         }, 10000);
-        
       } catch (error) {
-        logger.error('Error during graceful shutdown:', error);
+        logger.error("Error during graceful shutdown:", error);
         process.exit(1);
       }
     };
 
     // Register signal handlers
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+    process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
     // Handle unhandled rejections
-    process.on('unhandledRejection', (err) => {
-      logger.error('Unhandled Rejection:', err);
-      gracefulShutdown('UNHANDLED_REJECTION');
+    process.on("unhandledRejection", (err) => {
+      logger.error("Unhandled Rejection:", err);
+      gracefulShutdown("UNHANDLED_REJECTION");
     });
 
     return server;
-    
   } catch (error) {
-    logger.error('Failed to start server:', error);
+    logger.error("Failed to start server:", error);
     process.exit(1);
   }
 };

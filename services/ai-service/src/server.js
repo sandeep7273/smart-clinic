@@ -1,17 +1,24 @@
-const express = require('express');
-const { ApolloServer } = require('apollo-server-express');
-const cors = require('cors');
-const mongoose = require('mongoose');
-const config = require('./config');
-const logger = require('./utils/logger');
-const typeDefs = require('./graphql/typeDefs');
-const resolvers = require('./graphql/resolvers');
-const createContext = require('./graphql/context');
+// ── Bootstrap telemetry FIRST (before any other require) ───────────────────
+const { telemetryMiddleware, metricsHandler } = require("./telemetry")({
+  serviceName: "ai-service",
+  version: "1.0.0",
+});
+const correlationIdMiddleware = require("./middlewares/correlationId.middleware");
 
-const redisClient = require('./config/redis');
-const doctorClient = require('./grpc/doctorClient');
-const appointmentClient = require('./grpc/appointmentClient');
-const ragService = require('./services/ragService');
+const express = require("express");
+const { ApolloServer } = require("apollo-server-express");
+const cors = require("cors");
+const mongoose = require("mongoose");
+const config = require("./config");
+const logger = require("./utils/logger");
+const typeDefs = require("./graphql/typeDefs");
+const resolvers = require("./graphql/resolvers");
+const createContext = require("./graphql/context");
+
+const redisClient = require("./config/redis");
+const doctorClient = require("./grpc/doctorClient");
+const appointmentClient = require("./grpc/appointmentClient");
+const ragService = require("./services/ragService");
 
 class AIServiceServer {
   constructor() {
@@ -43,9 +50,9 @@ class AIServiceServer {
       // Initialize Apollo Server
       await this.setupApolloServer();
 
-      logger.info('AI Service initialized successfully');
+      logger.info("AI Service initialized successfully");
     } catch (error) {
-      logger.error('Failed to initialize AI Service:', error);
+      logger.error("Failed to initialize AI Service:", error);
       throw error;
     }
   }
@@ -57,14 +64,14 @@ class AIServiceServer {
     try {
       await mongoose.connect(config.mongodb.uri, {
         useNewUrlParser: true,
-        useUnifiedTopology: true
+        useUnifiedTopology: true,
       });
-      logger.info('MongoDB connected successfully', {
+      logger.info("MongoDB connected successfully", {
         database: mongoose.connection.name,
         host: mongoose.connection.host,
       });
     } catch (error) {
-      logger.error('MongoDB connection error:', error);
+      logger.error("MongoDB connection error:", error);
       throw error;
     }
   }
@@ -77,12 +84,19 @@ class AIServiceServer {
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
 
+    // APM telemetry (request metrics + trace context headers)
+    this.app.use(correlationIdMiddleware); // Propagate x-correlation-id
+    this.app.use(telemetryMiddleware);
+
+    // Prometheus metrics scrape endpoint
+    this.app.get("/metrics", metricsHandler);
+
     // Health check endpoint
-    this.app.get('/health', (req, res) => {
+    this.app.get("/health", (req, res) => {
       res.json({
-        status: 'healthy',
+        status: "healthy",
         service: config.serviceName,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     });
   }
@@ -96,20 +110,20 @@ class AIServiceServer {
       resolvers,
       context: createContext,
       formatError: (error) => {
-        logger.error('GraphQL Error:', error);
+        logger.error("GraphQL Error:", error);
         return error;
       },
       introspection: true, // Enable for API Gateway federation
-      playground: config.nodeEnv !== 'production'
+      playground: config.nodeEnv !== "production",
     });
 
     await this.apolloServer.start();
-    this.apolloServer.applyMiddleware({ 
+    this.apolloServer.applyMiddleware({
       app: this.app,
-      path: '/graphql'
+      path: "/graphql",
     });
 
-    logger.info('Apollo Server initialized');
+    logger.info("Apollo Server initialized");
   }
 
   /**
@@ -121,12 +135,14 @@ class AIServiceServer {
 
       this.app.listen(config.port, () => {
         logger.info(`🚀 AI Service is running on port ${config.port}`);
-        logger.info(`📊 GraphQL endpoint: http://localhost:${config.port}/graphql`);
+        logger.info(
+          `📊 GraphQL endpoint: http://localhost:${config.port}/graphql`,
+        );
         logger.info(`🏥 Health check: http://localhost:${config.port}/health`);
         logger.info(`Environment: ${config.nodeEnv}`);
       });
     } catch (error) {
-      logger.error('Failed to start AI Service:', error);
+      logger.error("Failed to start AI Service:", error);
       process.exit(1);
     }
   }
@@ -135,7 +151,7 @@ class AIServiceServer {
    * Graceful shutdown
    */
   async shutdown() {
-    logger.info('Shutting down AI Service...');
+    logger.info("Shutting down AI Service...");
 
     // Close Apollo Server
     if (this.apolloServer) {
@@ -148,7 +164,7 @@ class AIServiceServer {
     // Disconnect MongoDB
     await mongoose.disconnect();
 
-    logger.info('AI Service shut down successfully');
+    logger.info("AI Service shut down successfully");
     process.exit(0);
   }
 }
@@ -157,12 +173,12 @@ class AIServiceServer {
 const server = new AIServiceServer();
 
 // Handle shutdown signals
-process.on('SIGTERM', () => server.shutdown());
-process.on('SIGINT', () => server.shutdown());
+process.on("SIGTERM", () => server.shutdown());
+process.on("SIGINT", () => server.shutdown());
 
 // Start the server
 server.start().catch((error) => {
-  logger.error('Failed to start server:', error);
+  logger.error("Failed to start server:", error);
   process.exit(1);
 });
 

@@ -1,0 +1,166 @@
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+  border: 1px solid #f0f0f0;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0066ff, #0044cc);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatarInitials {
+  color: #fff;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 1px;
+}
+
+.headerInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.doctorName {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111;
+  margin: 0 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.specialization {
+  font-size: 13px;
+  color: #0066ff;
+  margin: 0 0 4px;
+  font-weight: 500;
+}
+
+.location {
+  font-size: 12px;
+  color: #888;
+  margin: 0;
+}
+
+.verifiedBadge {
+  background: #e6f7ee;
+  color: #27ae60;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.statsRow {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: #f8f9fc;
+  border-radius: 8px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.statValue {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111;
+}
+
+.statLabel {
+  font-size: 11px;
+  color: #999;
+  margin-top: 2px;
+}
+
+.languages {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 14px;
+}
+
+.languagesLabel {
+  font-weight: 600;
+  color: #444;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.availability {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.available {
+  color: #27ae60;
+}
+
+.unavailable {
+  color: #e74c3c;
+}
+
+.bookButton {
+  background: #0066ff;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.bookButton:hover:not(:disabled) {
+  background: #0052cc;
+}
+
+.bookButton:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
