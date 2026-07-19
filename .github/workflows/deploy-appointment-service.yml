@@ -29,5 +29,4 @@ jobs:
       environment: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || 'dev' }}
     secrets:
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-      AWS_REGION:     ${{ secrets.AWS_REGION }}
       AWS_ROLE_ARN:   ${{ secrets.AWS_ROLE_ARN }}
