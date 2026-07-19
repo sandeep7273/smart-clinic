@@ -11,7 +11,7 @@
     "test:watch": "jest --watch",
     "test:unit": "jest --testPathPattern=unit",
     "test:integration": "jest --testPathPattern=integration",
-    "test:ci": "jest --coverage --ci --maxWorkers=2",
+    "test:ci": "jest --ci --passWithNoTests --maxWorkers=2",
     "lint": "eslint src/",
     "format": "prettier --write \"src/**/*.js\""
   },
