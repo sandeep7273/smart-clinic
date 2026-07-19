@@ -72,7 +72,6 @@ jobs:
     permissions:
       id-token: write
       contents: read
-      security-events: write   # needed for upload-sarif
     outputs:
       image_uri: ${{ steps.build.outputs.image_uri }}
 
