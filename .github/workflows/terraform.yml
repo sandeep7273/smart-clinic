@@ -54,7 +54,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Terraform Init
         run: terraform init
@@ -80,7 +80,7 @@ jobs:
           mkdir -p environments/${{ env.ENVIRONMENT }}
           cat > environments/${{ env.ENVIRONMENT }}/terraform.tfvars << EOF
           environment        = "${{ env.ENVIRONMENT }}"
-          aws_region         = "${{ secrets.AWS_REGION }}"
+          aws_region         = "${{ vars.AWS_REGION }}"
           project            = "smartclinic"
           vpc_cidr           = "10.0.0.0/16"
           availability_zones = ["ap-south-1a", "ap-south-1b"]
