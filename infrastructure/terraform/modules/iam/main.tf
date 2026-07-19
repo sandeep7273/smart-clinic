@@ -26,6 +26,27 @@ resource "aws_iam_role_policy_attachment" "task_execution_managed" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# AmazonECSTaskExecutionRolePolicy does NOT include logs:CreateLogGroup — add it explicitly
+resource "aws_iam_role_policy" "task_execution_logs" {
+  name = "cloudwatch-logs-create"
+  role = aws_iam_role.task_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams"
+      ]
+      Resource = "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/ecs/*"
+    }]
+  })
+}
+
 # Allows the execution role to pull secrets for injection into task env vars
 resource "aws_iam_role_policy" "task_execution_secrets" {
   name = "secrets-and-ssm"
