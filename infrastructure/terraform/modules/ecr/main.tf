@@ -18,7 +18,7 @@ resource "aws_ecr_repository" "services" {
   image_tag_mutability = "IMMUTABLE"
 
   image_scanning_configuration {
-    scan_on_push = true   # ECR vulnerability scan every push
+    scan_on_push = true # ECR vulnerability scan every push
   }
 
   encryption_configuration {
@@ -39,10 +39,10 @@ resource "aws_ecr_lifecycle_policy" "cleanup" {
         rulePriority = 1
         description  = "Keep last 10 tagged images"
         selection = {
-          tagStatus   = "tagged"
+          tagStatus     = "tagged"
           tagPrefixList = ["v", "sha"]
-          countType   = "imageCountMoreThan"
-          countNumber = 10
+          countType     = "imageCountMoreThan"
+          countNumber   = 10
         }
         action = { type = "expire" }
       },

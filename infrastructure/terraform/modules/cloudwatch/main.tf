@@ -131,7 +131,7 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_tasks" {
   threshold           = 0
   alarm_description   = "${each.key} has zero running tasks — service is DOWN"
   alarm_actions       = [var.sns_topic_arn]
-  treat_missing_data  = "breaching"   # if no data, assume broken
+  treat_missing_data  = "breaching" # if no data, assume broken
 
   dimensions = {
     ClusterName = var.cluster_name
@@ -181,9 +181,9 @@ resource "aws_cloudwatch_dashboard" "main" {
   dashboard_body = jsonencode({
     widgets = [
       {
-        type       = "metric"
-        width      = 12
-        height     = 6
+        type   = "metric"
+        width  = 12
+        height = 6
         properties = {
           title  = "ECS CPU Utilization %"
           region = var.aws_region
@@ -197,9 +197,9 @@ resource "aws_cloudwatch_dashboard" "main" {
         }
       },
       {
-        type       = "metric"
-        width      = 12
-        height     = 6
+        type   = "metric"
+        width  = 12
+        height = 6
         properties = {
           title  = "ECS Memory Utilization %"
           region = var.aws_region
@@ -213,9 +213,9 @@ resource "aws_cloudwatch_dashboard" "main" {
         }
       },
       {
-        type       = "metric"
-        width      = 8
-        height     = 6
+        type   = "metric"
+        width  = 8
+        height = 6
         properties = {
           title   = "ALB Request Count / min"
           region  = var.aws_region
@@ -226,9 +226,9 @@ resource "aws_cloudwatch_dashboard" "main" {
         }
       },
       {
-        type       = "metric"
-        width      = 8
-        height     = 6
+        type   = "metric"
+        width  = 8
+        height = 6
         properties = {
           title  = "ALB Error Counts / min"
           region = var.aws_region
@@ -242,9 +242,9 @@ resource "aws_cloudwatch_dashboard" "main" {
         }
       },
       {
-        type       = "metric"
-        width      = 8
-        height     = 6
+        type   = "metric"
+        width  = 8
+        height = 6
         properties = {
           title   = "ALB P99 Response Time (s)"
           region  = var.aws_region

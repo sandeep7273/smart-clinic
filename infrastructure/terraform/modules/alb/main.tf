@@ -57,7 +57,7 @@ resource "aws_lb_target_group" "api_gateway" {
   port        = 3000
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
-  target_type = "ip"   # Required for Fargate awsvpc networking
+  target_type = "ip" # Required for Fargate awsvpc networking
 
   health_check {
     enabled             = true
@@ -69,7 +69,7 @@ resource "aws_lb_target_group" "api_gateway" {
     matcher             = "200"
   }
 
-  deregistration_delay = 30   # Drain connections before removing a task
+  deregistration_delay = 30 # Drain connections before removing a task
 
   tags = { Name = "${var.project}-${var.environment}-api-gw-tg" }
 }

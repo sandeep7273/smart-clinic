@@ -4,7 +4,7 @@
 ###############################################################################
 
 data "aws_caller_identity" "current" {}
-data "aws_region" "current"         {}
+data "aws_region" "current" {}
 
 # ── Task Execution Role (shared) ──────────────────────────────────────────────
 # ECS uses this to pull images from ECR and write logs to CloudWatch.
@@ -92,8 +92,8 @@ resource "aws_iam_role_policy" "common_task_permissions" {
         Resource = "*"
       },
       {
-        Effect = "Allow"
-        Action = ["cloudwatch:PutMetricData"]
+        Effect   = "Allow"
+        Action   = ["cloudwatch:PutMetricData"]
         Resource = "*"
       },
       {
@@ -171,8 +171,8 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
       },
       # IAM PassRole — allow ECS to assume task roles
       {
-        Effect   = "Allow"
-        Action   = ["iam:PassRole"]
+        Effect = "Allow"
+        Action = ["iam:PassRole"]
         Resource = [
           aws_iam_role.task_execution.arn,
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project}-${var.environment}-*-task-role"
