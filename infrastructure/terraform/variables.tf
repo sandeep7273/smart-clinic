@@ -1,7 +1,7 @@
 variable "aws_region" {
   description = "AWS region to deploy into"
   type        = string
-  default     = "us-east-1"
+  default     = "ap-south-1"
 }
 
 variable "environment" {
@@ -28,7 +28,7 @@ variable "vpc_cidr" {
 variable "availability_zones" {
   description = "List of AZs to deploy across (minimum 2 for HA)"
   type        = list(string)
-  default     = ["us-east-1a", "us-east-1b"]
+  default     = ["ap-south-1a", "ap-south-1b"]
 }
 
 variable "api_gateway_image" {

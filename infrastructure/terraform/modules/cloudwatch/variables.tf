@@ -5,7 +5,7 @@ variable "alb_arn_suffix" { type = string }
 variable "sns_topic_arn" { type = string }
 variable "aws_region" {
   type    = string
-  default = "us-east-1"
+  default = "ap-south-1"
 }
 variable "redis_cluster_id" {
   type    = string
