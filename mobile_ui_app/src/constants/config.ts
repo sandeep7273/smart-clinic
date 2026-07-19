@@ -7,7 +7,7 @@ import { Platform } from 'react-native';
 
 export const APP_CONFIG = {
   // Set to 'development' for API Gateway, 'production' for deployed API
-  API_MODE: 'development' as 'development' | 'production',
+  API_MODE: 'production' as 'development' | 'production',
 
   // API Gateway URLs
   // iOS Simulator: Use local network IP
@@ -30,8 +30,8 @@ export const APP_CONFIG = {
   // APPOINTMENT_SERVICE_PHYSICAL_URL: 'http://192.168.1.100:4004', // UPDATE THIS!
 
   // Production URL
-  PRODUCTION_API_URL: 'http://3.104.74.129:3000/api',
-  PRODUCTION_GRAPHQL_URL: 'http://3.104.74.129:3000/graphql',
+  PRODUCTION_API_URL: 'http://smartclinic-dev-alb-1797412677.ap-south-1.elb.amazonaws.com/api',
+  PRODUCTION_GRAPHQL_URL: 'http://smartclinic-dev-alb-1797412677.ap-south-1.elb.amazonaws.com/graphql',
 
   // Timeout settings (increased for debugging)
   API_TIMEOUT: 30000,
