@@ -1,0 +1,686 @@
+
+> auth-service@1.0.0 test
+> jest --coverage --verbose
+
+watchman warning:  Recrawled this watch 11 times, most recently because:
+MustScanSubDirs UserDroppedTo resolve, please review the information on
+https://facebook.github.io/watchman/docs/troubleshooting.html#recrawl
+To clear this warning, run:
+`watchman watch-del '/Users/sankumar159/Desktop/WorkFolder/Training/capstone/smart-appointment-system' ; watchman watch-project '/Users/sankumar159/Desktop/WorkFolder/Training/capstone/smart-appointment-system'`
+
+PASS tests/unit/middlewares/rateLimit.middleware.test.js
+  Rate Limit Middleware - Unit Tests
+    generalLimiter
+      ✓ should be defined and be a function (8 ms)
+      ✓ should have correct configuration properties (1 ms)
+      ✓ should use configured window and max values
+      ✓ should have standardHeaders enabled
+      ✓ should have legacyHeaders disabled (1 ms)
+      ✓ should have custom error message
+      ✓ should have custom handler function
+      ✓ should call logger and send 429 response when rate limit exceeded (1 ms)
+    authLimiter
+      ✓ should be defined and be a function
+      ✓ should have stricter limits than general limiter (1 ms)
+      ✓ should skip successful requests
+      ✓ should have custom auth-specific error message
+      ✓ should log email when rate limit exceeded
+      ✓ should handle missing email in request body
+      ✓ should send 429 response with auth-specific message (1 ms)
+    registerLimiter
+      ✓ should be defined and be a function
+      ✓ should have longer window for registration
+      ✓ should have appropriate max registrations per hour
+      ✓ should have custom registration-specific error message
+      ✓ should log IP when registration rate limit exceeded
+      ✓ should send 429 response with registration-specific message
+      ✓ should include IP address in log message
+    Rate limiter configurations comparison
+      ✓ should have different window times for different limiters (1 ms)
+      ✓ should have different max limits for different limiters
+      ✓ should all use standardHeaders
+      ✓ should all disable legacyHeaders
+      ✓ should only authLimiter skip successful requests
+    Error messages
+      ✓ should have unique error messages for each limiter
+      ✓ should all have success: false in message object (2 ms)
+    Handler functions
+      ✓ should all have custom handler functions
+      ✓ should all send 429 status code
+      ✓ should all log warnings when triggered (1 ms)
+
+PASS tests/unit/middlewares/error.middleware.test.js
+  Error Middleware - Unit Tests
+    APIError Class
+      ✓ should create an error with default values (13 ms)
+      ✓ should create an error with custom status code (1 ms)
+      ✓ should create an error with 4xx status as fail
+      ✓ should create an error with 5xx status as error (3 ms)
+      ✓ should set isOperational flag
+      ✓ should capture stack trace
+      ✓ should handle 401 unauthorized error (1 ms)
+      ✓ should handle 403 forbidden error
+    notFoundHandler
+      ✓ should create 404 error for undefined route (4 ms)
+      ✓ should include the requested URL in error message
+      ✓ should pass error to next middleware
+    errorHandler
+      ✓ should handle APIError correctly (1 ms)
+      ✓ should handle generic errors with 500 status
+      ✓ should log error details
+      ✓ should handle Mongoose duplicate key error (1 ms)
+      ✓ should handle Mongoose validation error
+      ✓ should handle Mongoose cast error (1 ms)
+      ✓ should handle JsonWebTokenError
+      ✓ should handle TokenExpiredError
+      ✓ should include stack trace in development mode
+      ✓ should not include stack trace in production mode
+      ✓ should handle errors without statusCode
+      ✓ should handle errors with custom statusCode (1 ms)
+    asyncHandler
+      ✓ should handle successful async function
+      ✓ should catch and pass async errors to next (7 ms)
+      ✓ should handle async APIError
+      ✓ should handle synchronous errors in async handler
+      ✓ should preserve request, response, and next parameters
+      ✓ should handle multiple async operations
+    Error handling integration
+      ✓ should handle complete error flow (1 ms)
+
+PASS tests/unit/config/env.test.js
+  Environment Configuration - Unit Tests
+    Configuration Loading
+      ✓ should load default configuration values (14 ms)
+      ✓ should use environment variables when available (1 ms)
+      ✓ should use default values when env vars not set (2 ms)
+    App Configuration
+      ✓ should parse port as integer (2 ms)
+      ✓ should handle invalid port gracefully
+      ✓ should set environment from NODE_ENV (2 ms)
+    JWT Configuration
+      ✓ should load JWT secrets from environment (1 ms)
+      ✓ should use fallback secrets when not set (2 ms)
+      ✓ should load JWT issuer from environment (1 ms)
+      ✓ should load token expiry times (1 ms)
+      ✓ should use default expiry times when not set (2 ms)
+    MongoDB Configuration
+      ✓ should load MongoDB URI from environment (1 ms)
+      ✓ should use default MongoDB URI when not set (1 ms)
+      ✓ should load test MongoDB URI
+      ✓ should use default test URI when not set (1 ms)
+    CORS Configuration
+      ✓ should load CORS origin from environment (1 ms)
+      ✓ should use default CORS origin when not set (4 ms)
+      ✓ should parse CORS credentials as boolean (2 ms)
+      ✓ should default CORS credentials to false (1 ms)
+    Rate Limit Configuration
+      ✓ should parse rate limit window as integer (1 ms)
+      ✓ should use default window when not set (4 ms)
+      ✓ should parse max requests as integer (1 ms)
+      ✓ should use default max requests when not set (1 ms)
+    Logging Configuration
+      ✓ should load log level from environment
+      ✓ should use default log level when not set (1 ms)
+    Helper Methods
+      ✓ isDevelopment should return true when env is development (1 ms)
+      ✓ isProduction should return true when env is production (1 ms)
+      ✓ isTest should return true when env is test (1 ms)
+    Configuration Validation
+      ✓ should warn about fallback secrets in development (2 ms)
+      ✓ should exit in production with missing secrets (1 ms)
+      ✓ should not exit in development with missing config (1 ms)
+      ✓ should validate JWT_ACCESS_SECRET (1 ms)
+      ✓ should validate JWT_REFRESH_SECRET
+      ✓ should validate MONGODB_URI (1 ms)
+      ✓ should pass validation with all required config in production (6 ms)
+    Module Exports
+      ✓ should export validateConfig function (1 ms)
+      ✓ should export all configuration sections (2 ms)
+
+PASS tests/unit/middlewares/auth.middleware.test.js
+  Auth Middleware - Unit Tests
+    authenticate
+      ✓ should authenticate user with valid token (14 ms)
+      ✓ should reject request without authorization header (13 ms)
+      ✓ should reject request with malformed authorization header (1 ms)
+      ✓ should reject request with invalid token (1 ms)
+      ✓ should reject request with expired token
+      ✓ should handle missing Bearer prefix
+      ✓ should handle empty authorization header
+      ✓ should extract token correctly from Bearer header (1 ms)
+      ✓ should handle verification error without custom message
+    authorize
+      ✓ should allow access for user with correct role
+      ✓ should allow access for admin role
+      ✓ should deny access for user without correct role (1 ms)
+      ✓ should deny access when user is not authenticated
+      ✓ should handle multiple allowed roles
+      ✓ should handle single allowed role
+      ✓ should be case-sensitive for roles (1 ms)
+      ✓ should handle undefined user object
+    Integration scenarios
+      ✓ should work in sequence: authenticate then authorize
+      ✓ should fail authorization if authentication did not set user
+
+PASS tests/unit/validators/auth.validator.test.js
+  Auth Validators - Unit Tests
+    registerSchema
+      ✓ should validate valid registration data (1 ms)
+      ✓ should reject missing email
+      ✓ should reject invalid email format (1 ms)
+      ✓ should convert email to lowercase
+      ✓ should reject password less than 8 characters
+      ✓ should reject password without uppercase letter
+      ✓ should reject password without lowercase letter (1 ms)
+      ✓ should reject password without number
+      ✓ should reject missing firstName
+      ✓ should reject missing lastName
+      ✓ should reject firstName longer than 50 characters
+      ✓ should accept optional phoneNumber (1 ms)
+      ✓ should accept optional dateOfBirth
+    loginSchema
+      ✓ should validate valid login data
+      ✓ should reject missing email
+      ✓ should reject missing password (1 ms)
+      ✓ should reject invalid email format
+      ✓ should convert email to lowercase
+    refreshTokenSchema
+      ✓ should validate valid refresh token data (1 ms)
+      ✓ should reject missing refresh token
+    logoutSchema
+      ✓ should validate valid logout data
+      ✓ should reject missing refresh token (1 ms)
+    forgotPasswordSchema
+      ✓ should validate valid forgot password data
+      ✓ should reject missing email
+      ✓ should reject invalid email format
+      ✓ should convert email to lowercase
+    validate middleware factory
+      ✓ should return a middleware function
+      ✓ should handle multiple validation errors (1 ms)
+      ✓ should include field path in error
+      ✓ should handle non-Zod errors
+    Edge cases
+      ✓ should handle empty request body
+      ✓ should handle null values
+      ✓ should handle extra fields gracefully
+
+PASS tests/unit/config/database.test.js
+  Database Configuration - Unit Tests
+    connectDatabase
+      ✓ should connect to MongoDB successfully (2 ms)
+      ✓ should use production URI when not in test mode (1 ms)
+      ✓ should use test URI when in test mode (2 ms)
+      ✓ should pass connection options to mongoose (1 ms)
+      ✓ should set up connection event handlers
+      ✓ should log error on connection error event (1 ms)
+      ✓ should log warning on disconnection
+      ✓ should log info on reconnection (1 ms)
+      ✓ should set up SIGINT handler for graceful shutdown (2 ms)
+      ✓ should close connection on SIGINT (1 ms)
+      ✓ should log error and exit on connection failure (1 ms)
+      ✓ should include database host in success log (4 ms)
+    disconnectDatabase
+      ✓ should close MongoDB connection successfully (1 ms)
+      ✓ should log error if disconnection fails (3 ms)
+      ✓ should not throw error on disconnection failure (2 ms)
+    Module Exports
+      ✓ should export connectDatabase function (2 ms)
+      ✓ should export disconnectDatabase function (1 ms)
+    Connection Options
+      ✓ should set appropriate maxPoolSize (1 ms)
+      ✓ should set server selection timeout (1 ms)
+      ✓ should set socket timeout (1 ms)
+    Error Handling
+      ✓ should handle connection errors gracefully
+      ✓ should handle timeout errors (1 ms)
+
+FAIL tests/unit/services/auth.service.test.js
+  ● Auth Service - Unit Tests › register › should successfully register a new user
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › register › should throw error if email already exists
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › register › should hash password before storing
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › register › should set default role to patient if not specified
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › register › should generate valid tokens
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › login › should successfully login with valid credentials
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › login › should throw error for invalid email
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › login › should throw error for invalid password
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › login › should throw error for inactive user
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › login › should update lastLogin timestamp
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › login › should store refresh token in user document
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › refreshAccessToken › should successfully refresh access token with valid refresh token
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › refreshAccessToken › should throw error for invalid refresh token
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › refreshAccessToken › should throw error for expired refresh token
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › refreshAccessToken › should generate new refresh token
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › logout › should successfully logout and remove refresh token
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › logout › should throw error for invalid refresh token
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › logout › should handle logout even if token not found
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › getUserProfile › should return user profile without password
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › getUserProfile › should throw error for non-existent user
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+  ● Auth Service - Unit Tests › getUserProfile › should include all public user fields
+
+    TypeError: User.deleteMany is not a function
+
+      58 |   beforeEach(async () => {
+      59 |     // Clear database before each test
+    > 60 |     await User.deleteMany({});
+         |                ^
+      61 |   });
+      62 |
+      63 |   afterAll(async () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:60:16)
+
+
+  ● Test suite failed to run
+
+    TypeError: User.deleteMany is not a function
+
+      62 |
+      63 |   afterAll(async () => {
+    > 64 |     await User.deleteMany({});
+         |                ^
+      65 |   });
+      66 |
+      67 |   describe('register', () => {
+
+      at Object.<anonymous> (tests/unit/services/auth.service.test.js:64:16)
+
+{"0":"i","1":"n","10":"k","11":"e","12":"n","2":"v","3":"a","4":"l","5":"i","6":"d","7":" ","8":"t","9":"o","level":"warn","message":"Access token verification failed:","service":"auth-service","timestamp":"2026-02-19 18:49:35"}
+{"0":"j","1":"w","10":"e","11":" ","12":"p","13":"r","14":"o","15":"v","16":"i","17":"d","18":"e","19":"d","2":"t","3":" ","4":"m","5":"u","6":"s","7":"t","8":" ","9":"b","level":"warn","message":"Access token verification failed:","service":"auth-service","timestamp":"2026-02-19 18:49:35"}
+{"0":"j","1":"w","10":"m","11":"e","12":"d","2":"t","3":" ","4":"m","5":"a","6":"l","7":"f","8":"o","9":"r","level":"warn","message":"Refresh token verification failed:","service":"auth-service","timestamp":"2026-02-19 18:49:35"}
+PASS tests/unit/utils/jwt.util.test.js
+  JWT Utility - Unit Tests
+    generateAccessToken
+      ✓ should generate a valid JWT token (2 ms)
+      ✓ should include payload data in token
+      ✓ should add expiration time (1 ms)
+      ✓ should add issued at time
+      ✓ should generate different tokens for different payloads (1 ms)
+    generateRefreshToken
+      ✓ should generate a valid refresh token
+      ✓ should include userId in payload (1 ms)
+    verifyAccessToken
+      ✓ should verify valid access token
+      ✓ should return invalid for malformed token (4 ms)
+      ✓ should return invalid for empty token
+    verifyRefreshToken
+      ✓ should verify valid refresh token (3 ms)
+      ✓ should return invalid for malformed token
+    decodeToken
+      ✓ should decode token without verification
+      ✓ should return null for invalid token (1 ms)
+      ✓ should include standard JWT claims
+    Token Security
+      ✓ should handle special characters in payload (1 ms)
+
+PASS tests/unit/app.test.js
+  Express App - Unit Tests
+    Health Check Endpoint
+      ✓ should return 200 and health status (13 ms)
+      ✓ should include uptime in response (3 ms)
+      ✓ should include ISO timestamp (3 ms)
+      ✓ should include environment from config (1 ms)
+    Root Endpoint
+      ✓ should return API information (2 ms)
+      ✓ should include version information (3 ms)
+      ✓ should list available endpoints (2 ms)
+      ✓ should include correct HTTP methods in endpoint descriptions (2 ms)
+    Auth Routes
+      ✓ should mount auth routes at /auth (10 ms)
+      ✓ should handle auth login route (3 ms)
+    404 Handler
+      ✓ should return 404 for undefined routes (7 ms)
+      ✓ should include requested URL in error message (2 ms)
+      ✓ should handle POST to undefined routes (3 ms)
+      ✓ should handle PUT to undefined routes (2 ms)
+      ✓ should handle DELETE to undefined routes (2 ms)
+    Middleware Configuration
+      ✓ should parse JSON request bodies (2 ms)
+      ✓ should parse URL-encoded bodies (2 ms)
+      ✓ should set security headers with helmet (2 ms)
+      ✓ should handle CORS (2 ms)
+    Error Handling
+      ✓ should handle errors with error middleware (3 ms)
+      ✓ should return JSON error responses (2 ms)
+    Request Size Limits
+      ✓ should accept requests within size limit (2 ms)
+    HTTP Methods
+      ✓ should support GET requests (2 ms)
+      ✓ should support POST requests (2 ms)
+    Response Format
+      ✓ should return JSON responses (2 ms)
+      ✓ should include success flag in responses (2 ms)
+    App Module Export
+      ✓ should export express app instance
+
+(node:87661) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:87661) [MONGOOSE] Warning: Duplicate schema index on {"id":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:87666) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:87666) [MONGOOSE] Warning: Duplicate schema index on {"id":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+PASS tests/unit/services/user.service.test.js
+  User Service - Unit Tests
+    getUserById
+      ✓ should return user when found (3 ms)
+      ✓ should throw APIError when user not found (5 ms)
+      ✓ should exclude password and refreshTokens from result (1 ms)
+      ✓ should handle database errors (1 ms)
+    getUserByEmail
+      ✓ should return user when found by email
+      ✓ should throw APIError when user not found (1 ms)
+      ✓ should exclude sensitive fields
+    updateProfile
+      ✓ should update user profile successfully
+      ✓ should remove sensitive fields from update data (1 ms)
+      ✓ should throw APIError when user not found
+      ✓ should add updatedAt timestamp
+    changePassword
+      ✓ should change password successfully (1 ms)
+      ✓ should throw error when user not found
+      ✓ should throw error when current password is incorrect
+      ✓ should update updatedAt timestamp
+    getUsers
+      ✓ should return paginated users list
+      ✓ should apply role filter
+      ✓ should apply search filter
+      ✓ should handle pagination options
+      ✓ should calculate pagination metadata correctly
+    deleteUser
+      ✓ should soft delete user
+      ✓ should throw error when user not found
+    toggleUserStatus
+      ✓ should activate user (1 ms)
+      ✓ should deactivate user
+      ✓ should throw error when user not found
+    getUserStats
+      ✓ should return user statistics
+      ✓ should return default stats when no users exist
+      ✓ should use aggregation pipeline
+
+(node:87662) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:87662) [MONGOOSE] Warning: Duplicate schema index on {"id":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+PASS tests/unit/utils/password.util.test.js
+  Password Utility - Unit Tests
+    hashPassword
+      ✓ should hash a password (190 ms)
+      ✓ should produce different hashes for same password (338 ms)
+      ✓ should produce bcrypt format hash (177 ms)
+      ✓ should handle empty string (164 ms)
+      ✓ should handle long passwords (165 ms)
+    verifyPassword
+      ✓ should verify correct password (169 ms)
+      ✓ should reject incorrect password (168 ms)
+      ✓ should be case-sensitive (172 ms)
+      ✓ should handle empty password (172 ms)
+      ✓ should handle special characters (334 ms)
+    validatePasswordStrength
+      ✓ should accept strong password
+      ✓ should reject password less than 8 characters (1 ms)
+      ✓ should reject password without uppercase
+      ✓ should reject password without lowercase
+      ✓ should reject password without number
+      ✓ should return multiple errors for weak password
+      ✓ should accept password with all requirements
+

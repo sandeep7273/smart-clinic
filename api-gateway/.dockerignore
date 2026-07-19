@@ -1,0 +1,105 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+*.test.js
+*.spec.js
+__tests__/
+test/
+tests/
+.nyc_output/
+jest.config.js
+
+# Development files
+.env.local
+.env.development
+.env.test
+.env.staging
+*.local
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.editorconfig
+.eslintrc*
+.prettierrc*
+.stylelintrc*
+
+# Git
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+
+# Documentation
+README.md
+CHANGELOG.md
+LICENSE
+*.md
+docs/
+
+# CI/CD
+.gitlab-ci.yml
+.github/
+.circleci/
+Jenkinsfile
+.travis.yml
+azure-pipelines.yml
+
+# Build artifacts
+dist/
+build/
+*.log
+logs/
+tmp/
+temp/
+.cache/
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+docker-build.sh
+
+# Scripts
+scripts/
+*.sh
+
+# Other
+.npmrc
+.nvmrc
+.node-version
+
+# OS files
+Thumbs.db
+*.bak
+*.tmp
+*.swp
+
+# Large media files
+*.mp4
+*.avi
+*.mov
+*.mp3
+*.wav
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+
+# Archive files
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z

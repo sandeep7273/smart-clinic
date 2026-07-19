@@ -1,0 +1,93 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn.lock
+pnpm-lock.yaml
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode
+.idea
+*.swp
+*.swo
+*.swn
+
+# Git files
+.git
+.gitignore
+
+# Test files
+tests
+__tests__
+coverage
+.nyc_output
+jest.config.js
+jest-mongodb-config.js
+globalConfig.json
+*.test.js
+*.spec.js
+
+# Documentation
+*.md
+!README.md
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+azure-pipelines.yml
+Jenkinsfile
+.circleci
+.editorconfig
+.eslintrc*
+.prettierrc*
+.stylelintrc*
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+
+# Kubernetes
+k8s
+helm-chart
+
+# Temporary files
+tmp
+temp
+*.tmp
+.cache
+
+# Media files (if any)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.mp4
+*.mp3
+*.wav
+*.avi
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# Environment
+.env.staging
+.env.production

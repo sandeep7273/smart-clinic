@@ -1,0 +1,268 @@
+# =============================================================================
+# Smart Appointment System — GitLab CI/CD
+# Each microservice is independently installed, tested, and containerised.
+# Jobs only run when files inside that service's directory change.
+# =============================================================================
+
+# Run pipeline only on commits to the develop branch
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+
+image: node:20-alpine
+
+include:
+  - template: Security/SAST.gitlab-ci.yml
+
+stages:
+  - install
+  - test
+  - docker-build
+  - security
+
+variables:
+  NODE_ENV: test
+  CI: "true"
+  DOCKER_TLS_CERTDIR: "/certs"
+  # Set AWS_ACCOUNT_ID and AWS_DEFAULT_REGION in GitLab CI/CD → Variables
+  ECR_REGISTRY: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
+  SAST_EXCLUDED_PATHS: "node_modules/,test/,tests/,__tests__/,coverage/,docs/,*.md"
+
+# =============================================================================
+# REUSABLE TEMPLATES
+# =============================================================================
+
+.install_template:
+  stage: install
+  script:
+    - cd ${SERVICE_DIR}
+    - npm ci --silent
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-${SERVICE_NAME}
+    paths:
+      - ${SERVICE_DIR}/node_modules/
+    policy: push
+
+.test_template:
+  stage: test
+  script:
+    - cd ${SERVICE_DIR}
+    - npm ci --silent
+    - npm i jest-junit --no-save --silent
+    - |
+      JEST_JUNIT_OUTPUT=${CI_PROJECT_DIR}/test-reports/${SERVICE_NAME}-junit.xml \
+      npx jest --reporters=default --reporters=jest-junit \
+      --runInBand --testTimeout=120000 --silent --forceExit || true
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-${SERVICE_NAME}
+    paths:
+      - ${SERVICE_DIR}/node_modules/
+    policy: pull
+  artifacts:
+    when: always
+    reports:
+      junit: test-reports/${SERVICE_NAME}-junit.xml
+    paths:
+      - test-reports/${SERVICE_NAME}-junit.xml
+      - ${SERVICE_DIR}/coverage/
+
+.docker_build_template:
+  stage: docker-build
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  before_script:
+    - apk add --no-cache aws-cli
+    - aws ecr get-login-password --region ${AWS_DEFAULT_REGION}
+      | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+  script:
+    - IMAGE_TAG=${ECR_REGISTRY}/${SERVICE_NAME}:${CI_COMMIT_SHORT_SHA}
+    - IMAGE_LATEST=${ECR_REGISTRY}/${SERVICE_NAME}:latest
+    - docker build -t ${IMAGE_TAG} -t ${IMAGE_LATEST} ${SERVICE_DIR}
+    - docker push ${IMAGE_TAG}
+    - docker push ${IMAGE_LATEST}
+
+# =============================================================================
+# AUTH SERVICE  (services/auth-service)
+# =============================================================================
+auth-service:install:
+  extends: .install_template
+  variables:
+    SERVICE_NAME: auth-service
+    SERVICE_DIR: services/auth-service
+  rules:
+    - changes:
+        - services/auth-service/**/*
+
+auth-service:test:
+  extends: .test_template
+  needs:
+    - job: auth-service:install
+      optional: true
+  variables:
+    SERVICE_NAME: auth-service
+    SERVICE_DIR: services/auth-service
+  rules:
+    - changes:
+        - services/auth-service/**/*
+
+auth-service:docker-build:
+  extends: .docker_build_template
+  needs:
+    - job: auth-service:test
+      optional: true
+  variables:
+    SERVICE_NAME: auth-service
+    SERVICE_DIR: services/auth-service
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+      changes:
+        - services/auth-service/**/*
+
+# =============================================================================
+# DOCTOR SERVICE  (services/doctor-service)
+# =============================================================================
+doctor-service:install:
+  extends: .install_template
+  variables:
+    SERVICE_NAME: doctor-service
+    SERVICE_DIR: services/doctor-service
+  rules:
+    - changes:
+        - services/doctor-service/**/*
+
+doctor-service:test:
+  extends: .test_template
+  needs:
+    - job: doctor-service:install
+      optional: true
+  variables:
+    SERVICE_NAME: doctor-service
+    SERVICE_DIR: services/doctor-service
+  rules:
+    - changes:
+        - services/doctor-service/**/*
+
+doctor-service:docker-build:
+  extends: .docker_build_template
+  needs:
+    - job: doctor-service:test
+      optional: true
+  variables:
+    SERVICE_NAME: doctor-service
+    SERVICE_DIR: services/doctor-service
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+      changes:
+        - services/doctor-service/**/*
+
+# =============================================================================
+# APPOINTMENT SERVICE  (services/appointment-service)
+# =============================================================================
+appointment-service:install:
+  extends: .install_template
+  variables:
+    SERVICE_NAME: appointment-service
+    SERVICE_DIR: services/appointment-service
+  rules:
+    - changes:
+        - services/appointment-service/**/*
+
+appointment-service:test:
+  extends: .test_template
+  needs:
+    - job: appointment-service:install
+      optional: true
+  variables:
+    SERVICE_NAME: appointment-service
+    SERVICE_DIR: services/appointment-service
+  rules:
+    - changes:
+        - services/appointment-service/**/*
+
+appointment-service:docker-build:
+  extends: .docker_build_template
+  needs:
+    - job: appointment-service:test
+      optional: true
+  variables:
+    SERVICE_NAME: appointment-service
+    SERVICE_DIR: services/appointment-service
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+      changes:
+        - services/appointment-service/**/*
+
+# =============================================================================
+# AI SERVICE  (services/ai-service)
+# =============================================================================
+ai-service:install:
+  extends: .install_template
+  variables:
+    SERVICE_NAME: ai-service
+    SERVICE_DIR: services/ai-service
+  rules:
+    - changes:
+        - services/ai-service/**/*
+
+ai-service:test:
+  extends: .test_template
+  needs:
+    - job: ai-service:install
+      optional: true
+  variables:
+    SERVICE_NAME: ai-service
+    SERVICE_DIR: services/ai-service
+  rules:
+    - changes:
+        - services/ai-service/**/*
+
+ai-service:docker-build:
+  extends: .docker_build_template
+  needs:
+    - job: ai-service:test
+      optional: true
+  variables:
+    SERVICE_NAME: ai-service
+    SERVICE_DIR: services/ai-service
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+      changes:
+        - services/ai-service/**/*
+
+# =============================================================================
+# API GATEWAY  (api-gateway)
+# =============================================================================
+api-gateway:install:
+  extends: .install_template
+  variables:
+    SERVICE_NAME: api-gateway
+    SERVICE_DIR: api-gateway
+  rules:
+    - changes:
+        - api-gateway/**/*
+
+api-gateway:test:
+  extends: .test_template
+  needs:
+    - job: api-gateway:install
+      optional: true
+  variables:
+    SERVICE_NAME: api-gateway
+    SERVICE_DIR: api-gateway
+  rules:
+    - changes:
+        - api-gateway/**/*
+
+api-gateway:docker-build:
+  extends: .docker_build_template
+  needs:
+    - job: api-gateway:test
+      optional: true
+  variables:
+    SERVICE_NAME: api-gateway
+    SERVICE_DIR: api-gateway
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+      changes:
+        - api-gateway/**/*
