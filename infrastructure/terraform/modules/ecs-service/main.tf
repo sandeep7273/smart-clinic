@@ -161,7 +161,10 @@ resource "aws_ecs_service" "service" {
   }
 
   lifecycle {
-    ignore_changes = [desired_count] # Managed by auto-scaling
+    ignore_changes = [
+      desired_count,   # Managed by auto-scaling
+      task_definition, # Managed by CI/CD service pipelines (not Terraform)
+    ]
   }
 
   depends_on = [aws_ecs_task_definition.service]
