@@ -10,13 +10,12 @@ const rateLimit = require('express-rate-limit');
 const config = require('../../../src/config');
 
 describe('Rate Limiter Middleware', () => {
-  let mockRateLimitFn;
   let req, res;
 
   beforeEach(() => {
-    // Mock the rate limit function
-    mockRateLimitFn = jest.fn();
-    rateLimit.mockReturnValue(mockRateLimitFn);
+    // Each call to rateLimit(options) must return a NEW function
+    // so that .options assignments don't overwrite each other
+    rateLimit.mockImplementation(() => jest.fn());
 
     req = {
       ip: '127.0.0.1',
