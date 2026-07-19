@@ -14,13 +14,8 @@ locals {
   ]
 }
 
-# ── Log Groups (one per service) ──────────────────────────────────────────────
-resource "aws_cloudwatch_log_group" "services" {
-  for_each          = toset(local.services)
-  name              = "/ecs/${var.project}/${var.environment}/${each.key}"
-  retention_in_days = var.log_retention_days
-  tags              = { Service = each.key }
-}
+# Log groups are created by each ecs-service module instance.
+# This module only manages alarms and dashboards.
 
 # ── ECS CPU Alarms (per service) ──────────────────────────────────────────────
 resource "aws_cloudwatch_metric_alarm" "ecs_cpu_high" {
@@ -185,13 +180,13 @@ resource "aws_cloudwatch_dashboard" "main" {
 
   dashboard_body = jsonencode({
     widgets = [
-      # ECS CPU per service
       {
         type       = "metric"
         width      = 12
         height     = 6
         properties = {
           title  = "ECS CPU Utilization %"
+          region = var.aws_region
           period = 60
           stat   = "Average"
           view   = "timeSeries"
@@ -201,13 +196,13 @@ resource "aws_cloudwatch_dashboard" "main" {
           ]
         }
       },
-      # ECS Memory per service
       {
         type       = "metric"
         width      = 12
         height     = 6
         properties = {
           title  = "ECS Memory Utilization %"
+          region = var.aws_region
           period = 60
           stat   = "Average"
           view   = "timeSeries"
@@ -217,50 +212,46 @@ resource "aws_cloudwatch_dashboard" "main" {
           ]
         }
       },
-      # ALB request count
       {
         type       = "metric"
         width      = 8
         height     = 6
         properties = {
-          title  = "ALB Request Count / min"
-          period = 60
-          stat   = "Sum"
-          view   = "timeSeries"
-          metrics = [
-            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", var.alb_arn_suffix]
-          ]
+          title   = "ALB Request Count / min"
+          region  = var.aws_region
+          period  = 60
+          stat    = "Sum"
+          view    = "timeSeries"
+          metrics = [["AWS/ApplicationELB", "RequestCount", "LoadBalancer", var.alb_arn_suffix]]
         }
       },
-      # ALB error rates
       {
         type       = "metric"
         width      = 8
         height     = 6
         properties = {
           title  = "ALB Error Counts / min"
+          region = var.aws_region
           period = 60
           stat   = "Sum"
           view   = "timeSeries"
           metrics = [
-            ["AWS/ApplicationELB", "HTTPCode_ELB_5XX_Count", "LoadBalancer", var.alb_arn_suffix, { color = "#d62728", label = "5xx" }],
-            ["AWS/ApplicationELB", "HTTPCode_ELB_4XX_Count", "LoadBalancer", var.alb_arn_suffix, { color = "#ff7f0e", label = "4xx" }]
+            ["AWS/ApplicationELB", "HTTPCode_ELB_5XX_Count", "LoadBalancer", var.alb_arn_suffix],
+            ["AWS/ApplicationELB", "HTTPCode_ELB_4XX_Count", "LoadBalancer", var.alb_arn_suffix]
           ]
         }
       },
-      # ALB P99 latency
       {
         type       = "metric"
         width      = 8
         height     = 6
         properties = {
-          title  = "ALB P99 Response Time (s)"
-          period = 60
-          stat   = "p99"
-          view   = "timeSeries"
-          metrics = [
-            ["AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", var.alb_arn_suffix]
-          ]
+          title   = "ALB P99 Response Time (s)"
+          region  = var.aws_region
+          period  = 60
+          stat    = "p99"
+          view    = "timeSeries"
+          metrics = [["AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", var.alb_arn_suffix]]
         }
       },
     ]

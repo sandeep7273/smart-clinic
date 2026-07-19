@@ -1,194 +1,256 @@
 ###############################################################################
 # Security Groups Module
-# Defines all SGs with least-privilege rules.
+# Groups are created first (empty), then rules added separately.
+# This breaks the circular-reference cycle.
 ###############################################################################
 
-# ── ALB Security Group ────────────────────────────────────────────────────────
+# ── Create groups (no inline rules) ──────────────────────────────────────────
 resource "aws_security_group" "alb" {
   name        = "${var.project}-${var.environment}-alb-sg"
   description = "ALB: accepts HTTPS from internet, forwards to API Gateway"
   vpc_id      = var.vpc_id
-
-  ingress {
-    description = "HTTPS from internet"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "HTTP redirect"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    description     = "To API Gateway on port 3000"
-    from_port       = 3000
-    to_port         = 3000
-    protocol        = "tcp"
-    security_groups = [aws_security_group.api_gateway.id]
-  }
-
-  tags = { Name = "${var.project}-${var.environment}-alb-sg" }
+  tags        = { Name = "${var.project}-${var.environment}-alb-sg" }
 }
 
-# ── API Gateway Security Group ────────────────────────────────────────────────
 resource "aws_security_group" "api_gateway" {
   name        = "${var.project}-${var.environment}-api-gateway-sg"
-  description = "API Gateway ECS tasks: accepts from ALB, reaches internal services"
+  description = "API Gateway ECS tasks"
   vpc_id      = var.vpc_id
-
-  ingress {
-    description     = "From ALB on port 3000"
-    from_port       = 3000
-    to_port         = 3000
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
-  }
-
-  egress {
-    description     = "To internal services (REST)"
-    from_port       = 4001
-    to_port         = 4004
-    protocol        = "tcp"
-    security_groups = [aws_security_group.services.id]
-  }
-
-  egress {
-    description     = "To AI service gRPC"
-    from_port       = 50053
-    to_port         = 50053
-    protocol        = "tcp"
-    security_groups = [aws_security_group.services.id]
-  }
-
-  egress {
-    description = "HTTPS outbound (Secrets Manager, ECR, Groq API)"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = { Name = "${var.project}-${var.environment}-api-gateway-sg" }
+  tags        = { Name = "${var.project}-${var.environment}-api-gateway-sg" }
 }
 
-# ── Internal Services Security Group ─────────────────────────────────────────
 resource "aws_security_group" "services" {
   name        = "${var.project}-${var.environment}-services-sg"
   description = "Internal ECS services: auth, doctor, appointment, ai"
   vpc_id      = var.vpc_id
-
-  ingress {
-    description     = "REST from API Gateway"
-    from_port       = 4001
-    to_port         = 4004
-    protocol        = "tcp"
-    security_groups = [aws_security_group.api_gateway.id]
-  }
-
-  ingress {
-    description = "gRPC inter-service (Doctor <-> Appointment, GW -> AI)"
-    from_port   = 50051
-    to_port     = 50053
-    protocol    = "tcp"
-    self        = true   # services can reach each other's gRPC ports
-  }
-
-  ingress {
-    description     = "gRPC from API Gateway to AI service"
-    from_port       = 50051
-    to_port         = 50053
-    protocol        = "tcp"
-    security_groups = [aws_security_group.api_gateway.id]
-  }
-
-  egress {
-    description     = "To database tier (MongoDB/Redis/MSK)"
-    from_port       = 0
-    to_port         = 0
-    protocol        = "-1"
-    security_groups = [aws_security_group.databases.id]
-  }
-
-  egress {
-    description = "HTTPS outbound (Secrets Manager, ECR, Atlas, Groq)"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = { Name = "${var.project}-${var.environment}-services-sg" }
+  tags        = { Name = "${var.project}-${var.environment}-services-sg" }
 }
 
-# ── Database Security Group ───────────────────────────────────────────────────
 resource "aws_security_group" "databases" {
   name        = "${var.project}-${var.environment}-databases-sg"
-  description = "Databases: Redis, MSK — reachable only from ECS services"
+  description = "Databases: Redis, MSK - reachable only from ECS services"
   vpc_id      = var.vpc_id
-
-  ingress {
-    description     = "Redis from ECS services"
-    from_port       = 6379
-    to_port         = 6379
-    protocol        = "tcp"
-    security_groups = [aws_security_group.services.id]
-  }
-
-  ingress {
-    description     = "Kafka (MSK plaintext) from ECS services"
-    from_port       = 9092
-    to_port         = 9092
-    protocol        = "tcp"
-    security_groups = [aws_security_group.services.id]
-  }
-
-  ingress {
-    description     = "Kafka (MSK TLS) from ECS services"
-    from_port       = 9094
-    to_port         = 9094
-    protocol        = "tcp"
-    security_groups = [aws_security_group.services.id]
-  }
-
-  # No egress — databases cannot initiate connections
-  tags = { Name = "${var.project}-${var.environment}-databases-sg" }
+  tags        = { Name = "${var.project}-${var.environment}-databases-sg" }
 }
 
-# ── OTel Collector Security Group ────────────────────────────────────────────
 resource "aws_security_group" "otel_collector" {
   name        = "${var.project}-${var.environment}-otel-collector-sg"
   description = "OTel Collector: receives traces/metrics from all ECS services"
   vpc_id      = var.vpc_id
+  tags        = { Name = "${var.project}-${var.environment}-otel-collector-sg" }
+}
 
-  ingress {
-    description     = "OTLP HTTP from all services"
-    from_port       = 4318
-    to_port         = 4318
-    protocol        = "tcp"
-    security_groups = [aws_security_group.services.id, aws_security_group.api_gateway.id]
-  }
+# ── ALB rules ─────────────────────────────────────────────────────────────────
+resource "aws_security_group_rule" "alb_in_https" {
+  type              = "ingress"
+  security_group_id = aws_security_group.alb.id
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "HTTPS from internet"
+}
 
-  ingress {
-    description     = "OTLP gRPC from all services"
-    from_port       = 4317
-    to_port         = 4317
-    protocol        = "tcp"
-    security_groups = [aws_security_group.services.id, aws_security_group.api_gateway.id]
-  }
+resource "aws_security_group_rule" "alb_in_http" {
+  type              = "ingress"
+  security_group_id = aws_security_group.alb.id
+  from_port         = 80
+  to_port           = 80
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "HTTP (redirect to HTTPS)"
+}
 
-  egress {
-    description = "HTTPS to X-Ray, CloudWatch, AMP"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+resource "aws_security_group_rule" "alb_out_api_gw" {
+  type                     = "egress"
+  security_group_id        = aws_security_group.alb.id
+  from_port                = 3000
+  to_port                  = 3000
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.api_gateway.id
+  description              = "To API Gateway"
+}
 
-  tags = { Name = "${var.project}-${var.environment}-otel-collector-sg" }
+# ── API Gateway rules ─────────────────────────────────────────────────────────
+resource "aws_security_group_rule" "api_gw_in_alb" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.api_gateway.id
+  from_port                = 3000
+  to_port                  = 3000
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.alb.id
+  description              = "From ALB"
+}
+
+resource "aws_security_group_rule" "api_gw_out_services" {
+  type                     = "egress"
+  security_group_id        = aws_security_group.api_gateway.id
+  from_port                = 4001
+  to_port                  = 4004
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.services.id
+  description              = "To internal services (REST)"
+}
+
+resource "aws_security_group_rule" "api_gw_out_grpc" {
+  type                     = "egress"
+  security_group_id        = aws_security_group.api_gateway.id
+  from_port                = 50051
+  to_port                  = 50053
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.services.id
+  description              = "To internal services (gRPC)"
+}
+
+resource "aws_security_group_rule" "api_gw_out_https" {
+  type        = "egress"
+  security_group_id = aws_security_group.api_gateway.id
+  from_port   = 443
+  to_port     = 443
+  protocol    = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+  description = "Outbound HTTPS (Secrets Manager, ECR, Groq API)"
+}
+
+resource "aws_security_group_rule" "api_gw_out_otel" {
+  type                     = "egress"
+  security_group_id        = aws_security_group.api_gateway.id
+  from_port                = 4318
+  to_port                  = 4318
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.otel_collector.id
+  description              = "OTLP to OTel Collector"
+}
+
+# ── Internal Services rules ───────────────────────────────────────────────────
+resource "aws_security_group_rule" "services_in_api_gw" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.services.id
+  from_port                = 4001
+  to_port                  = 4004
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.api_gateway.id
+  description              = "REST from API Gateway"
+}
+
+resource "aws_security_group_rule" "services_in_grpc_self" {
+  type              = "ingress"
+  security_group_id = aws_security_group.services.id
+  from_port         = 50051
+  to_port           = 50053
+  protocol          = "tcp"
+  self              = true
+  description       = "gRPC inter-service calls"
+}
+
+resource "aws_security_group_rule" "services_in_grpc_api_gw" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.services.id
+  from_port                = 50051
+  to_port                  = 50053
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.api_gateway.id
+  description              = "gRPC from API Gateway to AI service"
+}
+
+resource "aws_security_group_rule" "services_out_databases" {
+  type                     = "egress"
+  security_group_id        = aws_security_group.services.id
+  from_port                = 0
+  to_port                  = 0
+  protocol                 = "-1"
+  source_security_group_id = aws_security_group.databases.id
+  description              = "To database tier"
+}
+
+resource "aws_security_group_rule" "services_out_https" {
+  type        = "egress"
+  security_group_id = aws_security_group.services.id
+  from_port   = 443
+  to_port     = 443
+  protocol    = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+  description = "Outbound HTTPS (Atlas, ECR, Secrets Manager, Groq)"
+}
+
+resource "aws_security_group_rule" "services_out_otel" {
+  type                     = "egress"
+  security_group_id        = aws_security_group.services.id
+  from_port                = 4318
+  to_port                  = 4318
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.otel_collector.id
+  description              = "OTLP to OTel Collector"
+}
+
+# ── Database rules ────────────────────────────────────────────────────────────
+resource "aws_security_group_rule" "db_in_redis" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.databases.id
+  from_port                = 6379
+  to_port                  = 6379
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.services.id
+  description              = "Redis from ECS services"
+}
+
+resource "aws_security_group_rule" "db_in_kafka_plain" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.databases.id
+  from_port                = 9092
+  to_port                  = 9092
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.services.id
+  description              = "Kafka plaintext from ECS services"
+}
+
+resource "aws_security_group_rule" "db_in_kafka_tls" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.databases.id
+  from_port                = 9094
+  to_port                  = 9094
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.services.id
+  description              = "Kafka TLS from ECS services"
+}
+
+# ── OTel Collector rules ──────────────────────────────────────────────────────
+resource "aws_security_group_rule" "otel_in_http" {
+  type              = "ingress"
+  security_group_id = aws_security_group.otel_collector.id
+  from_port         = 4318
+  to_port           = 4318
+  protocol          = "tcp"
+  self              = true
+  description       = "OTLP HTTP from all services (self-ref via combined SG)"
+}
+
+resource "aws_security_group_rule" "otel_in_http_services" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.otel_collector.id
+  from_port                = 4318
+  to_port                  = 4318
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.services.id
+  description              = "OTLP HTTP from services"
+}
+
+resource "aws_security_group_rule" "otel_in_http_api_gw" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.otel_collector.id
+  from_port                = 4318
+  to_port                  = 4318
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.api_gateway.id
+  description              = "OTLP HTTP from API Gateway"
+}
+
+resource "aws_security_group_rule" "otel_out_https" {
+  type        = "egress"
+  security_group_id = aws_security_group.otel_collector.id
+  from_port   = 443
+  to_port     = 443
+  protocol    = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+  description = "HTTPS to X-Ray, CloudWatch, AMP"
 }

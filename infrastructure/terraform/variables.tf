@@ -19,7 +19,6 @@ variable "project" {
   default     = "smartclinic"
 }
 
-# ── VPC ──────────────────────────────────────────────────────────────────────
 variable "vpc_cidr" {
   description = "CIDR block for the VPC"
   type        = string
@@ -32,9 +31,8 @@ variable "availability_zones" {
   default     = ["us-east-1a", "us-east-1b"]
 }
 
-# ── ECS ──────────────────────────────────────────────────────────────────────
 variable "api_gateway_image" {
-  description = "Full ECR image URI for api-gateway (e.g. 123456789.dkr.ecr.us-east-1.amazonaws.com/smartclinic/api-gateway:latest)"
+  description = "Full ECR image URI for api-gateway"
   type        = string
 }
 
@@ -58,7 +56,6 @@ variable "ai_service_image" {
   type        = string
 }
 
-# ── Domain ───────────────────────────────────────────────────────────────────
 variable "domain_name" {
   description = "Base domain name (e.g. smartclinic.com)"
   type        = string
@@ -66,48 +63,75 @@ variable "domain_name" {
 }
 
 variable "acm_certificate_arn" {
-  description = "ARN of the ACM certificate for HTTPS. Leave empty to skip HTTPS listener."
+  description = "ARN of ACM certificate for HTTPS. Leave empty for HTTP only (dev)."
   type        = string
   default     = ""
 }
 
-# ── Database ─────────────────────────────────────────────────────────────────
-variable "mongodb_uri" {
-  description = "MongoDB Atlas connection string (stored in Secrets Manager)"
-  type        = string
+variable "mongodb_uris" {
+  description = "Map of service name -> MongoDB Atlas URI (each service has its own database)"
+  type        = map(string)
   sensitive   = true
-  default     = ""
+  default     = {}
 }
 
 variable "groq_api_key" {
-  description = "Groq LLM API key (stored in Secrets Manager)"
+  description = "Groq LLM API key"
   type        = string
   sensitive   = true
   default     = ""
 }
 
 variable "jwt_secret" {
-  description = "JWT signing secret — minimum 32 random bytes (stored in Secrets Manager)"
+  description = "JWT signing secret — minimum 32 random bytes"
   type        = string
   sensitive   = true
   default     = ""
 }
 
-# ── Scaling ───────────────────────────────────────────────────────────────────
-variable "api_gateway_min_tasks"        { type = number; default = 2 }
-variable "api_gateway_max_tasks"        { type = number; default = 6 }
-variable "auth_service_min_tasks"       { type = number; default = 2 }
-variable "auth_service_max_tasks"       { type = number; default = 4 }
-variable "doctor_service_min_tasks"     { type = number; default = 2 }
-variable "doctor_service_max_tasks"     { type = number; default = 10 }
-variable "appointment_service_min_tasks"{ type = number; default = 4 }
-variable "appointment_service_max_tasks"{ type = number; default = 30 }
-variable "ai_service_min_tasks"         { type = number; default = 1 }
-variable "ai_service_max_tasks"         { type = number; default = 20 }
+variable "api_gateway_min_tasks" {
+  type    = number
+  default = 2
+}
+variable "api_gateway_max_tasks" {
+  type    = number
+  default = 6
+}
+variable "auth_service_min_tasks" {
+  type    = number
+  default = 2
+}
+variable "auth_service_max_tasks" {
+  type    = number
+  default = 4
+}
+variable "doctor_service_min_tasks" {
+  type    = number
+  default = 2
+}
+variable "doctor_service_max_tasks" {
+  type    = number
+  default = 10
+}
+variable "appointment_service_min_tasks" {
+  type    = number
+  default = 4
+}
+variable "appointment_service_max_tasks" {
+  type    = number
+  default = 30
+}
+variable "ai_service_min_tasks" {
+  type    = number
+  default = 1
+}
+variable "ai_service_max_tasks" {
+  type    = number
+  default = 20
+}
 
-# ── Observability ─────────────────────────────────────────────────────────────
 variable "alert_email" {
-  description = "Email address to receive CloudWatch alarm notifications. Leave empty to skip."
+  description = "Email address to receive CloudWatch alarm notifications."
   type        = string
   default     = ""
 }

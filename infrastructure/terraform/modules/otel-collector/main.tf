@@ -167,10 +167,11 @@ resource "aws_ecs_task_definition" "otel" {
 resource "aws_ssm_parameter" "otel_config_ssm" {
   name  = "/${var.project}/${var.environment}/otel-collector/config"
   type  = "String"
+  tier  = "Advanced"
   value = file("${path.module}/../../../../observability/otel-collector-config.yaml")
 
   lifecycle {
-    ignore_changes = [value]  # updated via S3 deployment, not terraform
+    ignore_changes = [value]
   }
 }
 

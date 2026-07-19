@@ -142,14 +142,12 @@ resource "aws_ecs_service" "service" {
     }
   }
 
-  deployment_configuration {
-    maximum_percent         = 200
-    minimum_healthy_percent = 100   # Zero-downtime rolling deploy
-  }
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
 
   deployment_circuit_breaker {
     enable   = true
-    rollback = true   # Auto-rollback if health checks fail
+    rollback = true
   }
 
   # Attach to ALB only for the API Gateway

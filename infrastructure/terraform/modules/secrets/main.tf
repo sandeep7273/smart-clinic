@@ -23,21 +23,21 @@ resource "aws_secretsmanager_secret_version" "jwt_refresh_secret" {
   secret_string = var.jwt_refresh_secret
 }
 
-# ── MongoDB URIs (one per service) ────────────────────────────────────────────
+# ── MongoDB URIs (one per service, each with its own database) ────────────────
 locals {
-  mongodb_services = ["auth-service", "doctor-service", "appointment-service", "ai-service"]
+  mongodb_service_names = ["auth-service", "doctor-service", "appointment-service", "ai-service"]
 }
 
 resource "aws_secretsmanager_secret" "mongodb_uri" {
-  for_each                = toset(local.mongodb_services)
+  for_each                = toset(local.mongodb_service_names)
   name                    = "${var.project}/${var.environment}/${each.key}/MONGODB_URI"
   recovery_window_in_days = var.environment == "prod" ? 30 : 0
 }
 
 resource "aws_secretsmanager_secret_version" "mongodb_uri" {
-  for_each      = aws_secretsmanager_secret.mongodb_uri
-  secret_id     = each.value.id
-  secret_string = var.mongodb_uri
+  for_each      = toset(local.mongodb_service_names)
+  secret_id     = aws_secretsmanager_secret.mongodb_uri[each.key].id
+  secret_string = lookup(var.mongodb_uris, each.key, "")
 }
 
 # ── Groq API Key (AI service) ─────────────────────────────────────────────────

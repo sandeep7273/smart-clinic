@@ -39,6 +39,8 @@ module "iam" {
   source      = "./modules/iam"
   project     = var.project
   environment = var.environment
+  github_org  = "sandeep7273"
+  github_repo = "smart-clinic"
 }
 
 # ── 5. Secrets Manager ────────────────────────────────────────────────────────
@@ -47,8 +49,8 @@ module "secrets" {
   project               = var.project
   environment           = var.environment
   jwt_secret            = var.jwt_secret
-  jwt_refresh_secret    = var.jwt_secret   # use separate value in prod
-  mongodb_uri           = var.mongodb_uri
+  jwt_refresh_secret    = var.jwt_secret
+  mongodb_uris          = var.mongodb_uris
   groq_api_key          = var.groq_api_key
   internal_service_token = random_password.internal_token.result
 
@@ -133,6 +135,7 @@ module "cloudwatch" {
   sns_topic_arn    = aws_sns_topic.alerts.arn
   redis_cluster_id = "${var.project}-${var.environment}-redis"
   alert_email      = var.alert_email
+  aws_region       = var.aws_region
 }
 
 # ── SNS Alert Topic ────────────────────────────────────────────────────────────
@@ -289,7 +292,7 @@ module "appointment_service" {
   ]
 
   secrets = [
-    { name = "MONGODB_URI", valueFrom = module.secrets.mongodb_uri_arns["appointment-service"] },
+    { name = "MONGO_URI", valueFrom = module.secrets.mongodb_uri_arns["appointment-service"] },
   ]
 }
 
