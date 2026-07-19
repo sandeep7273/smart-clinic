@@ -143,6 +143,7 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+      # ECR — push images
       {
         Effect = "Allow"
         Action = [
@@ -157,6 +158,7 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
         ]
         Resource = "*"
       },
+      # ECS — update services and task definitions
       {
         Effect = "Allow"
         Action = [
@@ -167,6 +169,7 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
         ]
         Resource = "*"
       },
+      # IAM PassRole — allow ECS to assume task roles
       {
         Effect   = "Allow"
         Action   = ["iam:PassRole"]
@@ -174,7 +177,51 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
           aws_iam_role.task_execution.arn,
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project}-${var.environment}-*-task-role"
         ]
+      },
+      # Terraform state — S3 bucket access
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket",
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ]
+        Resource = [
+          "arn:aws:s3:::${var.project}-terraform-state-${data.aws_caller_identity.current.account_id}",
+          "arn:aws:s3:::${var.project}-terraform-state-${data.aws_caller_identity.current.account_id}/*"
+        ]
+      },
+      # Terraform state locking — DynamoDB
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:DescribeTable"
+        ]
+        Resource = "arn:aws:dynamodb:*:${data.aws_caller_identity.current.account_id}:table/${var.project}-terraform-locks"
+      },
+      # IAM — Terraform manages roles for ECS services
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:CreateRole", "iam:DeleteRole", "iam:GetRole", "iam:ListRoles",
+          "iam:PassRole", "iam:AttachRolePolicy", "iam:DetachRolePolicy",
+          "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:GetRolePolicy",
+          "iam:ListRolePolicies", "iam:ListAttachedRolePolicies",
+          "iam:CreateOpenIDConnectProvider", "iam:DeleteOpenIDConnectProvider",
+          "iam:GetOpenIDConnectProvider", "iam:TagRole", "iam:UntagRole",
+          "iam:TagOpenIDConnectProvider"
+        ]
+        Resource = "*"
       }
     ]
   })
+}
+
+resource "aws_iam_role_policy_attachment" "github_actions_power_user" {
+  role       = aws_iam_role.github_actions_deploy.name
+  policy_arn = "arn:aws:iam::aws:policy/PowerUserAccess"
 }
