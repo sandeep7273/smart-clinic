@@ -218,7 +218,7 @@ module "auth_service" {
 
   secrets = [
     { name = "MONGODB_URI", valueFrom = module.secrets.mongodb_uri_arns["auth-service"] },
-    { name = "JWT_SECRET", valueFrom = module.secrets.jwt_secret_arn },
+    { name = "JWT_ACCESS_SECRET", valueFrom = module.secrets.jwt_secret_arn },
     { name = "JWT_REFRESH_SECRET", valueFrom = module.secrets.jwt_refresh_secret_arn },
   ]
 }

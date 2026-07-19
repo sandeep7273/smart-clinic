@@ -72,10 +72,9 @@ jobs:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
         run: |
           # Derive per-service MongoDB URIs from base URI
-          # Base: mongodb+srv://user:pass@cluster.mongodb.net
-          # Append database name and appName per service
-          BASE="${MONGODB_URI%%\?*}"   # strip query params
-          QP="${MONGODB_URI#*\?}"      # keep query params (e.g. appName=Cluster0)
+          # Strip database name and query params to get just: mongodb+srv://user:pass@host
+          BASE_HOST=$(echo "${MONGODB_URI}" | sed 's|\(mongodb+srv://[^@]*@[^/]*\).*|\1|')
+          QP="appName=Cluster0"
 
           mkdir -p environments/${{ env.ENVIRONMENT }}
           cat > environments/${{ env.ENVIRONMENT }}/terraform.tfvars << EOF
@@ -96,10 +95,10 @@ jobs:
           groq_api_key = "${GROQ_API_KEY}"
 
           mongodb_uris = {
-            "auth-service"        = "${BASE}/auth_db?${QP}"
-            "doctor-service"      = "${BASE}/doctor_db?${QP}"
-            "appointment-service" = "${BASE}/appointment_service?${QP}"
-            "ai-service"          = "${BASE}/ai_db?${QP}"
+            "auth-service"        = "${BASE_HOST}/auth_db?${QP}"
+            "doctor-service"      = "${BASE_HOST}/doctor_db?${QP}"
+            "appointment-service" = "${BASE_HOST}/appointment_service?${QP}"
+            "ai-service"          = "${BASE_HOST}/ai_db?${QP}"
           }
 
           api_gateway_min_tasks          = 1
