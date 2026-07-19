@@ -115,8 +115,19 @@ jobs:
         env:
           ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
           ECR_REPO: smartclinic/${{ inputs.service_name }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker push "${{ steps.build.outputs.image_uri }}"
+          # Check if image already exists in ECR (immutable tags cannot be re-pushed)
+          if aws ecr describe-images \
+              --repository-name "${ECR_REPO}" \
+              --image-ids imageTag="${IMAGE_TAG}" \
+              --region "${{ secrets.AWS_REGION }}" \
+              --no-cli-pager > /dev/null 2>&1; then
+            echo "✅ Image ${ECR_REPO}:${IMAGE_TAG} already exists in ECR — skipping push"
+          else
+            echo "Pushing ${ECR_REPO}:${IMAGE_TAG} to ECR..."
+            docker push "${{ steps.build.outputs.image_uri }}"
+          fi
 
   # ── 3. Deploy to ECS ─────────────────────────────────────────────────────
   deploy:
