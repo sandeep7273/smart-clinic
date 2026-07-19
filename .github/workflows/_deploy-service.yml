@@ -51,7 +51,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: ${{ inputs.service_dir }}
-        run: npm ci
+        run: npm install --prefer-offline
 
       # Use test:ci if available, fall back to test
       - name: Run tests
