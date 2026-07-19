@@ -10,6 +10,6 @@ variable "acm_certificate_arn" {
 variable "account_id" { type = string }
 variable "elb_account_id" {
   type        = string
-  description = "AWS ELB service account ID for the region (for ALB log bucket policy). us-east-1 = 127311923021"
-  default     = "127311923021"
+  description = "AWS ELB service account ID for the region (for ALB log bucket policy). ap-south-1 = 718504428378"
+  default     = "718504428378"
 }

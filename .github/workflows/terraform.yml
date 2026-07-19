@@ -67,9 +67,9 @@ jobs:
 
       - name: Generate terraform.tfvars from secrets
         env:
-          JWT_SECRET:   ${{ secrets.JWT_SECRET }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          MONGODB_URI:  ${{ secrets.MONGODB_URI }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
         run: |
           # Derive per-service MongoDB URIs from base URI
           # Base: mongodb+srv://user:pass@cluster.mongodb.net
@@ -83,7 +83,7 @@ jobs:
           aws_region         = "${{ secrets.AWS_REGION }}"
           project            = "smartclinic"
           vpc_cidr           = "10.0.0.0/16"
-          availability_zones = ["us-east-1a", "us-east-1b"]
+          availability_zones = ["ap-south-1a", "ap-south-1b"]
           acm_certificate_arn = ""
 
           api_gateway_image         = "PLACEHOLDER"

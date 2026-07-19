@@ -9,9 +9,9 @@ terraform {
 
   # Remote state — one workspace per environment
   backend "s3" {
-    bucket         = "smartclinic-terraform-state-791732163161"
+    bucket         = "smartclinic-terraform-state-791732163161-aps1"
     key            = "global/state.tfstate"
-    region         = "us-east-1"
+    region         = "ap-south-1"
     dynamodb_table = "smartclinic-terraform-locks"
     encrypt        = true
   }
