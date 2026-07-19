@@ -10,16 +10,15 @@ export const APP_CONFIG = {
   API_MODE: 'development' as 'development' | 'production',
 
   // API Gateway URLs
-  // iOS Simulator: Use localhost
-  IOS_SIMULATOR_URL: 'http://localhost:3000/api',
-  IOS_SIMULATOR_GRAPHQL_URL: 'http://localhost:3000/graphql',
-  // Android Emulator: Use 10.0.2.2 (special alias to host machine)
-  ANDROID_EMULATOR_URL: 'http://10.0.2.2:3000/api',
-  ANDROID_EMULATOR_GRAPHQL_URL: 'http://10.0.2.2:3000/graphql',
-  // Physical Device: Use your computer's local IP (update this!)
-  // Find your IP: macOS: ifconfig | grep "inet " | grep -v 127.0.0.1
-  PHYSICAL_DEVICE_URL: 'http://localhost:3000/api', // UPDATE THIS!
-  PHYSICAL_DEVICE_GRAPHQL_URL: 'http://localhost:3000/graphql', // UPDATE THIS!
+  // iOS Simulator: Use local network IP
+  IOS_SIMULATOR_URL: 'http://192.168.1.101:3000/api',
+  IOS_SIMULATOR_GRAPHQL_URL: 'http://192.168.1.101:3000/graphql',
+  // Android Emulator / Physical Device: Use local network IP
+  ANDROID_EMULATOR_URL: 'http://192.168.1.101:3000/api',
+  ANDROID_EMULATOR_GRAPHQL_URL: 'http://192.168.1.101:3000/graphql',
+  // Physical Device: Local network IP of machine running API Gateway
+  PHYSICAL_DEVICE_URL: 'http://192.168.1.101:3000/api',
+  PHYSICAL_DEVICE_GRAPHQL_URL: 'http://192.168.1.101:3000/graphql',
 
   // Direct Service URLs (deprecated - use API Gateway instead)
   // Doctor Service
