@@ -6,32 +6,35 @@ const mongoose = require('mongoose');
 const config = require('./index');
 const logger = require('../utils/logger');
 
-const connectDB = async () => {
-  try {
-    await mongoose.connect(config.mongodbUri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-
-    logger.info('MongoDB connected successfully', {
-      database: mongoose.connection.name,
-      host: mongoose.connection.host,
-    });
-
-    mongoose.connection.on('error', (err) => {
-      logger.error('MongoDB connection error', { error: err.message });
-    });
-
-    mongoose.connection.on('disconnected', () => {
-      logger.warn('MongoDB disconnected');
-    });
-
-  } catch (error) {
-    logger.error('MongoDB connection failed', {
-      error: error.message,
-      uri: config.mongodbUri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@'), // Hide credentials
-    });
-    process.exit(1);
+const connectDB = async (retries = 5, delay = 5000) => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await mongoose.connect(config.mongodbUri, {
+        serverSelectionTimeoutMS: 10000,
+      });
+      logger.info('MongoDB connected successfully', {
+        database: mongoose.connection.name,
+        host: mongoose.connection.host,
+      });
+      mongoose.connection.on('error', (err) => {
+        logger.error('MongoDB connection error', { error: err.message });
+      });
+      mongoose.connection.on('disconnected', () => {
+        logger.warn('MongoDB disconnected');
+      });
+      return;
+    } catch (error) {
+      logger.error(`MongoDB connection attempt ${attempt}/${retries} failed`, {
+        error: error.message,
+        uri: config.mongodbUri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@'),
+      });
+      if (attempt < retries) {
+        logger.info(`Retrying in ${delay / 1000}s...`);
+        await new Promise(res => setTimeout(res, delay));
+      } else {
+        process.exit(1);
+      }
+    }
   }
 };
 
