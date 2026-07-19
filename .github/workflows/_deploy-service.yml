@@ -149,7 +149,8 @@ jobs:
         with:
           task-definition: task-definition.json
           container-name: ${{ inputs.service_name }}
-          image: ${{ needs.build-and-push.outputs.image_uri }}
+          # Recompute URI directly — cross-job outputs can be empty in reusable workflows
+          image: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/smartclinic/${{ inputs.service_name }}:${{ github.sha }}
 
       - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
