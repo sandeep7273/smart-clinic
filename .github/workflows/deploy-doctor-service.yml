@@ -2,7 +2,7 @@ name: Deploy — Doctor Service
 
 on:
   push:
-    branches: [main]
+    branches: [main, master, develop]
     paths:
       - "services/doctor-service/**"
       - ".github/workflows/deploy-doctor-service.yml"

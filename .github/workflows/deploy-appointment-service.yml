@@ -2,7 +2,7 @@ name: Deploy — Appointment Service
 
 on:
   push:
-    branches: [main]
+    branches: [main, master, develop]
     paths:
       - "services/appointment-service/**"
       - ".github/workflows/deploy-appointment-service.yml"

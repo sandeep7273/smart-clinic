@@ -2,7 +2,7 @@ name: Deploy — Web UI (S3 + CloudFront)
 
 on:
   push:
-    branches: [main]
+    branches: [main, master, develop]
     paths:
       - "web_ui_app/**"
       - ".github/workflows/deploy-web-ui.yml"
