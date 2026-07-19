@@ -24,7 +24,7 @@ resource "aws_lb" "main" {
 
 # ── S3 bucket for ALB access logs ────────────────────────────────────────────
 resource "aws_s3_bucket" "alb_logs" {
-  bucket        = "${var.project}-${var.environment}-alb-logs-${var.account_id}"
+  bucket        = "${var.project}-${var.environment}-alb-logs-${var.account_id}-${var.region_short}"
   force_destroy = var.environment != "prod"
 }
 

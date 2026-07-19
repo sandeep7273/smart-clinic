@@ -13,3 +13,8 @@ variable "amp_remote_write_url" {
   type    = string
   default = ""
 }
+variable "region_short" {
+  type        = string
+  description = "Short region identifier for globally-unique bucket names (e.g. aps1)"
+  default     = "aps1"
+}

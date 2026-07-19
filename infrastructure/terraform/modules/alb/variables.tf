@@ -13,3 +13,8 @@ variable "elb_account_id" {
   description = "AWS ELB service account ID for the region (for ALB log bucket policy). ap-south-1 = 718504428378"
   default     = "718504428378"
 }
+variable "region_short" {
+  type        = string
+  description = "Short region identifier for globally-unique bucket names (e.g. aps1)"
+  default     = "aps1"
+}
