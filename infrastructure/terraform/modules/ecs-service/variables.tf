@@ -1,15 +1,15 @@
-variable "project"               { type = string }
-variable "environment"           { type = string }
-variable "service_name"          { type = string }
-variable "image_uri"             { type = string }
-variable "cluster_id"            { type = string }
-variable "cluster_name"          { type = string }
-variable "namespace_arn"         { type = string }
+variable "project" { type = string }
+variable "environment" { type = string }
+variable "service_name" { type = string }
+variable "image_uri" { type = string }
+variable "cluster_id" { type = string }
+variable "cluster_name" { type = string }
+variable "namespace_arn" { type = string }
 variable "task_execution_role_arn" { type = string }
-variable "task_role_arn"         { type = string }
-variable "private_subnet_ids"    { type = list(string) }
-variable "security_group_ids"    { type = list(string) }
-variable "container_port"        { type = number }
+variable "task_role_arn" { type = string }
+variable "private_subnet_ids" { type = list(string) }
+variable "security_group_ids" { type = list(string) }
+variable "container_port" { type = number }
 variable "cpu" {
   type    = number
   default = 512

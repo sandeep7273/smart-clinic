@@ -124,19 +124,19 @@ resource "aws_ecs_task_definition" "otel" {
     portMappings = [
       { name = "otlp-grpc", containerPort = 4317, protocol = "tcp" },
       { name = "otlp-http", containerPort = 4318, protocol = "tcp" },
-      { name = "health",    containerPort = 13133, protocol = "tcp" }
+      { name = "health", containerPort = 13133, protocol = "tcp" }
     ]
 
     environment = [
-      { name = "AWS_REGION",       value = data.aws_region.current.name },
-      { name = "AMP_ENDPOINT",     value = var.amp_remote_write_url },
+      { name = "AWS_REGION", value = data.aws_region.current.name },
+      { name = "AMP_ENDPOINT", value = var.amp_remote_write_url },
       { name = "SERVICE_NAMESPACE", value = "${var.project}.local" },
       # Service addresses for Prometheus scrape
-      { name = "API_GATEWAY_ADDR",      value = "api-gateway.${var.project}.local:3000" },
-      { name = "AUTH_SERVICE_ADDR",     value = "auth-service.${var.project}.local:4001" },
-      { name = "DOCTOR_SERVICE_ADDR",   value = "doctor-service.${var.project}.local:4002" },
+      { name = "API_GATEWAY_ADDR", value = "api-gateway.${var.project}.local:3000" },
+      { name = "AUTH_SERVICE_ADDR", value = "auth-service.${var.project}.local:4001" },
+      { name = "DOCTOR_SERVICE_ADDR", value = "doctor-service.${var.project}.local:4002" },
       { name = "APPOINTMENT_SERVICE_ADDR", value = "appointment-service.${var.project}.local:4003" },
-      { name = "AI_SERVICE_ADDR",       value = "ai-service.${var.project}.local:4004" },
+      { name = "AI_SERVICE_ADDR", value = "ai-service.${var.project}.local:4004" },
     ]
 
     secrets = [{

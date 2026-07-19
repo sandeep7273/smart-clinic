@@ -103,13 +103,13 @@ resource "aws_security_group_rule" "api_gw_out_grpc" {
 }
 
 resource "aws_security_group_rule" "api_gw_out_https" {
-  type        = "egress"
+  type              = "egress"
   security_group_id = aws_security_group.api_gateway.id
-  from_port   = 443
-  to_port     = 443
-  protocol    = "tcp"
-  cidr_blocks = ["0.0.0.0/0"]
-  description = "Outbound HTTPS (Secrets Manager, ECR, Groq API)"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Outbound HTTPS (Secrets Manager, ECR, Groq API)"
 }
 
 resource "aws_security_group_rule" "api_gw_out_otel" {
@@ -164,13 +164,13 @@ resource "aws_security_group_rule" "services_out_databases" {
 }
 
 resource "aws_security_group_rule" "services_out_https" {
-  type        = "egress"
+  type              = "egress"
   security_group_id = aws_security_group.services.id
-  from_port   = 443
-  to_port     = 443
-  protocol    = "tcp"
-  cidr_blocks = ["0.0.0.0/0"]
-  description = "Outbound HTTPS (Atlas, ECR, Secrets Manager, Groq)"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Outbound HTTPS (Atlas, ECR, Secrets Manager, Groq)"
 }
 
 resource "aws_security_group_rule" "services_out_otel" {
@@ -246,11 +246,11 @@ resource "aws_security_group_rule" "otel_in_http_api_gw" {
 }
 
 resource "aws_security_group_rule" "otel_out_https" {
-  type        = "egress"
+  type              = "egress"
   security_group_id = aws_security_group.otel_collector.id
-  from_port   = 443
-  to_port     = 443
-  protocol    = "tcp"
-  cidr_blocks = ["0.0.0.0/0"]
-  description = "HTTPS to X-Ray, CloudWatch, AMP"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "HTTPS to X-Ray, CloudWatch, AMP"
 }

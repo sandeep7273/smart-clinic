@@ -40,14 +40,14 @@ resource "aws_ecs_task_definition" "service" {
 
       portMappings = [
         {
-          name          = var.service_name   # used by Service Connect
+          name          = var.service_name # used by Service Connect
           containerPort = var.container_port
           protocol      = "tcp"
         }
       ]
 
-      environment = var.environment_vars   # non-sensitive config
-      secrets     = var.secrets            # from Secrets Manager / SSM
+      environment = var.environment_vars # non-sensitive config
+      secrets     = var.secrets          # from Secrets Manager / SSM
 
       logConfiguration = {
         logDriver = "awslogs"
@@ -110,7 +110,7 @@ resource "aws_ecs_service" "service" {
   cluster                = var.cluster_id
   task_definition        = aws_ecs_task_definition.service.arn
   desired_count          = var.desired_count
-  enable_execute_command = var.environment != "prod"   # ECS Exec only in non-prod
+  enable_execute_command = var.environment != "prod" # ECS Exec only in non-prod
 
   capacity_provider_strategy {
     capacity_provider = "FARGATE"
@@ -161,7 +161,7 @@ resource "aws_ecs_service" "service" {
   }
 
   lifecycle {
-    ignore_changes = [desired_count]   # Managed by auto-scaling
+    ignore_changes = [desired_count] # Managed by auto-scaling
   }
 
   depends_on = [aws_ecs_task_definition.service]

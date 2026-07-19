@@ -11,13 +11,13 @@ resource "aws_elasticache_replication_group" "main" {
   replication_group_id = "${var.project}-${var.environment}-redis"
   description          = "Redis cache for ${var.project} ${var.environment}"
 
-  engine               = "redis"
-  engine_version       = "7.1"
-  node_type            = var.node_type
-  num_cache_clusters   = 2    # Primary + 1 replica for HA
+  engine             = "redis"
+  engine_version     = "7.1"
+  node_type          = var.node_type
+  num_cache_clusters = 2 # Primary + 1 replica for HA
 
-  subnet_group_name    = aws_elasticache_subnet_group.main.name
-  security_group_ids   = [var.databases_sg_id]
+  subnet_group_name  = aws_elasticache_subnet_group.main.name
+  security_group_ids = [var.databases_sg_id]
 
   at_rest_encryption_enabled = true
   transit_encryption_enabled = true

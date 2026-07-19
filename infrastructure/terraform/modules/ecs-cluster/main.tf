@@ -7,7 +7,7 @@ resource "aws_ecs_cluster" "main" {
 
   setting {
     name  = "containerInsights"
-    value = "enabled"   # CloudWatch Container Insights (CPU, mem, task count)
+    value = "enabled" # CloudWatch Container Insights (CPU, mem, task count)
   }
 
   tags = { Name = "${var.project}-${var.environment}-cluster" }
@@ -21,7 +21,7 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
   default_capacity_provider_strategy {
     capacity_provider = "FARGATE"
     weight            = 70
-    base              = 2   # Always keep at least 2 on-demand tasks
+    base              = 2 # Always keep at least 2 on-demand tasks
   }
 
   default_capacity_provider_strategy {
