@@ -87,17 +87,44 @@ if (config.isDevelopment()) {
 app.use(generalLimiter);
 
 /**
- * Health Check (before routes for quick access)
+ * Health, Readiness, and Liveness Endpoints (before routes for quick access)
  */
+const mongoose = require("mongoose");
 
+// GET /health — full dependency status (used by ECS health check + ALB)
 app.get("/health", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "Auth service is running",
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
+  const dbState = mongoose.connection.readyState; // 0=disconnected 1=connected 2=connecting 3=disconnecting
+  const dbStatus = dbState === 1 ? "CONNECTED" : "DISCONNECTED";
+  const healthy = dbState === 1;
+
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? "UP" : "DEGRADED",
+    service: config.app.name,
+    version: "1.0.0",
     environment: config.app.env,
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+    checks: {
+      database: dbStatus,
+    },
   });
+});
+
+// GET /ready — ECS readiness probe: is the service ready to serve traffic?
+app.get("/ready", (req, res) => {
+  const dbReady = mongoose.connection.readyState === 1;
+  if (dbReady) {
+    res.status(200).json({ status: "READY", database: "CONNECTED" });
+  } else {
+    res.status(503).json({ status: "NOT_READY", database: "DISCONNECTED" });
+  }
+});
+
+// GET /live — ECS liveness probe: is the process alive? (no dep checks)
+app.get("/live", (req, res) => {
+  res
+    .status(200)
+    .json({ status: "ALIVE", timestamp: new Date().toISOString() });
 });
 
 /**

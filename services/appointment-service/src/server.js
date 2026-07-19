@@ -41,6 +41,7 @@ const { startGrpcServer } = require("./grpc/server");
 
 // Import routes
 const appointmentRoutes = require("./routes/appointment.routes");
+const healthRoutes = require("./routes/health.routes");
 
 // Create Express app
 const app = express();
@@ -67,16 +68,8 @@ if (config.nodeEnv === "development") {
 // APM Telemetry + Prometheus metricsapp.use(correlationIdMiddleware);app.use(telemetryMiddleware);
 app.get("/metrics", metricsHandler);
 
-// Health check endpoint
-app.get("/health", (req, res) => {
-  res.json({
-    ...healthCheck(),
-    success: true,
-    message: "Appointment Service is running",
-    service: config.serviceName,
-    version: "1.0.0",
-  });
-});
+// Health, Readiness, Liveness endpoints
+app.use("/health", healthRoutes);
 
 // API documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));

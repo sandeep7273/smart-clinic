@@ -91,13 +91,46 @@ class AIServiceServer {
     // Prometheus metrics scrape endpoint
     this.app.get("/metrics", metricsHandler);
 
-    // Health check endpoint
+    // GET /health — full dependency status (ECS ALB health check)
     this.app.get("/health", (req, res) => {
-      res.json({
-        status: "healthy",
+      const mongoose = require("mongoose");
+      const dbState = mongoose.connection.readyState;
+      const dbStatus = dbState === 1 ? "CONNECTED" : "DISCONNECTED";
+      const redisStatus = redisClient.isConnected
+        ? "CONNECTED"
+        : "DISCONNECTED";
+      const healthy = dbState === 1; // DB is critical; Redis is optional
+
+      res.status(healthy ? 200 : 503).json({
+        status: healthy ? "UP" : "DEGRADED",
         service: config.serviceName,
+        version: "1.0.0",
+        environment: config.nodeEnv,
         timestamp: new Date().toISOString(),
+        uptime: Math.floor(process.uptime()),
+        checks: {
+          database: dbStatus,
+          redis: redisStatus,
+        },
       });
+    });
+
+    // GET /ready — readiness probe
+    this.app.get("/ready", (req, res) => {
+      const mongoose = require("mongoose");
+      const dbReady = mongoose.connection.readyState === 1;
+      if (dbReady) {
+        res.status(200).json({ status: "READY", database: "CONNECTED" });
+      } else {
+        res.status(503).json({ status: "NOT_READY", database: "DISCONNECTED" });
+      }
+    });
+
+    // GET /live — liveness probe (no dep checks)
+    this.app.get("/live", (_req, res) => {
+      res
+        .status(200)
+        .json({ status: "ALIVE", timestamp: new Date().toISOString() });
     });
   }
 
