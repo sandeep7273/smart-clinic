@@ -65,14 +65,61 @@ jobs:
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
 
+      - name: Generate terraform.tfvars from secrets
+        env:
+          JWT_SECRET:   ${{ secrets.JWT_SECRET }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          MONGODB_URI:  ${{ secrets.MONGODB_URI }}
+        run: |
+          # Derive per-service MongoDB URIs from base URI
+          # Base: mongodb+srv://user:pass@cluster.mongodb.net
+          # Append database name and appName per service
+          BASE="${MONGODB_URI%%\?*}"   # strip query params
+          QP="${MONGODB_URI#*\?}"      # keep query params (e.g. appName=Cluster0)
+
+          mkdir -p environments/${{ env.ENVIRONMENT }}
+          cat > environments/${{ env.ENVIRONMENT }}/terraform.tfvars << EOF
+          environment        = "${{ env.ENVIRONMENT }}"
+          aws_region         = "${{ secrets.AWS_REGION }}"
+          project            = "smartclinic"
+          vpc_cidr           = "10.0.0.0/16"
+          availability_zones = ["us-east-1a", "us-east-1b"]
+          acm_certificate_arn = ""
+
+          api_gateway_image         = "PLACEHOLDER"
+          auth_service_image        = "PLACEHOLDER"
+          doctor_service_image      = "PLACEHOLDER"
+          appointment_service_image = "PLACEHOLDER"
+          ai_service_image          = "PLACEHOLDER"
+
+          jwt_secret   = "${JWT_SECRET}"
+          groq_api_key = "${GROQ_API_KEY}"
+
+          mongodb_uris = {
+            "auth-service"        = "${BASE}/auth_db?${QP}"
+            "doctor-service"      = "${BASE}/doctor_db?${QP}"
+            "appointment-service" = "${BASE}/appointment_service?${QP}"
+            "ai-service"          = "${BASE}/ai_db?${QP}"
+          }
+
+          api_gateway_min_tasks          = 1
+          api_gateway_max_tasks          = 3
+          auth_service_min_tasks         = 1
+          auth_service_max_tasks         = 2
+          doctor_service_min_tasks       = 1
+          doctor_service_max_tasks       = 4
+          appointment_service_min_tasks  = 1
+          appointment_service_max_tasks  = 6
+          ai_service_min_tasks           = 1
+          ai_service_max_tasks           = 4
+          alert_email = ""
+          EOF
+
       - name: Terraform Plan
         id: plan
         run: |
           terraform plan \
             -var-file="environments/${{ env.ENVIRONMENT }}/terraform.tfvars" \
-            -var="jwt_secret=${{ secrets.JWT_SECRET }}" \
-            -var="mongodb_uri=${{ secrets.MONGODB_URI }}" \
-            -var="groq_api_key=${{ secrets.GROQ_API_KEY }}" \
             -out=tfplan \
             -no-color 2>&1 | tee plan-output.txt
 
@@ -105,7 +152,4 @@ jobs:
         run: |
           terraform destroy \
             -var-file="environments/${{ env.ENVIRONMENT }}/terraform.tfvars" \
-            -var="jwt_secret=${{ secrets.JWT_SECRET }}" \
-            -var="mongodb_uri=${{ secrets.MONGODB_URI }}" \
-            -var="groq_api_key=${{ secrets.GROQ_API_KEY }}" \
             -auto-approve
