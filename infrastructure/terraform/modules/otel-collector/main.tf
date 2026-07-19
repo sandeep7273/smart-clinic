@@ -20,7 +20,7 @@ locals {
 
 # ── S3 bucket for OTel Collector config file ──────────────────────────────────
 resource "aws_s3_bucket" "otel_config" {
-  bucket        = "${var.project}-${var.environment}-otel-config-${data.aws_caller_identity.current.account_id}"
+  bucket        = "${var.project}-${var.environment}-otel-config-${data.aws_caller_identity.current.account_id}-${var.region_short}"
   force_destroy = true
 }
 

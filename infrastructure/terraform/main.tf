@@ -80,6 +80,7 @@ module "alb" {
   alb_sg_id           = module.security_groups.alb_sg_id
   acm_certificate_arn = var.acm_certificate_arn
   account_id          = data.aws_caller_identity.current.account_id
+  region_short        = "aps1"
 }
 
 # ── 7. Redis ──────────────────────────────────────────────────────────────────
@@ -123,6 +124,7 @@ module "otel_collector" {
   task_execution_role_arn = module.iam.task_execution_role_arn
   amp_workspace_arn       = module.prometheus.workspace_arn
   amp_remote_write_url    = module.prometheus.remote_write_url
+  region_short            = "aps1"
 }
 
 # 8c. CloudWatch alarms + log groups + dashboard
