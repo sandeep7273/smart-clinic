@@ -233,16 +233,15 @@ const startServer = async () => {
     const serviceClients = createServiceClients();
     logger.info("Service clients initialized");
 
-    // Build the initial GraphQL schema (non-fatal if no services are available yet)
-    await buildGraphQL();
-
     /**
-     * Error Handling Middleware (registered AFTER GraphQL)
+     * Error Handling Middleware (registered BEFORE listen so health checks work)
      */
     app.use(notFound);
     app.use(errorHandler);
 
-    // Start Express server
+    // Start Express server IMMEDIATELY so ALB/ECS health checks pass right away.
+    // GraphQL schema stitching runs in the background — REST proxy routes are
+    // fully operational from the first request.
     const server = app.listen(config.app.port, () => {
       logger.info(`API Gateway started successfully`, {
         port: config.app.port,
@@ -270,6 +269,13 @@ const startServer = async () => {
       logger.info(
         `  - REST API:      http://localhost:${config.app.port}/api/*`,
       );
+
+      // Build GraphQL schema in background — does not block the HTTP server.
+      buildGraphQL()
+        .then(() => logger.info("Background GraphQL schema build complete"))
+        .catch((err) =>
+          logger.warn("Background GraphQL schema build failed:", err.message),
+        );
     });
 
     // Handle server-level errors (e.g. EADDRINUSE) without going through
