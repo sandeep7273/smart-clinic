@@ -1,0 +1,167 @@
+{
+  "uid": "smartclinic-business",
+  "title": "4 — Business Metrics",
+  "description": "Real-world KPIs: appointments, doctors, patients, AI usage, revenue signals",
+  "tags": ["smartclinic", "business", "kpi"],
+  "timezone": "browser",
+  "refresh": "1m",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Total Appointments Created (24h)",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "fixedColor": "blue", "mode": "fixed" }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(appointments_created_total[24h]))",
+          "legendFormat": "Appointments"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Total AI Queries (24h)",
+      "type": "stat",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "fixedColor": "purple", "mode": "fixed" }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(ai_query_total[24h]))",
+          "legendFormat": "AI Queries"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Total Doctor Searches (24h)",
+      "type": "stat",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "fixedColor": "green", "mode": "fixed" }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(doctor_search_total[24h]))",
+          "legendFormat": "Searches"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Total User Logins (24h)",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [
+        {
+          "expr": "sum(increase(auth_login_total{status=\"success\"}[24h]))",
+          "legendFormat": "Logins"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Login Failure Rate (24h)",
+      "type": "stat",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "red", "value": 0.1 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(auth_login_total{status=\"failed\"}[24h])) / sum(increase(auth_login_total[24h]))",
+          "legendFormat": "Failure %"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Appointments Created / hour (trend)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [
+        {
+          "expr": "sum(increase(appointments_created_total{status=\"confirmed\"}[1h]))",
+          "legendFormat": "Confirmed"
+        },
+        {
+          "expr": "sum(increase(appointments_created_total{status=\"cancelled\"}[1h]))",
+          "legendFormat": "Cancelled"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Appointments by Status (24h)",
+      "type": "piechart",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum by (status) (increase(appointments_created_total[24h]))",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Top Doctor Specialties Searched",
+      "type": "barchart",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (specialty) (increase(doctor_search_total[24h])))",
+          "legendFormat": "{{specialty}}"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "AI Query Intents (24h)",
+      "type": "piechart",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum by (intent) (increase(ai_query_total[24h]))",
+          "legendFormat": "{{intent}}"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "User Registrations / hour",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 20, "w": 24, "h": 6 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [
+        {
+          "expr": "sum(increase(auth_register_total{status=\"success\"}[1h]))",
+          "legendFormat": "New Users / hour"
+        }
+      ]
+    }
+  ]
+}

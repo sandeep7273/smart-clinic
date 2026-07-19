@@ -1,0 +1,200 @@
+# OpenTelemetry Collector — Production Pipeline Config
+#
+# This file is uploaded to SSM Parameter Store by Terraform and read by the
+# OTel Collector ECS container at startup via the OTEL_CONFIG env var.
+#
+# Pipeline:
+#   OTLP (all services) ──┐
+#                         ├── Batch → X-Ray        (traces)
+#   Prometheus scrape ────┤── Batch → AMP          (metrics via remote_write)
+#                         └── Batch → CloudWatch   (logs)
+
+extensions:
+  health_check:
+    endpoint: "0.0.0.0:13133"
+
+  # Prometheus UI for debugging the collector itself
+  zpages:
+    endpoint: "localhost:55679"
+
+receivers:
+  # ── OTLP receiver: all 5 services send traces/metrics/logs here ─────────────
+  otlp:
+    protocols:
+      grpc:
+        endpoint: "0.0.0.0:4317"
+        max_recv_msg_size_mib: 64
+      http:
+        endpoint: "0.0.0.0:4318"
+        cors:
+          allowed_origins: ["*"]
+
+  # ── Prometheus receiver: scrapes /metrics from all services ──────────────────
+  prometheus:
+    config:
+      global:
+        scrape_interval:     15s
+        scrape_timeout:      10s
+        evaluation_interval: 15s
+
+      scrape_configs:
+        - job_name: "api-gateway"
+          static_configs:
+            - targets: ["${env:API_GATEWAY_ADDR}"]
+          metrics_path: /metrics
+          relabel_configs:
+            - target_label: service
+              replacement:  api-gateway
+
+        - job_name: "auth-service"
+          static_configs:
+            - targets: ["${env:AUTH_SERVICE_ADDR}"]
+          metrics_path: /metrics
+          relabel_configs:
+            - target_label: service
+              replacement:  auth-service
+
+        - job_name: "doctor-service"
+          static_configs:
+            - targets: ["${env:DOCTOR_SERVICE_ADDR}"]
+          metrics_path: /metrics
+          relabel_configs:
+            - target_label: service
+              replacement:  doctor-service
+
+        - job_name: "appointment-service"
+          static_configs:
+            - targets: ["${env:APPOINTMENT_SERVICE_ADDR}"]
+          metrics_path: /metrics
+          relabel_configs:
+            - target_label: service
+              replacement:  appointment-service
+
+        - job_name: "ai-service"
+          static_configs:
+            - targets: ["${env:AI_SERVICE_ADDR}"]
+          metrics_path: /metrics
+          relabel_configs:
+            - target_label: service
+              replacement:  ai-service
+
+processors:
+  # ── Batch: improves throughput by grouping spans/metrics before exporting ───
+  batch/traces:
+    timeout:         1s
+    send_batch_size: 256
+
+  batch/metrics:
+    timeout:         30s
+    send_batch_size: 1000
+
+  batch/logs:
+    timeout:         5s
+    send_batch_size: 512
+
+  # ── Memory limiter: prevents OOM if services flood the collector ─────────────
+  memory_limiter:
+    limit_mib:           400
+    spike_limit_mib:     100
+    check_interval:      1s
+
+  # ── Resource detector: adds AWS metadata (AZ, region, ECS task ID) ──────────
+  resourcedetection:
+    detectors:  [env, ecs, ec2]
+    timeout:    5s
+    override:   false
+
+  # ── Add environment label to all telemetry ───────────────────────────────────
+  resource:
+    attributes:
+      - action:      insert
+        key:         deployment.environment
+        from_attribute: deployment.environment
+      - action:      insert
+        key:         cloud.region
+        value:       "${env:AWS_REGION}"
+
+  # ── Filter: drop health check spans (too noisy, not useful) ─────────────────
+  filter/drop_health:
+    traces:
+      span:
+        - 'attributes["http.url"] == "/health"'
+        - 'attributes["http.url"] == "/ready"'
+        - 'attributes["http.url"] == "/live"'
+        - 'attributes["http.url"] == "/metrics"'
+
+  # ── Tail-based sampling: keep 100% of error traces, 10% of successful ───────
+  # (comment out if you want 100% sampling in dev)
+  probabilistic_sampler:
+    sampling_percentage: 10
+
+exporters:
+  # ── AWS X-Ray: distributed trace visualization ───────────────────────────────
+  awsxray:
+    region: "${env:AWS_REGION}"
+    indexed_attributes:
+      - "http.method"
+      - "http.route"
+      - "http.status_code"
+      - "service.name"
+      - "user.id"
+      - "correlation.id"
+      - "appointment.doctor_id"
+      - "appointment.patient_id"
+      - "db.system"
+      - "messaging.system"
+
+  # ── Amazon Managed Prometheus: metrics storage ───────────────────────────────
+  prometheusremotewrite:
+    endpoint: "${env:AMP_ENDPOINT}"
+    auth:
+      authenticator: sigv4auth
+    add_metric_suffixes: false
+    resource_to_telemetry_conversion:
+      enabled: true
+
+  # ── CloudWatch Logs: structured log storage ──────────────────────────────────
+  awscloudwatchlogs:
+    region:           "${env:AWS_REGION}"
+    log_group_name:   "/otel/smartclinic/traces"
+    log_stream_name:  "otel-collector"
+    log_retention:    14
+
+  # ── Debug (disable in prod — useful during initial setup) ───────────────────
+  # logging:
+  #   verbosity: detailed
+
+extensions:
+  sigv4auth:
+    region:  "${env:AWS_REGION}"
+    service: "aps"
+
+service:
+  extensions: [health_check, sigv4auth, zpages]
+
+  pipelines:
+    # ── Traces: OTLP → filter health → sample → X-Ray ───────────────────────
+    traces:
+      receivers:  [otlp]
+      processors: [memory_limiter, resourcedetection, resource, filter/drop_health, batch/traces]
+      exporters:  [awsxray]
+
+    # ── Metrics: OTLP + Prometheus scrape → AMP ──────────────────────────────
+    metrics:
+      receivers:  [otlp, prometheus]
+      processors: [memory_limiter, resourcedetection, resource, batch/metrics]
+      exporters:  [prometheusremotewrite]
+
+    # ── Logs: OTLP → CloudWatch ──────────────────────────────────────────────
+    logs:
+      receivers:  [otlp]
+      processors: [memory_limiter, resourcedetection, resource, batch/logs]
+      exporters:  [awscloudwatchlogs]
+
+  # Telemetry about the collector itself
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      level:   detailed
+      address: "0.0.0.0:8888"

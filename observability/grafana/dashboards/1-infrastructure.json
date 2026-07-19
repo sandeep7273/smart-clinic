@@ -1,0 +1,128 @@
+{
+  "uid": "smartclinic-infrastructure",
+  "title": "1 — Infrastructure Overview",
+  "description": "ECS task health, CPU, memory, ALB traffic and error rates",
+  "tags": ["smartclinic", "infrastructure"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "custom",
+        "query": "api-gateway,auth-service,doctor-service,appointment-service,ai-service",
+        "current": { "value": "$__all", "text": "All" },
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "ECS Running Tasks",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "targets": [
+        {
+          "expr": "sum by (ServiceName) (aws_ecs_service_running_task_count)",
+          "legendFormat": "{{ServiceName}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "CPU Utilization % (avg per service)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "max": 100,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 60 },
+              { "color": "red", "value": 85 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "avg by (service) (rate(process_cpu_seconds_total{service=~\"$service\"}[5m]) * 100)",
+          "legendFormat": "{{service}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Memory Usage MB (per service)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "decmbytes" } },
+      "targets": [
+        {
+          "expr": "avg by (service) (nodejs_heap_size_used_bytes{service=~\"$service\"}) / 1024 / 1024",
+          "legendFormat": "{{service}} heap"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "ALB Request Rate (req/min)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 12, "w": 8, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total[1m])) * 60",
+          "legendFormat": "Total requests/min"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "5xx Error Count / min",
+      "type": "timeseries",
+      "gridPos": { "x": 8, "y": 12, "w": 8, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "fixedColor": "red", "mode": "fixed" }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{status_code=~\"5..\"}[1m])) * 60",
+          "legendFormat": "5xx / min"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Node.js Event Loop Lag (ms)",
+      "type": "timeseries",
+      "gridPos": { "x": 16, "y": 12, "w": 8, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "avg by (service) (nodejs_eventloop_lag_seconds{service=~\"$service\"} * 1000)",
+          "legendFormat": "{{service}}"
+        }
+      ]
+    }
+  ]
+}

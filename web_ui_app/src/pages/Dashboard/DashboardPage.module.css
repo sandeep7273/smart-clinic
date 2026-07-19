@@ -1,0 +1,253 @@
+.container {
+  min-height: 100vh;
+  background: #f5f7fa;
+}
+
+.navbar {
+  background: #fff;
+  border-bottom: 1px solid #e8ecf0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  height: 60px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.navBrand {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0066ff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.navLinks {
+  display: flex;
+  gap: 24px;
+}
+
+.navLink {
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
+  text-decoration: none;
+  padding: 6px 0;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+.navLink:hover {
+  color: #0066ff;
+  border-bottom-color: #0066ff;
+}
+
+.logoutButton {
+  background: none;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.logoutButton:hover {
+  border-color: #e74c3c;
+  color: #e74c3c;
+}
+
+.main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.hero {
+  margin-bottom: 28px;
+}
+.greeting {
+  font-size: 28px;
+  font-weight: 800;
+  color: #111;
+  margin: 0 0 6px;
+}
+.heroSubtitle {
+  font-size: 16px;
+  color: #777;
+  margin: 0;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 36px;
+}
+
+.statCard {
+  background: #fff;
+  border-radius: 14px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.statIcon {
+  font-size: 28px;
+}
+.statValue {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0066ff;
+}
+.statLabel {
+  font-size: 13px;
+  color: #888;
+}
+
+.section {
+  margin-bottom: 36px;
+}
+.sectionTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111;
+  margin: 0 0 16px;
+}
+
+.featuresGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.featureCard {
+  background: #fff;
+  border-radius: 14px;
+  padding: 24px 20px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  text-decoration: none;
+  color: inherit;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+  display: block;
+  position: relative;
+  border: 2px solid transparent;
+}
+.featureCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 102, 255, 0.12);
+  border-color: #0066ff;
+}
+
+.featureCardDisabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.featureCardDisabled:hover {
+  transform: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-color: transparent;
+}
+
+.featureIcon {
+  font-size: 36px;
+  display: block;
+  margin-bottom: 12px;
+}
+.featureTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111;
+  margin: 0 0 8px;
+}
+.featureDesc {
+  font-size: 13px;
+  color: #777;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.comingSoon {
+  display: inline-block;
+  background: #f0f0f0;
+  color: #888;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-top: 10px;
+}
+
+.infoCard {
+  background: #fff;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.infoRow:last-child {
+  border-bottom: none;
+}
+.infoLabel {
+  font-size: 14px;
+  color: #888;
+  font-weight: 500;
+}
+.infoValue {
+  font-size: 14px;
+  color: #111;
+  font-weight: 600;
+}
+.roleChip {
+  background: #e6f0ff;
+  color: #0052cc;
+  padding: 3px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+}
+
+.footer {
+  text-align: center;
+  padding: 20px 0 8px;
+}
+.footerText {
+  font-size: 13px;
+  color: #aaa;
+  margin: 0;
+}
+.footerSub {
+  font-size: 12px;
+  color: #ccc;
+  margin: 4px 0 0;
+}
+
+@media (max-width: 640px) {
+  .navbar {
+    padding: 0 16px;
+  }
+  .navLinks {
+    display: none;
+  }
+  .statsGrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .main {
+    padding: 20px 16px;
+  }
+}

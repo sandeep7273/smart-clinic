@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package appointment;
+
+// Appointment Service
+service AppointmentService {
+  // Get user appointments
+  rpc GetUserAppointments(GetUserAppointmentsRequest) returns (GetUserAppointmentsResponse);
+  
+  // Get appointment by ID
+  rpc GetAppointmentById(GetAppointmentByIdRequest) returns (GetAppointmentByIdResponse);
+}
+
+// Common Messages
+
+message GetUserAppointmentsRequest {
+  string user_id = 1;
+  string auth_token = 2;
+  string status = 3; // optional filter
+  int32 limit = 4;
+  int32 page = 5;
+}
+
+message GetUserAppointmentsResponse {
+  bool success = 1;
+  string message = 2;
+  repeated AppointmentDetails appointments = 3;
+  int32 total_count = 4;
+}
+
+message GetAppointmentByIdRequest {
+  string appointment_id = 1;
+  string auth_token = 2;
+}
+
+message GetAppointmentByIdResponse {
+  bool success = 1;
+  string message = 2;
+  AppointmentDetails appointment = 3;
+}
+
+message AppointmentDetails {
+  string id = 1;
+  string patient_id = 2;
+  string doctor_id = 3;
+  string slot_id = 4;
+  string title = 5;
+  string description = 6;
+  string type = 7;
+  string status = 8;
+  string appointment_number = 9;
+  string date = 10;
+  string start_time = 11;
+  string end_time = 12;
+  string reason = 13;
+  int32 duration = 14;
+  double fee = 15;
+  string payment_status = 16;
+  string created_at = 17;
+  string updated_at = 18;
+}

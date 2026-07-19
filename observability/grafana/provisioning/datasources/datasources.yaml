@@ -1,0 +1,53 @@
+apiVersion: 1
+
+datasources:
+  # ── Prometheus (local dev) ────────────────────────────────────────────────
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus-local
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      timeInterval: "15s"
+      queryTimeout: "60s"
+      httpMethod: POST
+
+  # ── Jaeger (local dev traces) ─────────────────────────────────────────────
+  - name: Jaeger
+    type: jaeger
+    uid: jaeger-local
+    access: proxy
+    url: http://jaeger:16686
+    editable: true
+    jsonData:
+      tracesToLogsV2:
+        datasourceUid: loki-local
+        filterByTraceID: true
+        filterBySpanID: true
+
+  # ── Amazon Managed Prometheus (production) ────────────────────────────────
+  # Uncomment and fill in when deploying to AWS
+  # - name: AMP
+  #   type: prometheus
+  #   uid: amp-production
+  #   access: proxy
+  #   url: ${AMP_QUERY_URL}
+  #   isDefault: false
+  #   editable: true
+  #   jsonData:
+  #     sigV4Auth: true
+  #     sigV4Region: us-east-1
+  #     sigV4AuthType: default
+  #     httpMethod: POST
+
+  # ── AWS X-Ray (production traces) ────────────────────────────────────────
+  # Uncomment when deploying to AWS
+  # - name: X-Ray
+  #   type: grafana-x-ray-datasource
+  #   uid: xray-production
+  #   access: proxy
+  #   jsonData:
+  #     authType: default
+  #     defaultRegion: us-east-1

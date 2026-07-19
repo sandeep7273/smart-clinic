@@ -1,0 +1,14 @@
+# ── Terraform ────────────────────────────────────────────────────────────────
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/tfplan
+**/plan-output.txt
+
+# Never commit environment-specific tfvars with real secrets
+infrastructure/terraform/environments/**/terraform.tfvars
+
+# ── General ───────────────────────────────────────────────────────────────────
+.DS_Store
+*.log

@@ -1,0 +1,195 @@
+services:
+  # ============================================================================
+  # INFRASTRUCTURE SERVICES - INTERNAL ONLY
+  # ============================================================================
+  
+  zookeeper:
+    image: wurstmeister/zookeeper:latest
+    # SECURITY: Port not exposed - internal Docker network only
+    # Uncomment for local development/debugging if needed
+    # ports:
+    #   - "2181:2181"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  kafka:
+    image: wurstmeister/kafka:latest
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    # SECURITY: Port not exposed - internal Docker network only
+    # Uncomment for local development/debugging if needed
+    # ports:
+    #   - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      # Reduce memory for small EC2 instances (t2.micro/small)
+      KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions.sh", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+
+  # ============================================================================
+  # API GATEWAY - ONLY PUBLIC-FACING SERVICE
+  # ============================================================================
+  
+  api-gateway:
+    image: kubsandeep/api-gateway-1000:latest
+    ports:
+      - "3000:3000"  # ONLY port exposed to external access
+    env_file:
+      - api-gateway/.env.gateway
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      doctor-service:
+        condition: service_healthy
+      appointment-service:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ============================================================================
+  # MICROSERVICES - INTERNAL ONLY (No direct external access)
+  # ============================================================================
+
+  auth-service:
+    image: kubsandeep/auth-service-1001:latest
+    # SECURITY: Port not exposed - accessible only via API Gateway
+    # Uncomment for local development/debugging if needed
+    # ports:
+    #   - "4001:4001"
+    env_file:
+      - services/auth-service/.env.auth
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  doctor-service:
+    image: kubsandeep/doctor-service-1003:latest
+    # SECURITY: Ports not exposed - accessible only via API Gateway
+    # Uncomment for local development/debugging if needed
+    # ports:
+    #   - "4003:4003"   # HTTP
+    #   - "50051:50051"  # gRPC
+    env_file:
+      - services/doctor-service/.env.doctor
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4003/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  appointment-service:
+    image: kubsandeep/appointment-service-1004:latest
+    # SECURITY: Ports not exposed - accessible only via API Gateway
+    # Uncomment for local development/debugging if needed
+    # ports:
+    #   - "4004:4004"   # HTTP
+    #   - "50052:50052"  # gRPC
+    env_file:
+      - services/appointment-service/.env.appointment
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      doctor-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4004/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  ai-service:
+    image: kubsandeep/ai-service-1005:latest
+    # SECURITY: Port not exposed - accessible only via API Gateway
+    # Uncomment for local development/debugging if needed
+    # ports:
+    #   - "4005:4005"
+    env_file:
+      - services/ai-service/.env.ai
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4005/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  # ============================================================================
+  # DATABASES & CACHE - INTERNAL ONLY
+  # ============================================================================
+
+  redis:
+    image: redis:7
+    # SECURITY: Port not exposed - internal Docker network only
+    # Uncomment for local development/debugging if needed
+    # ports:
+    #   - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:6.0
+    # SECURITY: Port not exposed - internal Docker network only
+    # Uncomment for local development/debugging if needed
+    # ports:
+    #   - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      # Reduce memory for small EC2 instances
+      MONGO_INITDB_DATABASE: admin
+    command: ["mongod", "--wiredTigerCacheSizeGB", "0.25"]
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:

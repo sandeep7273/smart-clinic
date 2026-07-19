@@ -1,0 +1,326 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f5f7fa;
+}
+
+.header {
+  background: #fff;
+  border-bottom: 1px solid #e8ecf0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 60px;
+  flex-shrink: 0;
+}
+.backLink {
+  font-size: 14px;
+  color: #555;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.backLink:hover {
+  color: #0066ff;
+}
+.headerCenter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.botIcon {
+  font-size: 28px;
+}
+.pageTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111;
+  margin: 0;
+}
+.pageSubtitle {
+  font-size: 11px;
+  color: #aaa;
+  margin: 0;
+}
+.clearButton {
+  background: none;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 12px;
+  color: #888;
+  cursor: pointer;
+}
+.clearButton:hover {
+  border-color: #e74c3c;
+  color: #e74c3c;
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 16px;
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.messageRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.userRow {
+  flex-direction: row-reverse;
+}
+.assistantRow {
+  flex-direction: row;
+}
+
+.botAvatar,
+.userAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  background: #f0f0f0;
+}
+.userAvatar {
+  background: #e6f0ff;
+}
+
+.bubble {
+  max-width: 72%;
+  padding: 12px 16px;
+  border-radius: 18px;
+  position: relative;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+.userBubble {
+  background: #0066ff;
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.assistantBubble {
+  background: #fff;
+  color: #111;
+  border-bottom-left-radius: 4px;
+  border: 1px solid #e8ecf0;
+}
+
+.bubbleText {
+  margin: 0 0 4px;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.userBubble .bubbleText {
+  color: #fff;
+}
+
+.disclaimer {
+  font-size: 11px;
+  color: #f8d7b0;
+  font-style: italic;
+  margin: 6px 0 0;
+}
+.assistantBubble .disclaimer {
+  color: #f57c00;
+}
+
+.timestamp {
+  font-size: 10px;
+  display: block;
+  text-align: right;
+  margin-top: 4px;
+  opacity: 0.6;
+}
+
+.payloadSection {
+  margin-top: 12px;
+}
+.payloadTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: #555;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.aiDoctorCard {
+  background: #f8f9fc;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border: 1px solid #e8ecf0;
+}
+.aiDoctorName {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111;
+  margin: 0 0 2px;
+}
+.aiDoctorSpec {
+  font-size: 12px;
+  color: #0066ff;
+  margin: 0 0 2px;
+}
+.aiDoctorLoc {
+  font-size: 11px;
+  color: #888;
+  margin: 0 0 2px;
+}
+.aiDoctorRating {
+  font-size: 11px;
+  color: #f5a623;
+  margin: 0 0 2px;
+}
+.aiDoctorFee {
+  font-size: 11px;
+  color: #27ae60;
+  font-weight: 600;
+  margin: 0;
+}
+
+.aiApptCard {
+  background: #f8f9fc;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border: 1px solid #e8ecf0;
+}
+.aiApptDoctor {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111;
+  margin: 0 0 2px;
+}
+.aiApptSpec {
+  font-size: 12px;
+  color: #0066ff;
+  margin: 0 0 2px;
+}
+.aiApptDate {
+  font-size: 12px;
+  color: #666;
+  margin: 0 0 4px;
+}
+.aiApptStatus {
+  font-size: 10px;
+  font-weight: 700;
+  background: #e6f0ff;
+  color: #0052cc;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.actionBtn {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  background: #0066ff;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s;
+}
+.actionBtn:hover {
+  background: #0052cc;
+}
+
+.typingBubble {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 14px 18px;
+}
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ccc;
+  animation: bounce 1.2s infinite;
+}
+.dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.inputArea {
+  background: #fff;
+  border-top: 1px solid #e8ecf0;
+  padding: 12px 16px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+.input {
+  flex: 1;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 20px;
+  padding: 10px 16px;
+  font-size: 14px;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  max-height: 120px;
+  overflow-y: auto;
+  transition: border-color 0.15s;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+.input:focus {
+  border-color: #0066ff;
+}
+.sendButton {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #0066ff;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.sendButton:hover:not(:disabled) {
+  background: #0052cc;
+}
+.sendButton:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
