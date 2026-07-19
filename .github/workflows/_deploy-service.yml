@@ -116,14 +116,8 @@ jobs:
           echo "ecr_registry=${ECR_REGISTRY}" >> $GITHUB_OUTPUT
           echo "ecr_repo=${ECR_REPO}" >> $GITHUB_OUTPUT
 
-      - name: Scan image with Trivy
-        uses: aquasecurity/trivy-action@0.28.0
-        continue-on-error: true    # don't block deploy on scan issues
-        with:
-          image-ref: ${{ steps.build.outputs.image_uri }}
-          format: "table"
-          severity: "HIGH,CRITICAL"
-          exit-code: "0"           # report only, don't fail
+      # Note: Trivy scan removed — ECR scan_on_push=true handles vulnerability
+      # scanning at the registry level automatically on every image push.
 
       - name: Push image to ECR
         env:

@@ -20,7 +20,6 @@ jobs:
     permissions:
       id-token: write
       contents: read
-      security-events: write
     uses: ./.github/workflows/_deploy-service.yml
     with:
       service_name: appointment-service
