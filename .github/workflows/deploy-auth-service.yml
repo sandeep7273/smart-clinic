@@ -1,0 +1,30 @@
+name: Deploy — Auth Service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/auth-service/**"
+      - ".github/workflows/deploy-auth-service.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "dev"
+        type: choice
+        options: [dev, prod]
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/_deploy-service.yml
+    with:
+      service_name: auth-service
+      service_dir: services/auth-service
+      container_port: "4001"
+      ecs_cluster: smartclinic-${{ github.event.inputs.environment || 'dev' }}
+      environment: ${{ github.event.inputs.environment || 'dev' }}
+    secrets:
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}

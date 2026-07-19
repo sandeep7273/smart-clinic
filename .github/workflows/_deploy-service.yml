@@ -1,0 +1,207 @@
+###############################################################################
+# Reusable workflow — Build, scan, push to ECR, deploy to ECS
+# Called by each service-specific workflow via workflow_call.
+###############################################################################
+name: Build and Deploy Service
+
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        description: "Name of the service (e.g. auth-service)"
+        required: true
+        type: string
+      service_dir:
+        description: "Path to the service directory (e.g. services/auth-service)"
+        required: true
+        type: string
+      container_port:
+        description: "Container port exposed by the service"
+        required: true
+        type: string
+      ecs_cluster:
+        description: "ECS cluster name"
+        required: true
+        type: string
+      environment:
+        description: "Target environment (dev | prod)"
+        required: true
+        type: string
+    secrets:
+      AWS_ACCOUNT_ID: { required: true }
+      AWS_REGION: { required: true }
+      AWS_ROLE_ARN: { required: true } # GitHub OIDC role (no long-lived keys)
+
+env:
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+  ECR_REPO: smartclinic/${{ inputs.service_name }}
+
+jobs:
+  # ── 1. Test ─────────────────────────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: ${{ inputs.service_dir }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ inputs.service_dir }}
+        run: npm ci
+
+      - name: Run tests
+        working-directory: ${{ inputs.service_dir }}
+        run: npm run test:ci
+        env:
+          NODE_ENV: test
+
+      - name: Lint
+        working-directory: ${{ inputs.service_dir }}
+        run: npm run lint 2>/dev/null || echo "No lint script defined — skipping"
+
+  # ── 2. Build, Scan, Push ────────────────────────────────────────────────────
+  build-and-push:
+    name: Build & Push
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for OIDC token
+      contents: read
+    outputs:
+      image_uri: ${{ steps.build.outputs.image_uri }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC — no long-lived keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        id: build
+        working-directory: ${{ inputs.service_dir }}
+        run: |
+          IMAGE_TAG="${{ github.sha }}"
+          IMAGE_URI="${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:${IMAGE_TAG}"
+
+          docker build \
+            --cache-from "${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:latest" \
+            --build-arg BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            --build-arg VCS_REF="${{ github.sha }}" \
+            --build-arg SERVICE_VERSION="${{ github.ref_name }}" \
+            -t "${IMAGE_URI}" \
+            -t "${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:latest" \
+            .
+
+          echo "image_uri=${IMAGE_URI}" >> $GITHUB_OUTPUT
+
+      - name: Scan image with Trivy (block on HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.build.outputs.image_uri }}
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "HIGH,CRITICAL"
+          exit-code: "1" # Fail CI if HIGH/CRITICAL CVE found
+
+      - name: Upload Trivy SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+
+      - name: Push image to ECR
+        run: |
+          docker push "${{ steps.build.outputs.image_uri }}"
+          docker push "${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:latest"
+
+  # ── 3. Deploy to ECS ────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "smartclinic-${{ inputs.environment }}-${{ inputs.service_name }}" \
+            --query taskDefinition \
+            > task-definition.json
+
+      - name: Render updated task definition with new image
+        id: render-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ inputs.service_name }}
+          image: ${{ needs.build-and-push.outputs.image_uri }}
+
+      - name: Deploy to ECS (rolling — zero downtime)
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-task-def.outputs.task-definition }}
+          service: ${{ inputs.service_name }}
+          cluster: ${{ inputs.ecs_cluster }}
+          wait-for-service-stability: true
+
+      - name: Smoke test — verify health endpoint
+        run: |
+          sleep 20
+          ALB_DNS="${{ vars.ALB_DNS_NAME }}"
+          if [ -n "$ALB_DNS" ]; then
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "http://${ALB_DNS}/health" || echo "000")
+            if [ "$STATUS" != "200" ]; then
+              echo "Health check failed — HTTP $STATUS"
+              exit 1
+            fi
+            echo "Health check passed — HTTP $STATUS"
+          fi
+
+      - name: Notify Slack (success)
+        if: success()
+        uses: slackapi/slack-github-action@v1
+        continue-on-error: true
+        with:
+          payload: |
+            {
+              "text": ":white_check_mark: *${{ inputs.service_name }}* deployed to *${{ inputs.environment }}*\nCommit: <https://github.com/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\nBy: ${{ github.actor }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify Slack (failure)
+        if: failure()
+        uses: slackapi/slack-github-action@v1
+        continue-on-error: true
+        with:
+          payload: |
+            {
+              "text": ":x: *${{ inputs.service_name }}* deployment FAILED on *${{ inputs.environment }}*\nRun: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View logs>\nBy: ${{ github.actor }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

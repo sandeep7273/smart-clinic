@@ -1,0 +1,30 @@
+name: Deploy — Doctor Service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/doctor-service/**"
+      - ".github/workflows/deploy-doctor-service.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "dev"
+        type: choice
+        options: [dev, prod]
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/_deploy-service.yml
+    with:
+      service_name: doctor-service
+      service_dir: services/doctor-service
+      container_port: "4002"
+      ecs_cluster: smartclinic-${{ github.event.inputs.environment || 'dev' }}
+      environment: ${{ github.event.inputs.environment || 'dev' }}
+    secrets:
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}

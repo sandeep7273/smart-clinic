@@ -1,0 +1,30 @@
+name: Deploy — API Gateway
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api-gateway/**"
+      - ".github/workflows/deploy-api-gateway.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "dev"
+        type: choice
+        options: [dev, prod]
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/_deploy-service.yml
+    with:
+      service_name: api-gateway
+      service_dir: api-gateway
+      container_port: "3000"
+      ecs_cluster: smartclinic-${{ github.event.inputs.environment || 'dev' }}
+      environment: ${{ github.event.inputs.environment || 'dev' }}
+    secrets:
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}

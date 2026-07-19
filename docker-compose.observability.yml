@@ -55,9 +55,11 @@ services:
     environment:
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_FEATURE_TOGGLES_ENABLE: "traceqlEditor"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/etc/grafana/dashboards:ro
     depends_on: [prometheus, jaeger]
     restart: unless-stopped
     networks: [observability]

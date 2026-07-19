@@ -1,0 +1,172 @@
+{
+  "uid": "smartclinic-application",
+  "title": "2 — Application Performance (APM)",
+  "description": "RED metrics: Request rate, Error rate, Duration (latency) per service",
+  "tags": ["smartclinic", "apm", "red"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "custom",
+        "query": "api-gateway,auth-service,doctor-service,appointment-service,ai-service",
+        "current": { "value": "api-gateway", "text": "api-gateway" },
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request Rate (req/s)",
+      "description": "Total HTTP requests per second across all services",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [
+        {
+          "expr": "sum by (service) (rate(http_requests_total{service=~\"$service\"}[1m]))",
+          "legendFormat": "{{service}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Error Rate % (5xx)",
+      "description": "Percentage of requests that return 5xx errors. Alert threshold: 1%",
+      "type": "timeseries",
+      "gridPos": { "x": 8, "y": 0, "w": 8, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "max": 1,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 0.005 },
+              { "color": "red", "value": 0.01 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (service) (rate(http_requests_total{service=~\"$service\",status_code=~\"5..\"}[5m])) / sum by (service) (rate(http_requests_total{service=~\"$service\"}[5m]))",
+          "legendFormat": "{{service}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "P50 / P95 / P99 Latency (ms)",
+      "description": "Response time percentiles. P99 > 2000ms triggers an alarm.",
+      "type": "timeseries",
+      "gridPos": { "x": 16, "y": 0, "w": 8, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "red", "value": 2000 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (service, le) (rate(http_request_duration_seconds_bucket{service=~\"$service\"}[5m]))) * 1000",
+          "legendFormat": "{{service}} P50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (service, le) (rate(http_request_duration_seconds_bucket{service=~\"$service\"}[5m]))) * 1000",
+          "legendFormat": "{{service}} P95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (service, le) (rate(http_request_duration_seconds_bucket{service=~\"$service\"}[5m]))) * 1000",
+          "legendFormat": "{{service}} P99"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Auth — Login Success vs Failure",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "rate(auth_login_total{status=\"success\"}[5m]) * 60",
+          "legendFormat": "Success / min"
+        },
+        {
+          "expr": "rate(auth_login_total{status=\"failed\"}[5m]) * 60",
+          "legendFormat": "Failed / min"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Appointments Created / min",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 8, "w": 6, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [
+        {
+          "expr": "sum(rate(appointments_created_total[5m])) * 60",
+          "legendFormat": "Appointments / min"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Doctor Search Rate / min",
+      "type": "stat",
+      "gridPos": { "x": 18, "y": 8, "w": 6, "h": 4 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [
+        {
+          "expr": "sum(rate(doctor_search_total[5m])) * 60",
+          "legendFormat": "Searches / min"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "AI Query Duration P50 / P95 / P99 (s)",
+      "description": "LLM calls are slow by nature. P95 > 15s triggers an alarm.",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, rate(ai_query_duration_seconds_bucket[5m]))",
+          "legendFormat": "AI P50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(ai_query_duration_seconds_bucket[5m]))",
+          "legendFormat": "AI P95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, rate(ai_query_duration_seconds_bucket[5m]))",
+          "legendFormat": "AI P99"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "AI Queries by Intent",
+      "type": "piechart",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum by (intent) (increase(ai_query_total[1h]))",
+          "legendFormat": "{{intent}}"
+        }
+      ]
+    }
+  ]
+}

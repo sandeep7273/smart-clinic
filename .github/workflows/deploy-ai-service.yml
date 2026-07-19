@@ -1,0 +1,30 @@
+name: Deploy — AI Service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/ai-service/**"
+      - ".github/workflows/deploy-ai-service.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "dev"
+        type: choice
+        options: [dev, prod]
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/_deploy-service.yml
+    with:
+      service_name: ai-service
+      service_dir: services/ai-service
+      container_port: "4004"
+      ecs_cluster: smartclinic-${{ github.event.inputs.environment || 'dev' }}
+      environment: ${{ github.event.inputs.environment || 'dev' }}
+    secrets:
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}

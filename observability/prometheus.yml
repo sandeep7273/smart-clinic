@@ -1,8 +1,17 @@
-# Prometheus scrape configuration — Smart Clinic
+# Prometheus scrape configuration — Smart Clinic (LOCAL DEV)
 #
-# Scrapes /metrics from every microservice and the API Gateway.
-# When running services locally (not Docker), host.docker.internal resolves
-# to the host machine; change to 'localhost' if Prometheus runs on host too.
+# Used by docker-compose.observability.yml for local development.
+# In production, the OTel Collector scrapes /metrics instead (see otel-collector-config.yaml).
+#
+# Service ports (confirmed from .env files):
+#   api-gateway:         3000
+#   auth-service:        4001
+#   doctor-service:      4002
+#   appointment-service: 4003
+#   ai-service:          4004
+#
+# host.docker.internal resolves to the host machine from inside Docker.
+# If Prometheus runs directly on the host, change targets to "localhost:<port>".
 
 global:
   scrape_interval: 15s
@@ -12,38 +21,42 @@ global:
     env: "development"
 
 scrape_configs:
-  # API Gateway
   - job_name: "api-gateway"
     static_configs:
       - targets: ["host.docker.internal:3000"]
+        labels: { service: "api-gateway" }
     metrics_path: /metrics
-    scheme: http
 
-  # Auth Service
   - job_name: "auth-service"
     static_configs:
       - targets: ["host.docker.internal:4001"]
+        labels: { service: "auth-service" }
     metrics_path: /metrics
 
-  # Doctor Service
   - job_name: "doctor-service"
     static_configs:
-      - targets: ["host.docker.internal:4003"]
+      - targets: ["host.docker.internal:4002"]
+        labels: { service: "doctor-service" }
     metrics_path: /metrics
 
-  # Appointment Service
   - job_name: "appointment-service"
     static_configs:
-      - targets: ["host.docker.internal:4004"]
+      - targets: ["host.docker.internal:4003"]
+        labels: { service: "appointment-service" }
     metrics_path: /metrics
 
-  # AI Service
   - job_name: "ai-service"
     static_configs:
-      - targets: ["host.docker.internal:4005"]
+      - targets: ["host.docker.internal:4004"]
+        labels: { service: "ai-service" }
     metrics_path: /metrics
 
-  # Prometheus self-monitoring
+  - job_name: "otel-collector"
+    static_configs:
+      - targets: ["host.docker.internal:8888"]
+        labels: { service: "otel-collector" }
+    metrics_path: /metrics
+
   - job_name: "prometheus"
     static_configs:
       - targets: ["localhost:9090"]
