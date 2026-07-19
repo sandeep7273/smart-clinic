@@ -1,0 +1,30 @@
+name: Deploy — appointment-service
+
+on:
+  push:
+    branches: [main, master, develop]
+    paths:
+      - "services/appointment-service/**"
+      - ".github/workflows/deploy-appointment-service.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "dev"
+        type: choice
+        options: [dev, prod]
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/_deploy-service.yml
+    with:
+      service_name: appointment-service
+      service_dir: services/appointment-service
+      container_port: "4003"
+      ecs_cluster: smartclinic-${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || 'dev' }}
+      environment: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || 'dev' }}
+    secrets:
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      AWS_REGION:     ${{ secrets.AWS_REGION }}
+      AWS_ROLE_ARN:   ${{ secrets.AWS_ROLE_ARN }}
