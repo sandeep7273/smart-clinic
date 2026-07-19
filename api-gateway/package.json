@@ -7,6 +7,7 @@
     "start": "node src/index.js",
     "dev": "node -e \"require('child_process').execSync('lsof -ti:3000 | xargs kill -9 2>/dev/null || true')\" && nodemon src/index.js",
     "test": "jest",
+    "test:ci": "jest --ci --passWithNoTests",
     "lint": "eslint src/**/*.js"
   },
   "keywords": [

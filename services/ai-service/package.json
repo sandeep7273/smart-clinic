@@ -8,6 +8,7 @@
     "dev": "nodemon src/server.js",
     "seed:embeddings": "node src/scripts/seedEmbeddings.js",
     "test": "jest",
+    "test:ci": "jest --ci --passWithNoTests",
     "lint": "eslint src/",
     "format": "prettier --write \"src/**/*.js\""
   },

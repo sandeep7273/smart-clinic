@@ -1,4 +1,4 @@
-name: Deploy — Doctor Service
+name: Deploy — doctor-service
 
 on:
   push:
@@ -22,9 +22,9 @@ jobs:
       service_name: doctor-service
       service_dir: services/doctor-service
       container_port: "4002"
-      ecs_cluster: smartclinic-${{ github.event.inputs.environment || 'dev' }}
-      environment: ${{ github.event.inputs.environment || 'dev' }}
+      ecs_cluster: smartclinic-${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || 'dev' }}
+      environment: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || 'dev' }}
     secrets:
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+      AWS_REGION:     ${{ secrets.AWS_REGION }}
+      AWS_ROLE_ARN:   ${{ secrets.AWS_ROLE_ARN }}
