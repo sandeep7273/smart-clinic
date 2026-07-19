@@ -9,7 +9,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install production dependencies and aggressively clean up
-RUN npm ci --omit=dev --production && \
+RUN npm install --omit=dev --production && \
     npm cache clean --force && \
     # Remove unnecessary files from node_modules (especially AI libs have lots)
     find node_modules -type f -name '*.md' -delete && \
