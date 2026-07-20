@@ -118,7 +118,16 @@ let graphqlSubRouter = require("express").Router(); // empty until first build
 // Register a SINGLE persistent /graphql route that always delegates to the
 // current sub-router.  Swapping graphqlSubRouter atomically replaces the
 // schema without touching the Express app's route table.
-app.use("/graphql", (req, res, next) => graphqlSubRouter(req, res, next));
+app.use("/graphql", (req, res, next) => {
+  if (!activeApolloServer) {
+    return res.status(503).json({
+      success: false,
+      message: "GraphQL schema is still initializing. Please retry shortly.",
+    });
+  }
+
+  return graphqlSubRouter(req, res, next);
+});
 
 /**
  * Build (or rebuild) the Apollo Server with freshly-stitched schemas.
