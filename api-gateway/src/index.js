@@ -46,7 +46,23 @@ app.use(
 
 app.use(
   cors({
-    origin: config.cors.origin.split(","),
+    origin: (origin, callback) => {
+      const allowedOrigins = config.cors.origin
+        .split(",")
+        .map((o) => o.trim())
+        .filter(Boolean);
+
+      // Allow requests without Origin header (mobile apps, Postman, curl)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
     credentials: config.cors.credentials,
   }),
 );

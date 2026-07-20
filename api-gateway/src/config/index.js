@@ -24,7 +24,19 @@ const config = {
 
   // CORS Configuration
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:19006',
+    // Comma-separated list in env. Defaults cover:
+    // - local web dev (Vite)
+    // - local mobile dev host
+    // - deployed S3 website frontend
+    origin:
+      process.env.CORS_ORIGIN ||
+      [
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:19006',
+        'http://192.168.1.101:19006',
+        'http://smartclinic-web-ui-791732163161-aps1.s3-website.ap-south-1.amazonaws.com',
+      ].join(','),
     credentials: true,
   },
 
