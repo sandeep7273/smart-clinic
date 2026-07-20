@@ -54,11 +54,11 @@ app.use(
 
       // Allow requests without Origin header (mobile apps, Postman, curl)
       if (!origin) {
-        return callback(null, true);
+        return callback(null, false);
       }
 
       if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
+        return callback(null, origin);
       }
 
       return callback(new Error(`CORS blocked for origin: ${origin}`));
