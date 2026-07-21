@@ -5,11 +5,15 @@
 
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { API_CONFIG } from '../constants/config';
-import { getAccessToken, refreshAccessToken, removeTokens } from '../services/auth.service';
+import {
+  getAccessToken,
+  refreshAccessToken,
+  removeTokens,
+} from '../services/auth.service';
 import { authEvents } from '../utils/authEvents';
 
-// Maximum number of retry attempts
-const MAX_RETRIES = 5;
+// Auth requirement: try refresh once, then force logout/login.
+const MAX_RETRIES = 1;
 
 // Flag to prevent multiple simultaneous refresh attempts
 let isRefreshing = false;
@@ -37,9 +41,9 @@ class GraphQLClient {
   constructor() {
     // Use API Gateway GraphQL endpoint instead of direct doctor service
     this.endpoint = API_CONFIG.GRAPHQL_URL;
-    
+
     console.log('[GraphQL Client] Initializing with endpoint:', this.endpoint);
-    
+
     this.client = axios.create({
       baseURL: this.endpoint,
       headers: {
@@ -50,7 +54,7 @@ class GraphQLClient {
 
     // Add request interceptor to inject auth token
     this.client.interceptors.request.use(
-      async (config) => {
+      async config => {
         const token = await getAccessToken();
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
@@ -60,28 +64,31 @@ class GraphQLClient {
         }
         return config;
       },
-      (error) => Promise.reject(error)
+      error => Promise.reject(error),
     );
 
     // Add response interceptor for authentication error handling with token refresh
     this.client.interceptors.response.use(
-      (response) => {
+      response => {
         // Check for GraphQL errors with authentication codes
         if (response.data?.errors) {
-          const hasAuthError = response.data.errors.some((err: any) => 
-            err.extensions?.code === 'UNAUTHENTICATED' ||
-            err.extensions?.statusCode === 401 ||
-            err.message?.toLowerCase().includes('authentication')
+          const hasAuthError = response.data.errors.some(
+            (err: any) =>
+              err.extensions?.code === 'UNAUTHENTICATED' ||
+              err.extensions?.statusCode === 401 ||
+              err.message?.toLowerCase().includes('authentication'),
           );
-          
+
           if (hasAuthError) {
-            console.log('[GraphQL Client] Authentication error detected in response');
+            console.log(
+              '[GraphQL Client] Authentication error detected in response',
+            );
             // Don't reject here, let the query/mutation methods handle it
           }
         }
         return response;
       },
-      async (error) => {
+      async error => {
         const originalRequest = error.config as InternalAxiosRequestConfig & {
           _retryCount?: number;
         };
@@ -92,29 +99,38 @@ class GraphQLClient {
         }
 
         // Check for authentication errors (401 status or UNAUTHENTICATED GraphQL error)
-        const isAuthError = 
+        const isAuthError =
           error.response?.status === 401 ||
-          error.response?.data?.errors?.some((err: any) =>
-            err.extensions?.code === 'UNAUTHENTICATED' ||
-            err.extensions?.statusCode === 401 ||
-            err.message?.toLowerCase().includes('authentication')
+          error.response?.data?.errors?.some(
+            (err: any) =>
+              err.extensions?.code === 'UNAUTHENTICATED' ||
+              err.extensions?.statusCode === 401 ||
+              err.message?.toLowerCase().includes('authentication'),
           );
 
-        if (isAuthError && originalRequest && originalRequest._retryCount < MAX_RETRIES) {
+        if (
+          isAuthError &&
+          originalRequest &&
+          originalRequest._retryCount < MAX_RETRIES
+        ) {
           originalRequest._retryCount += 1;
-          console.log(`🔄 [GraphQL Client] Retry attempt ${originalRequest._retryCount}/${MAX_RETRIES}`);
+          console.log(
+            `🔄 [GraphQL Client] Retry attempt ${originalRequest._retryCount}/${MAX_RETRIES}`,
+          );
 
           if (!isRefreshing) {
             isRefreshing = true;
 
             try {
-              console.log('🔄 [GraphQL Client] Token expired, attempting refresh...');
+              console.log(
+                '🔄 [GraphQL Client] Token expired, attempting refresh...',
+              );
               const tokens = await refreshAccessToken();
 
               if (tokens) {
                 console.log('✅ [GraphQL Client] Token refreshed successfully');
                 isRefreshing = false;
-                
+
                 // Notify all waiting requests
                 onTokenRefreshed(tokens.accessToken);
 
@@ -127,7 +143,10 @@ class GraphQLClient {
                 throw new Error('Token refresh failed');
               }
             } catch (refreshError) {
-              console.error('❌ [GraphQL Client] Token refresh failed:', refreshError);
+              console.error(
+                '❌ [GraphQL Client] Token refresh failed:',
+                refreshError,
+              );
               isRefreshing = false;
               refreshSubscribers = [];
 
@@ -135,7 +154,9 @@ class GraphQLClient {
               await removeTokens();
 
               // Emit auth error to trigger app-wide logout
-              console.log('🚨 [GraphQL Client] Emitting auth error after failed refresh');
+              console.log(
+                '🚨 [GraphQL Client] Emitting auth error after failed refresh',
+              );
               authEvents.emitAuthError();
 
               return Promise.reject({
@@ -146,12 +167,15 @@ class GraphQLClient {
             }
           } else if (originalRequest._retryCount >= MAX_RETRIES) {
             // Max retries exceeded
-            console.error(`❌ [GraphQL Client] Max retries (${MAX_RETRIES}) exceeded for auth error`);
+            console.error(
+              `❌ [GraphQL Client] Max retries (${MAX_RETRIES}) exceeded for auth error`,
+            );
             await removeTokens();
             authEvents.emitAuthError();
             return Promise.reject({
               ...error,
-              message: 'Maximum retry attempts exceeded. Please try again later.',
+              message:
+                'Maximum retry attempts exceeded. Please try again later.',
               isAuthError: true,
             });
           }
@@ -168,14 +192,18 @@ class GraphQLClient {
         }
 
         return Promise.reject(error);
-      }
+      },
     );
   }
 
   /**
    * Execute GraphQL query with automatic token refresh
    */
-  async query<T = any>(query: string, variables?: Record<string, any>, retryCount: number = 0): Promise<T> {
+  async query<T = any>(
+    query: string,
+    variables?: Record<string, any>,
+    retryCount: number = 0,
+  ): Promise<T> {
     try {
       const response = await this.client.post('', {
         query,
@@ -184,48 +212,64 @@ class GraphQLClient {
 
       // Check for GraphQL errors in successful HTTP response
       if (response.data.errors) {
-        const authError = response.data.errors.find((err: any) =>
-          err.extensions?.code === 'UNAUTHENTICATED' ||
-          err.extensions?.statusCode === 401 ||
-          err.message?.toLowerCase().includes('authentication')
+        const authError = response.data.errors.find(
+          (err: any) =>
+            err.extensions?.code === 'UNAUTHENTICATED' ||
+            err.extensions?.statusCode === 401 ||
+            err.message?.toLowerCase().includes('authentication'),
         );
 
         if (authError && retryCount < MAX_RETRIES) {
-          console.log(`🔄 [GraphQL Client Query] Authentication error detected, attempting refresh... (Retry ${retryCount + 1}/${MAX_RETRIES})`);
-          
+          console.log(
+            `🔄 [GraphQL Client Query] Authentication error detected, attempting refresh... (Retry ${
+              retryCount + 1
+            }/${MAX_RETRIES})`,
+          );
+
           if (!isRefreshing) {
             isRefreshing = true;
-            
+
             try {
               const tokens = await refreshAccessToken();
-              
+
               if (tokens) {
-                console.log('✅ [GraphQL Client Query] Token refreshed successfully, retrying query...');
+                console.log(
+                  '✅ [GraphQL Client Query] Token refreshed successfully, retrying query...',
+                );
                 isRefreshing = false;
                 onTokenRefreshed(tokens.accessToken);
-                
+
                 // Retry the query with new token
                 return this.query<T>(query, variables, retryCount + 1);
               } else {
                 throw new Error('Token refresh failed');
               }
             } catch (refreshError) {
-              console.error('❌ [GraphQL Client Query] Token refresh failed:', refreshError);
+              console.error(
+                '❌ [GraphQL Client Query] Token refresh failed:',
+                refreshError,
+              );
               isRefreshing = false;
               refreshSubscribers = [];
-              
+
               await removeTokens();
-              console.log('🚨 [GraphQL Client Query] Emitting auth error after failed refresh');
+              console.log(
+                '🚨 [GraphQL Client Query] Emitting auth error after failed refresh',
+              );
               authEvents.emitAuthError();
-              
+
               throw new Error('Session expired. Please log in again.');
             }
           } else {
             // Wait for ongoing refresh
             return new Promise<T>((resolve, reject) => {
               subscribeTokenRefresh(() => {
-                console.log('🔄 [GraphQL Client Query] Using refreshed token from queue, retrying...');
-                this.query<T>(query, variables, retryCount + 1).then(resolve).catch(reject);
+                console.log(
+                  '🔄 [GraphQL Client Query] Using refreshed token from queue, retrying...',
+                );
+                this.query<T>(query, variables, retryCount + 1)
+                  .then(resolve)
+                  .catch(reject);
               });
             });
           }
@@ -233,10 +277,14 @@ class GraphQLClient {
 
         if (authError && retryCount >= MAX_RETRIES) {
           // Max retries exceeded - must logout
-          console.error(`❌ [GraphQL Client Query] Max retries (${MAX_RETRIES}) exceeded for authentication error`);
+          console.error(
+            `❌ [GraphQL Client Query] Max retries (${MAX_RETRIES}) exceeded for authentication error`,
+          );
           await removeTokens();
           authEvents.emitAuthError();
-          throw new Error('Maximum retry attempts exceeded. Please log in again.');
+          throw new Error(
+            'Maximum retry attempts exceeded. Please log in again.',
+          );
         }
 
         // Non-auth GraphQL error
@@ -247,36 +295,45 @@ class GraphQLClient {
     } catch (error: any) {
       // Handle axios errors (network errors, 401 HTTP status, etc.)
       if (error.response?.status === 401 && retryCount < MAX_RETRIES) {
-        console.log(`🔄 [GraphQL Client Query] HTTP 401 detected, attempting refresh... (Retry ${retryCount + 1}/${MAX_RETRIES})`);
-        
+        console.log(
+          `🔄 [GraphQL Client Query] HTTP 401 detected, attempting refresh... (Retry ${
+            retryCount + 1
+          }/${MAX_RETRIES})`,
+        );
+
         if (!isRefreshing) {
           isRefreshing = true;
-          
+
           try {
             const tokens = await refreshAccessToken();
-            
+
             if (tokens) {
-              console.log('✅ [GraphQL Client Query] Token refreshed, retrying...');
+              console.log(
+                '✅ [GraphQL Client Query] Token refreshed, retrying...',
+              );
               isRefreshing = false;
               onTokenRefreshed(tokens.accessToken);
-              
+
               return this.query<T>(query, variables, retryCount + 1);
             } else {
               throw new Error('Token refresh failed');
             }
           } catch (refreshError) {
-            console.error('❌ [GraphQL Client Query] Refresh failed:', refreshError);
+            console.error(
+              '❌ [GraphQL Client Query] Refresh failed:',
+              refreshError,
+            );
             isRefreshing = false;
             refreshSubscribers = [];
-            
+
             await removeTokens();
             authEvents.emitAuthError();
-            
+
             throw new Error('Session expired. Please log in again.');
           }
         }
       }
-      
+
       console.error('[GraphQL Client Query] Error:', error.message);
       throw error;
     }
@@ -285,10 +342,17 @@ class GraphQLClient {
   /**
    * Execute GraphQL mutation with automatic token refresh
    */
-  async mutate<T = any>(mutation: string, variables?: Record<string, any>, retryCount: number = 0): Promise<T> {
+  async mutate<T = any>(
+    mutation: string,
+    variables?: Record<string, any>,
+    retryCount: number = 0,
+  ): Promise<T> {
     try {
-      console.log('📤 [GraphQL Client Mutation] Variables:', JSON.stringify(variables, null, 2));
-      
+      console.log(
+        '📤 [GraphQL Client Mutation] Variables:',
+        JSON.stringify(variables, null, 2),
+      );
+
       const response = await this.client.post('', {
         query: mutation,
         variables,
@@ -296,48 +360,64 @@ class GraphQLClient {
 
       // Check for GraphQL errors in successful HTTP response
       if (response.data.errors) {
-        const authError = response.data.errors.find((err: any) =>
-          err.extensions?.code === 'UNAUTHENTICATED' ||
-          err.extensions?.statusCode === 401 ||
-          err.message?.toLowerCase().includes('authentication')
+        const authError = response.data.errors.find(
+          (err: any) =>
+            err.extensions?.code === 'UNAUTHENTICATED' ||
+            err.extensions?.statusCode === 401 ||
+            err.message?.toLowerCase().includes('authentication'),
         );
 
         if (authError && retryCount < MAX_RETRIES) {
-          console.log(`🔄 [GraphQL Client Mutation] Authentication error detected, attempting refresh... (Retry ${retryCount + 1}/${MAX_RETRIES})`);
-          
+          console.log(
+            `🔄 [GraphQL Client Mutation] Authentication error detected, attempting refresh... (Retry ${
+              retryCount + 1
+            }/${MAX_RETRIES})`,
+          );
+
           if (!isRefreshing) {
             isRefreshing = true;
-            
+
             try {
               const tokens = await refreshAccessToken();
-              
+
               if (tokens) {
-                console.log('✅ [GraphQL Client Mutation] Token refreshed successfully, retrying mutation...');
+                console.log(
+                  '✅ [GraphQL Client Mutation] Token refreshed successfully, retrying mutation...',
+                );
                 isRefreshing = false;
                 onTokenRefreshed(tokens.accessToken);
-                
+
                 // Retry the mutation with new token
                 return this.mutate<T>(mutation, variables, retryCount + 1);
               } else {
                 throw new Error('Token refresh failed');
               }
             } catch (refreshError) {
-              console.error('❌ [GraphQL Client Mutation] Token refresh failed:', refreshError);
+              console.error(
+                '❌ [GraphQL Client Mutation] Token refresh failed:',
+                refreshError,
+              );
               isRefreshing = false;
               refreshSubscribers = [];
-              
+
               await removeTokens();
-              console.log('🚨 [GraphQL Client Mutation] Emitting auth error after failed refresh');
+              console.log(
+                '🚨 [GraphQL Client Mutation] Emitting auth error after failed refresh',
+              );
               authEvents.emitAuthError();
-              
+
               throw new Error('Session expired. Please log in again.');
             }
           } else {
             // Wait for ongoing refresh
             return new Promise<T>((resolve, reject) => {
               subscribeTokenRefresh(() => {
-                console.log('🔄 [GraphQL Client Mutation] Using refreshed token from queue, retrying...');
-                this.mutate<T>(mutation, variables, retryCount + 1).then(resolve).catch(reject);
+                console.log(
+                  '🔄 [GraphQL Client Mutation] Using refreshed token from queue, retrying...',
+                );
+                this.mutate<T>(mutation, variables, retryCount + 1)
+                  .then(resolve)
+                  .catch(reject);
               });
             });
           }
@@ -345,14 +425,21 @@ class GraphQLClient {
 
         if (authError && retryCount >= MAX_RETRIES) {
           // Max retries exceeded - must logout
-          console.error(`❌ [GraphQL Client Mutation] Max retries (${MAX_RETRIES}) exceeded for authentication error`);
+          console.error(
+            `❌ [GraphQL Client Mutation] Max retries (${MAX_RETRIES}) exceeded for authentication error`,
+          );
           await removeTokens();
           authEvents.emitAuthError();
-          throw new Error('Maximum retry attempts exceeded. Please log in again.');
+          throw new Error(
+            'Maximum retry attempts exceeded. Please log in again.',
+          );
         }
 
         // Non-auth GraphQL error
-        console.error('❌ [GraphQL Client Mutation] GraphQL Errors:', response.data.errors);
+        console.error(
+          '❌ [GraphQL Client Mutation] GraphQL Errors:',
+          response.data.errors,
+        );
         throw new Error(response.data.errors[0]?.message || 'GraphQL Error');
       }
 
@@ -360,36 +447,45 @@ class GraphQLClient {
     } catch (error: any) {
       // Handle axios errors (network errors, 401 HTTP status, etc.)
       if (error.response?.status === 401 && retryCount < MAX_RETRIES) {
-        console.log(`🔄 [GraphQL Client Mutation] HTTP 401 detected, attempting refresh... (Retry ${retryCount + 1}/${MAX_RETRIES})`);
-        
+        console.log(
+          `🔄 [GraphQL Client Mutation] HTTP 401 detected, attempting refresh... (Retry ${
+            retryCount + 1
+          }/${MAX_RETRIES})`,
+        );
+
         if (!isRefreshing) {
           isRefreshing = true;
-          
+
           try {
             const tokens = await refreshAccessToken();
-            
+
             if (tokens) {
-              console.log('✅ [GraphQL Client Mutation] Token refreshed, retrying...');
+              console.log(
+                '✅ [GraphQL Client Mutation] Token refreshed, retrying...',
+              );
               isRefreshing = false;
               onTokenRefreshed(tokens.accessToken);
-              
+
               return this.mutate<T>(mutation, variables, retryCount + 1);
             } else {
               throw new Error('Token refresh failed');
             }
           } catch (refreshError) {
-            console.error('❌ [GraphQL Client Mutation] Refresh failed:', refreshError);
+            console.error(
+              '❌ [GraphQL Client Mutation] Refresh failed:',
+              refreshError,
+            );
             isRefreshing = false;
             refreshSubscribers = [];
-            
+
             await removeTokens();
             authEvents.emitAuthError();
-            
+
             throw new Error('Session expired. Please log in again.');
           }
         }
       }
-      
+
       console.error('[GraphQL Client Mutation] Error:', error.message);
       throw error;
     }
@@ -459,7 +555,14 @@ export const searchDoctors = async (filters: {
     }
   `;
 
-  const { search, page = 1, limit = 10, sortBy = 'rating', sortOrder = 'desc', ...filterFields } = filters;
+  const {
+    search,
+    page = 1,
+    limit = 10,
+    sortBy = 'rating',
+    sortOrder = 'desc',
+    ...filterFields
+  } = filters;
 
   const variables = {
     search,
@@ -470,7 +573,10 @@ export const searchDoctors = async (filters: {
     sortOrder,
   };
 
-  console.log('🔍 GraphQL searchDoctors query variables:', JSON.stringify(variables, null, 2));
+  console.log(
+    '🔍 GraphQL searchDoctors query variables:',
+    JSON.stringify(variables, null, 2),
+  );
 
   try {
     const result = await graphqlClient.query(query, variables);
@@ -554,7 +660,11 @@ export const getDoctorById = async (id: string) => {
 /**
  * Get doctor availability (time slots)
  */
-export const getDoctorAvailability = async (doctorId: string, startDate: string, endDate: string) => {
+export const getDoctorAvailability = async (
+  doctorId: string,
+  startDate: string,
+  endDate: string,
+) => {
   const query = `
     query GetDoctorAvailability($doctorId: ID!, $startDate: String!, $endDate: String!) {
       getDoctorAvailability(doctorId: $doctorId, startDate: $startDate, endDate: $endDate) {
@@ -569,7 +679,11 @@ export const getDoctorAvailability = async (doctorId: string, startDate: string,
   `;
 
   try {
-    const result = await graphqlClient.query(query, { doctorId, startDate, endDate });
+    const result = await graphqlClient.query(query, {
+      doctorId,
+      startDate,
+      endDate,
+    });
     return result.getDoctorAvailability;
   } catch (error: any) {
     console.error('❌ Error in getDoctorAvailability:', error);
@@ -583,7 +697,7 @@ export const getDoctorAvailability = async (doctorId: string, startDate: string,
 export const getDoctorsBySpecialization = async (
   specialization: string,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ) => {
   const query = `
     query GetDoctorsBySpecialization($specialization: String!, $page: Int, $limit: Int) {
@@ -620,7 +734,11 @@ export const getDoctorsBySpecialization = async (
   `;
 
   try {
-    const result = await graphqlClient.query(query, { specialization, page, limit });
+    const result = await graphqlClient.query(query, {
+      specialization,
+      page,
+      limit,
+    });
     return result.getDoctorsBySpecialization;
   } catch (error: any) {
     console.error('❌ Error in getDoctorsBySpecialization:', error);
@@ -707,7 +825,11 @@ export const reserveSlot = async (slotData: {
 /**
  * Release a reserved slot (mutation)
  */
-export const releaseSlot = async (doctorId: string, date: string, startTime: string) => {
+export const releaseSlot = async (
+  doctorId: string,
+  date: string,
+  startTime: string,
+) => {
   const mutation = `
     mutation ReleaseSlot($doctorId: ID!, $date: String!, $startTime: String!) {
       releaseSlot(doctorId: $doctorId, date: $date, startTime: $startTime) {
@@ -720,7 +842,11 @@ export const releaseSlot = async (doctorId: string, date: string, startTime: str
   `;
 
   try {
-    const result = await graphqlClient.mutate(mutation, { doctorId, date, startTime });
+    const result = await graphqlClient.mutate(mutation, {
+      doctorId,
+      date,
+      startTime,
+    });
     return result.releaseSlot;
   } catch (error: any) {
     console.error('❌ Error in releaseSlot:', error);
@@ -802,18 +928,22 @@ export const bookAppointmentGraphQL = async (appointmentData: {
   }
 
   // Add patientDetails only if we have the data
-  if (appointmentData.firstName && appointmentData.lastName && appointmentData.email) {
+  if (
+    appointmentData.firstName &&
+    appointmentData.lastName &&
+    appointmentData.email
+  ) {
     input.patientDetails = {
       firstName: appointmentData.firstName,
       lastName: appointmentData.lastName,
       email: appointmentData.email,
     };
-    
+
     // Add optional phone if present
     if (appointmentData.phone?.trim()) {
       input.patientDetails.phone = appointmentData.phone.trim();
     }
-    
+
     // Add optional dateOfBirth if present (don't send empty string)
     if (appointmentData.dateOfBirth?.trim()) {
       input.patientDetails.dateOfBirth = appointmentData.dateOfBirth.trim();
@@ -821,12 +951,19 @@ export const bookAppointmentGraphQL = async (appointmentData: {
   }
 
   try {
-    console.log('📤 Booking appointment with input:', JSON.stringify(input, null, 2));
+    console.log(
+      '📤 Booking appointment with input:',
+      JSON.stringify(input, null, 2),
+    );
     const result = await graphqlClient.mutate(mutation, { input });
-    console.log("debugging appointment booking result", result);
+    console.log('debugging appointment booking result', result);
     return result.bookAppointment;
   } catch (error: any) {
-    throw new Error(error.response?.data?.errors?.[0]?.message || error.message || 'Failed to book appointment');
+    throw new Error(
+      error.response?.data?.errors?.[0]?.message ||
+        error.message ||
+        'Failed to book appointment',
+    );
   }
 };
 
@@ -836,7 +973,7 @@ export const bookAppointmentGraphQL = async (appointmentData: {
 export const getPatientAppointmentsGraphQL = async (
   patientId: string,
   status?: string,
-  first?: number
+  first?: number,
 ) => {
   const query = `
     query GetPatientAppointments($patientId: String!, $status: [AppointmentStatus!], $first: Int) {
@@ -883,9 +1020,9 @@ export const getPatientAppointmentsGraphQL = async (
     if (status) {
       variables.status = [status];
     }
-    
+
     const result = await graphqlClient.query(query, variables);
-    console.log("debugging patient appointments result", result);
+    console.log('debugging patient appointments result', result);
     return result.patientAppointments;
   } catch (error: any) {
     console.error('❌ Error in getPatientAppointmentsGraphQL:', error);

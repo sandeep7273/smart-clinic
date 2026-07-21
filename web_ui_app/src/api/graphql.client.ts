@@ -12,7 +12,8 @@ import {
 } from "../services/auth.service";
 import { authEvents } from "../utils/authEvents";
 
-const MAX_RETRIES = 3;
+// Auth requirement: try refresh once, then force logout/login.
+const MAX_RETRIES = 1;
 let isRefreshing = false;
 let refreshSubscribers: Array<(token: string) => void> = [];
 
@@ -56,7 +57,9 @@ class GraphQLClient {
           error.response?.data?.errors?.some(
             (err: any) =>
               err.extensions?.code === "UNAUTHENTICATED" ||
-              err.extensions?.statusCode === 401,
+              err.extensions?.statusCode === 401 ||
+              err.message?.toLowerCase().includes("authentication required") ||
+              err.message?.toLowerCase().includes("authentication"),
           );
 
         if (isAuthError && originalRequest._retryCount < MAX_RETRIES) {
@@ -95,6 +98,12 @@ class GraphQLClient {
           });
         }
 
+        // If auth still fails after retry, force sign-out and route to login.
+        if (isAuthError && originalRequest._retryCount >= MAX_RETRIES) {
+          removeTokens();
+          authEvents.emitAuthError();
+        }
+
         return Promise.reject(error);
       },
     );
@@ -112,7 +121,9 @@ class GraphQLClient {
         const authErr = response.data.errors.find(
           (e: any) =>
             e.extensions?.code === "UNAUTHENTICATED" ||
-            e.extensions?.statusCode === 401,
+            e.extensions?.statusCode === 401 ||
+            e.message?.toLowerCase().includes("authentication required") ||
+            e.message?.toLowerCase().includes("authentication"),
         );
 
         if (authErr && retryCount < MAX_RETRIES) {
@@ -142,6 +153,12 @@ class GraphQLClient {
               });
             });
           }
+        }
+
+        if (authErr && retryCount >= MAX_RETRIES) {
+          removeTokens();
+          authEvents.emitAuthError();
+          throw new Error("Session expired. Please log in again.");
         }
 
         throw new Error(response.data.errors[0]?.message || "GraphQL Error");

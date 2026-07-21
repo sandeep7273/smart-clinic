@@ -3,40 +3,46 @@
  * Centralized configuration for Appointment Service
  */
 
-require('dotenv').config();
+require("dotenv").config();
 
 const config = {
   // Server Configuration
   port: process.env.PORT || 4004,
-  nodeEnv: process.env.NODE_ENV || 'development',
-  serviceName: 'appointment-service',
+  nodeEnv: process.env.NODE_ENV || "development",
+  serviceName: "appointment-service",
 
   // MongoDB Configuration
-  mongoUri: process.env.MONGO_URI || 'mongodb://localhost:27017/appointment_service',
+  mongoUri:
+    process.env.MONGO_URI || "mongodb://localhost:27017/appointment_service",
   mongoOptions: {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   },
 
   // External Service URLs
-  doctorGrpcUrl: process.env.DOCTOR_GRPC_URL || 'localhost:50051',
-  // API Gateway URL for service-to-service communication
-  apiGatewayUrl: process.env.API_GATEWAY_URL || 'http://localhost:3000',
-
+  doctorGrpcUrl: process.env.DOCTOR_GRPC_URL || "localhost:50051",
+  // API Gateway URL for service-to-service communication.
+  // Prefer explicit env vars; fallback to container DNS instead of localhost.
+  apiGatewayUrl:
+    process.env.API_GATEWAY_INTERNAL_URL ||
+    process.env.API_GATEWAY_URL ||
+    "http://api-gateway:3000",
 
   // Kafka Configuration
   kafka: {
-    brokers: process.env.KAFKA_BROKERS ? process.env.KAFKA_BROKERS.split(',') : ['localhost:9092'],
-    clientId: 'appointment-service',
-    groupId: 'appointment-service-group',
+    brokers: process.env.KAFKA_BROKERS
+      ? process.env.KAFKA_BROKERS.split(",")
+      : ["localhost:9092"],
+    clientId: "appointment-service",
+    groupId: "appointment-service-group",
     topics: {
-      appointmentCreated: 'appointment.created',
-      appointmentUpdated: 'appointment.updated',
-      appointmentCancelled: 'appointment.cancelled',
-      appointmentConfirmed: 'appointment.confirmed',
-      appointmentCompleted: 'appointment.completed',
-      slotReserved: 'slot.reserved',
-      slotReleased: 'slot.released',
+      appointmentCreated: "appointment.created",
+      appointmentUpdated: "appointment.updated",
+      appointmentCancelled: "appointment.cancelled",
+      appointmentConfirmed: "appointment.confirmed",
+      appointmentCompleted: "appointment.completed",
+      slotReserved: "slot.reserved",
+      slotReleased: "slot.released",
     },
   },
 
@@ -56,7 +62,7 @@ const config = {
 
   // CORS Configuration
   cors: {
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: process.env.CORS_ORIGIN || "*",
     credentials: true,
   },
 
@@ -70,11 +76,11 @@ const config = {
   // Appointment Configuration
   appointment: {
     statuses: {
-      PENDING: 'pending',
-      CONFIRMED: 'confirmed',
-      CANCELLED: 'cancelled',
-      COMPLETED: 'completed',
-      NO_SHOW: 'no_show',
+      PENDING: "pending",
+      CONFIRMED: "confirmed",
+      CANCELLED: "cancelled",
+      COMPLETED: "completed",
+      NO_SHOW: "no_show",
     },
     cancellationWindow: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
     reminderWindow: 24 * 60 * 60 * 1000, // 24 hours before appointment

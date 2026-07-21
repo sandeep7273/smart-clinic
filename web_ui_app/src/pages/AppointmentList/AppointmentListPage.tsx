@@ -200,7 +200,10 @@ const AppointmentListPage: React.FC = () => {
               </div>
               <div className={styles.modalRow}>
                 <span>Doctor</span>
-                <span>Dr. {selectedAppointment.doctor?.name}</span>
+                <span>
+                  Dr. {selectedAppointment.doctor?.firstName}{" "}
+                  {selectedAppointment.doctor?.lastName}
+                </span>
               </div>
               <div className={styles.modalRow}>
                 <span>Date</span>
