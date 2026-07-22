@@ -58,7 +58,7 @@ module "secrets" {
     "KAFKA_BROKERS"           = "localhost:9092" # replace with MSK endpoint after creation
     "LOG_LEVEL"               = "info"
     "OTLP_ENDPOINT"           = "http://otel-collector.${var.project}.local:4318"
-    "GW_AUTH_SERVICE_URL"        = "http://auth-service.${var.project}.local:4001"
+    "GW_AUTH_SERVICE_URL"     = "http://auth-service.${var.project}.local:4001"
     "DOCTOR_SERVICE_URL"      = "http://doctor-service.${var.project}.local:4002"
     "APPOINTMENT_SERVICE_URL" = "http://appointment-service.${var.project}.local:4003"
     "AI_SERVICE_URL"          = "http://ai-service.${var.project}.local:4004"
@@ -171,22 +171,22 @@ module "api_gateway_service" {
   alarm_sns_topic_arn     = aws_sns_topic.alerts.arn
 
   environment_vars = [
-    { name = "NODE_ENV",              value = "production" },
-    { name = "PORT",                  value = "3000" },
-    { name = "SERVICE_NAME",          value = "api-gateway" },
-    { name = "SERVICE_VERSION",       value = "1.0.0" },
-    { name = "GW_AUTH_SERVICE_URL",   value = "http://auth-service.${var.project}.local:4001" },
-    { name = "DOCTOR_SERVICE_URL",    value = "http://doctor-service.${var.project}.local:4002" },
+    { name = "NODE_ENV", value = "production" },
+    { name = "PORT", value = "3000" },
+    { name = "SERVICE_NAME", value = "api-gateway" },
+    { name = "SERVICE_VERSION", value = "1.0.0" },
+    { name = "GW_AUTH_SERVICE_URL", value = "http://auth-service.${var.project}.local:4001" },
+    { name = "DOCTOR_SERVICE_URL", value = "http://doctor-service.${var.project}.local:4002" },
     { name = "APPOINTMENT_SERVICE_URL", value = "http://appointment-service.${var.project}.local:4003" },
-    { name = "AI_SERVICE_URL",        value = "http://ai-service.${var.project}.local:4004" },
-    { name = "CORS_ORIGIN",           value = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://localhost:19006,http://smartclinic-web-ui-791732163161-aps1.s3-website.ap-south-1.amazonaws.com,http://smartclinic-dev-alb-1797412677.ap-south-1.elb.amazonaws.com" },
-    { name = "OTLP_ENDPOINT",         value = module.otel_collector.otel_collector_endpoint },
-    { name = "LOG_LEVEL",             value = "info" },
+    { name = "AI_SERVICE_URL", value = "http://ai-service.${var.project}.local:4004" },
+    { name = "CORS_ORIGIN", value = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://localhost:19006,http://smartclinic-web-ui-791732163161-aps1.s3-website.ap-south-1.amazonaws.com,http://smartclinic-dev-alb-1797412677.ap-south-1.elb.amazonaws.com" },
+    { name = "OTLP_ENDPOINT", value = module.otel_collector.otel_collector_endpoint },
+    { name = "LOG_LEVEL", value = "info" },
   ]
 
   secrets = [
-    { name = "JWT_ACCESS_SECRET",    valueFrom = module.secrets.jwt_secret_arn },
-    { name = "JWT_REFRESH_SECRET",   valueFrom = module.secrets.jwt_refresh_secret_arn },
+    { name = "JWT_ACCESS_SECRET", valueFrom = module.secrets.jwt_secret_arn },
+    { name = "JWT_REFRESH_SECRET", valueFrom = module.secrets.jwt_refresh_secret_arn },
     { name = "INTERNAL_SERVICE_TOKEN", valueFrom = module.secrets.internal_token_arn },
   ]
 }
