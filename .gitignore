@@ -14,25 +14,9 @@ lerna-debug.log*
 .yarn-integrity
 
 # ── Environment / Secrets — NEVER COMMIT ─────────────────────────────────────
+# All .env files are gitignored — env vars are managed via GitHub Actions secrets/variables
 .env
-.env.local
-.env.dev
-.env.*.local
-.env.development
-.env.production
-.env.staging
-.env.test
-
-# Service-specific env files (contain real credentials)
-.env.auth
-.env.gateway
-.env.doctor
-.env.appointment
-.env.ai
-
-# Allow: .env.example files (no real secrets)
-!.env.example
-!.env.*.example
+.env.*
 
 # ── Logs ──────────────────────────────────────────────────────────────────────
 logs/
