@@ -86,7 +86,7 @@ PORT=3000
 NODE_ENV=development
 
 # Service URLs
-AUTH_SERVICE_URL=http://localhost:4001
+GW_AUTH_SERVICE_URL=http://localhost:4001
 PATIENT_SERVICE_URL=http://localhost:4002
 DOCTOR_SERVICE_URL=http://localhost:4003
 APPOINTMENT_SERVICE_URL=http://localhost:4004
@@ -128,11 +128,13 @@ npm run lint
 ### Health Checks
 
 #### Basic Health Check
+
 ```http
 GET /health
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -144,27 +146,29 @@ Response:
 ```
 
 #### Readiness Check
+
 ```http
 GET /ready
 ```
 
 Response:
+
 ```json
 {
   "success": true,
   "message": "API Gateway is ready",
-  "services": [
-    { "service": "auth", "healthy": true }
-  ]
+  "services": [{ "service": "auth", "healthy": true }]
 }
 ```
 
 #### Detailed Status
+
 ```http
 GET /status
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -200,6 +204,7 @@ Authorization: Bearer <token>
 ```
 
 Request:
+
 ```json
 {
   "query": "query { users { id email name } }",
@@ -333,6 +338,7 @@ Different rate limits apply to different endpoints:
 - **GraphQL Endpoint**: 200 requests per 15 minutes
 
 Rate limit headers are included in responses:
+
 ```http
 X-RateLimit-Limit: 100
 X-RateLimit-Remaining: 95
@@ -348,6 +354,7 @@ Circuit breakers protect the gateway from cascading failures:
 - **Reset Timeout**: 30 seconds (tries to close after 30s)
 
 Circuit states:
+
 - **CLOSED**: Normal operation, requests pass through
 - **OPEN**: Too many failures, requests immediately fail
 - **HALF_OPEN**: Testing if service recovered
@@ -361,6 +368,7 @@ X-Correlation-ID: 550e8400-e29b-41d4-a716-446655440000
 ```
 
 The correlation ID is:
+
 - Generated if not provided
 - Propagated to all downstream services
 - Included in all logs
@@ -384,6 +392,7 @@ const cache = {
 ```
 
 Cache headers:
+
 ```http
 X-Cache: HIT  # or MISS
 X-Cache-TTL: 300
@@ -408,6 +417,7 @@ The gateway returns consistent error responses:
 ```
 
 HTTP Status Codes:
+
 - `400`: Bad Request (validation errors)
 - `401`: Unauthorized (missing/invalid token)
 - `403`: Forbidden (insufficient permissions)
@@ -423,17 +433,19 @@ Winston logger with multiple transports:
 
 ```javascript
 // Log levels
-logger.error('Error message', { context });
-logger.warn('Warning message', { context });
-logger.info('Info message', { context });
-logger.debug('Debug message', { context });
+logger.error("Error message", { context });
+logger.warn("Warning message", { context });
+logger.info("Info message", { context });
+logger.debug("Debug message", { context });
 ```
 
 Log files:
+
 - `logs/error.log`: Error logs only
 - `logs/combined.log`: All logs
 
 All logs include:
+
 - Timestamp
 - Log level
 - Correlation ID
@@ -483,11 +495,13 @@ api-gateway/
 ### Adding a New Service
 
 1. Add service URL to `.env`:
+
 ```env
 NEW_SERVICE_URL=http://localhost:4007
 ```
 
 2. Add to `config/index.js`:
+
 ```javascript
 services: {
   // ... existing services
@@ -496,28 +510,33 @@ services: {
 ```
 
 3. Add to `services/serviceClient.js`:
+
 ```javascript
 const clients = {
   // ... existing clients
-  newService: new ServiceClient(config.services.newService, 'new-service'),
+  newService: new ServiceClient(config.services.newService, "new-service"),
 };
 ```
 
 4. Add proxy route in `routes/proxy.routes.js`:
+
 ```javascript
 router.use(
-  '/new-service',
+  "/new-service",
   authenticate,
   generalRateLimiter,
-  createProxyMiddleware(createProxyConfig('new-service', config.services.newService))
+  createProxyMiddleware(
+    createProxyConfig("new-service", config.services.newService),
+  ),
 );
 ```
 
 5. Add to GraphQL stitching in `graphql/stitchSchemas.js`:
+
 ```javascript
 const graphqlServices = [
   // ... existing services
-  { name: 'newService', url: `${config.services.newService}/graphql` },
+  { name: "newService", url: `${config.services.newService}/graphql` },
 ];
 ```
 
@@ -571,11 +590,13 @@ curl -X POST http://localhost:3000/graphql \
 ### Environment-Specific Settings
 
 Development:
+
 - GraphQL playground enabled
 - Detailed error messages
 - Debug logging
 
 Production:
+
 - GraphQL playground disabled
 - Generic error messages
 - Info/error logging only
@@ -586,21 +607,25 @@ Production:
 ### Common Issues
 
 **Service Unavailable (503)**
+
 - Check if downstream service is running
 - Check circuit breaker status
 - Verify service URLs in `.env`
 
 **Unauthorized (401)**
+
 - Verify JWT token is valid
 - Check JWT_ACCESS_SECRET matches auth service
 - Ensure token is not expired
 
 **Rate Limit Exceeded (429)**
+
 - Wait for rate limit window to reset
 - Check rate limit configuration
 - Consider increasing limits for your use case
 
 **Gateway Timeout (504)**
+
 - Check service response times
 - Increase CIRCUIT_BREAKER_TIMEOUT
 - Check network connectivity
@@ -608,17 +633,20 @@ Production:
 ### Debugging
 
 Enable debug logging:
+
 ```env
 LOG_LEVEL=debug
 ```
 
 Check logs:
+
 ```bash
 tail -f logs/combined.log
 tail -f logs/error.log
 ```
 
 Test service connectivity:
+
 ```bash
 curl http://localhost:4001/health
 ```

@@ -3,6 +3,7 @@
 This guide provides step-by-step instructions for deploying the Smart Appointment System on AWS EC2.
 
 ## Table of Contents
+
 - [Prerequisites](#prerequisites)
 - [EC2 Instance Setup](#ec2-instance-setup)
 - [Security Group Configuration](#security-group-configuration)
@@ -24,15 +25,18 @@ This guide provides step-by-step instructions for deploying the Smart Appointmen
 ### 1. Instance Specifications
 
 **Recommended Instance Types:**
+
 - **Development/Testing**: t3.medium (2 vCPU, 4GB RAM)
 - **Production**: t3.large or t3.xlarge (2-4 vCPU, 8-16GB RAM)
 - **High Traffic**: c5.xlarge or better
 
 **Storage:**
+
 - Minimum: 30GB EBS volume
 - Recommended: 50GB+ EBS volume with provisioned IOPS
 
 **Operating System:**
+
 - Ubuntu 22.04 LTS (recommended)
 - Amazon Linux 2023
 - Ubuntu 20.04 LTS
@@ -52,6 +56,7 @@ aws ec2 run-instances \
 ```
 
 Or use the AWS Console:
+
 1. Navigate to EC2 Dashboard
 2. Click "Launch Instance"
 3. Select Ubuntu 22.04 LTS AMI
@@ -75,14 +80,15 @@ Port 3000  - API Gateway (temporary, use reverse proxy in production)
 
 **Example Security Group:**
 
-| Type  | Protocol | Port Range | Source          | Description                    |
-|-------|----------|------------|-----------------|--------------------------------|
-| SSH   | TCP      | 22         | Your IP/32      | SSH access                     |
-| HTTP  | TCP      | 80         | 0.0.0.0/0       | HTTP web traffic              |
-| HTTPS | TCP      | 443        | 0.0.0.0/0       | HTTPS web traffic             |
-| Custom| TCP      | 3000       | 0.0.0.0/0       | API Gateway (dev/testing only) |
+| Type   | Protocol | Port Range | Source     | Description                    |
+| ------ | -------- | ---------- | ---------- | ------------------------------ |
+| SSH    | TCP      | 22         | Your IP/32 | SSH access                     |
+| HTTP   | TCP      | 80         | 0.0.0.0/0  | HTTP web traffic               |
+| HTTPS  | TCP      | 443        | 0.0.0.0/0  | HTTPS web traffic              |
+| Custom | TCP      | 3000       | 0.0.0.0/0  | API Gateway (dev/testing only) |
 
 **DO NOT expose these ports:**
+
 - 4001 (auth-service)
 - 4003, 50051 (doctor-service)
 - 4004, 50052 (appointment-service)
@@ -230,7 +236,7 @@ nano services/ai-service/.env.ai
 # api-gateway/.env.gateway
 NODE_ENV=production
 PORT=3000
-AUTH_SERVICE_URL=http://auth-service:4001
+GW_AUTH_SERVICE_URL=http://auth-service:4001
 DOCTOR_SERVICE_URL=http://doctor-service:4003
 APPOINTMENT_SERVICE_URL=http://appointment-service:4004
 AI_SERVICE_URL=http://ai-service:4005
@@ -302,7 +308,8 @@ curl -X POST http://localhost:3000/graphql \
 
 ### 1. Set Up Nginx Reverse Proxy
 
-**Why?** 
+**Why?**
+
 - SSL/TLS termination
 - Hide internal ports
 - Load balancing
@@ -439,6 +446,7 @@ aws secretsmanager get-secret-value \
 ### 5. MongoDB Security
 
 **Use MongoDB Atlas (Recommended):**
+
 - Managed service with built-in security
 - Automatic backups
 - Encryption at rest and in transit
@@ -691,19 +699,23 @@ git pull
 ## Cost Optimization
 
 ### 1. Use AWS Cost Explorer
+
 - Monitor EC2 instance costs
 - Set up billing alerts
 
 ### 2. Right-Size Instance
+
 - Start with t3.medium
 - Monitor CPU and memory usage
 - Scale up only if needed
 
 ### 3. Use Reserved Instances
+
 - 30-40% savings for long-term deployments
 - 1 or 3-year commitments
 
 ### 4. Implement Auto-Scaling (Advanced)
+
 - Use ECS or Kubernetes for auto-scaling
 - Scale based on traffic patterns
 

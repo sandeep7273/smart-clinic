@@ -51,7 +51,7 @@ npm run dev
 NODE_ENV=development
 PORT=4003
 MONGODB_URI=mongodb://localhost:27017/doctor_db
-AUTH_SERVICE_URL=http://localhost:4001
+GW_AUTH_SERVICE_URL=http://localhost:4001
 CORS_ORIGIN=http://localhost:3000
 LOG_LEVEL=info
 ```
@@ -78,21 +78,25 @@ LOG_LEVEL=info
 ## Search Examples
 
 ### Search by query
+
 ```bash
 curl "http://localhost:4003/api/doctors/search?query=cardiology"
 ```
 
 ### Filter by specialty and location
+
 ```bash
 curl "http://localhost:4003/api/doctors/search?specialization=Cardiology&location=Boston"
 ```
 
 ### Search by symptoms
+
 ```bash
 curl "http://localhost:4003/api/doctors/search?symptom=chest%20pain"
 ```
 
 ### Get filter options for dropdowns
+
 ```bash
 curl "http://localhost:4003/api/doctors/filters/options"
 ```
@@ -100,6 +104,7 @@ curl "http://localhost:4003/api/doctors/filters/options"
 ## Database Schema
 
 The Doctor model includes:
+
 - Personal information (name, email, phone)
 - Professional details (specializations, experience, qualifications)
 - Address and contact information
@@ -108,7 +113,9 @@ The Doctor model includes:
 - Treated conditions and symptoms (for search)
 
 ### Text Search Indexes
+
 The service uses MongoDB text indexes on:
+
 - firstName, lastName
 - specializations
 - treatedConditions, treatedSymptoms
@@ -116,6 +123,7 @@ The service uses MongoDB text indexes on:
 - bio
 
 ### Compound Indexes for Performance
+
 - (specializations, address.city, status)
 - (specializations, isAvailable, status)
 - (address.city, status)
@@ -125,6 +133,7 @@ The service uses MongoDB text indexes on:
 ## API Documentation
 
 Once running, visit:
+
 - Swagger UI: http://localhost:4003/api-docs
 
 ## Testing
@@ -143,6 +152,7 @@ npm run test:watch
 ## Deployment
 
 The service includes:
+
 - Kubernetes manifests in `k8s/`
 - Helm chart in `helm-chart/`
 - Health check endpoints for readiness/liveness probes

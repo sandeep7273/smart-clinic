@@ -2,26 +2,27 @@
  * Jest Test Setup - API Gateway
  */
 
-process.env.NODE_ENV = 'test';
-process.env.PORT = '3000';
-process.env.JWT_SECRET = 'test-jwt-secret-key-for-testing-only';
-process.env.AUTH_SERVICE_URL = 'http://localhost:4001';
-process.env.DOCTOR_SERVICE_URL = 'http://localhost:4002';
-process.env.APPOINTMENT_SERVICE_URL = 'http://localhost:4003';
-process.env.AI_SERVICE_URL = 'http://localhost:4004';
+process.env.NODE_ENV = "test";
+process.env.PORT = "3000";
+process.env.JWT_ACCESS_SECRET = "test-jwt-secret-key-for-testing-only";
+process.env.JWT_REFRESH_SECRET = "test-jwt-refresh-secret-key-for-testing-only";
+process.env.GW_AUTH_SERVICE_URL = "http://localhost:4001";
+process.env.DOCTOR_SERVICE_URL = "http://localhost:4002";
+process.env.APPOINTMENT_SERVICE_URL = "http://localhost:4003";
+process.env.AI_SERVICE_URL = "http://localhost:4004";
 
 jest.setTimeout(30000);
 
 global.testUtils = {
-  mockToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.token',
-  
+  mockToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.token",
+
   mockUser: {
-    userId: 'user-123',
-    email: 'test@example.com',
-    role: 'patient',
+    userId: "user-123",
+    email: "test@example.com",
+    role: "patient",
   },
 
-  mockAuthHeader: function() {
+  mockAuthHeader: function () {
     return { Authorization: `Bearer ${this.mockToken}` };
   },
 };

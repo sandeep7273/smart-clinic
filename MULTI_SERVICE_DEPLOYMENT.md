@@ -4,12 +4,12 @@ Complete guide for deploying Doctor Service, AI Service, and Appointment Service
 
 ## Services Overview
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| Doctor Service | 4002 | Doctor management, search, availability |
+| Service             | Port | Purpose                                 |
+| ------------------- | ---- | --------------------------------------- |
+| Doctor Service      | 4002 | Doctor management, search, availability |
 | Appointment Service | 4003 | Appointment booking, SAGA pattern, CQRS |
-| AI Service | 4004 | AI chatbot, intent detection, RAG |
-| Auth Service | 4001 | Authentication & authorization |
+| AI Service          | 4004 | AI chatbot, intent detection, RAG       |
+| Auth Service        | 4001 | Authentication & authorization          |
 
 ## Prerequisites
 
@@ -34,16 +34,18 @@ cd ../auth-service && ./docker-build.sh
 ### Doctor Service (Port 4002)
 
 **Environment Variables (.env):**
+
 ```bash
 NODE_ENV=production
 PORT=4002
 MONGODB_URI=mongodb://your-mongodb-host:27017/doctor-service
-AUTH_SERVICE_URL=http://auth-service-ip:4001
+GW_AUTH_SERVICE_URL=http://auth-service-ip:4001
 KAFKA_BROKERS=your-kafka-broker:9092
 LOG_LEVEL=info
 ```
 
 **Build & Deploy:**
+
 ```bash
 cd services/doctor-service
 
@@ -63,12 +65,14 @@ curl http://localhost:4002/health
 ```
 
 **EC2 Security Group:**
+
 - Port 4002: Custom TCP (your IP or 0.0.0.0/0)
 - Port 22: SSH
 
 ### AI Service (Port 4004)
 
 **Environment Variables (.env):**
+
 ```bash
 NODE_ENV=production
 PORT=4004
@@ -78,13 +82,14 @@ REDIS_PORT=6379
 REDIS_PASSWORD=your-redis-password
 GROQ_API_KEY=your-groq-api-key
 CHROMADB_URL=http://localhost:8000
-AUTH_SERVICE_URL=http://auth-service-ip:4001
+GW_AUTH_SERVICE_URL=http://auth-service-ip:4001
 DOCTOR_SERVICE_GRPC_URL=doctor-service-ip:50051
 APPOINTMENT_SERVICE_GRPC_URL=appointment-service-ip:50052
 LOG_LEVEL=info
 ```
 
 **Build & Deploy:**
+
 ```bash
 cd services/ai-service
 
@@ -104,21 +109,24 @@ curl http://localhost:4004/health
 ```
 
 **EC2 Security Group:**
+
 - Port 4004: Custom TCP
 - Port 22: SSH
 
 **Additional Setup:**
+
 - ChromaDB for vector storage (optional - can run in separate container)
 - Redis for caching and context memory
 
 ### Appointment Service (Port 4003)
 
 **Environment Variables (.env):**
+
 ```bash
 NODE_ENV=production
 PORT=4003
 MONGODB_URI=mongodb://your-mongodb-host:27017/appointment-service
-AUTH_SERVICE_URL=http://auth-service-ip:4001
+GW_AUTH_SERVICE_URL=http://auth-service-ip:4001
 DOCTOR_SERVICE_URL=http://doctor-service-ip:4002
 DOCTOR_SERVICE_GRPC_URL=doctor-service-ip:50051
 KAFKA_BROKERS=your-kafka-broker:9092
@@ -126,6 +134,7 @@ LOG_LEVEL=info
 ```
 
 **Build & Deploy:**
+
 ```bash
 cd services/appointment-service
 
@@ -145,6 +154,7 @@ curl http://localhost:4003/health
 ```
 
 **EC2 Security Group:**
+
 - Port 4003: Custom TCP
 - Port 50052: Custom TCP (for gRPC)
 - Port 22: SSH
@@ -186,9 +196,10 @@ docker ps
 Deploy each service on its own EC2 instance for better isolation and scalability.
 
 **Service URLs Configuration:**
+
 ```bash
 # In each service's .env, use actual EC2 IPs
-AUTH_SERVICE_URL=http://54.123.45.1:4001
+GW_AUTH_SERVICE_URL=http://54.123.45.1:4001
 DOCTOR_SERVICE_URL=http://54.123.45.2:4002
 APPOINTMENT_SERVICE_URL=http://54.123.45.3:4003
 AI_SERVICE_URL=http://54.123.45.4:4004
@@ -199,7 +210,7 @@ AI_SERVICE_URL=http://54.123.45.4:4004
 Create `docker-compose.yml` in project root:
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   auth-service:
@@ -208,7 +219,7 @@ services:
       - "4001:4001"
     env_file: ./services/auth-service/.env
     restart: unless-stopped
-    
+
   doctor-service:
     build: ./services/doctor-service
     ports:
@@ -218,7 +229,7 @@ services:
     depends_on:
       - auth-service
     restart: unless-stopped
-    
+
   appointment-service:
     build: ./services/appointment-service
     ports:
@@ -229,7 +240,7 @@ services:
       - auth-service
       - doctor-service
     restart: unless-stopped
-    
+
   ai-service:
     build: ./services/ai-service
     ports:
@@ -243,6 +254,7 @@ services:
 ```
 
 Deploy:
+
 ```bash
 docker-compose up -d
 docker-compose ps
@@ -275,6 +287,7 @@ docker-compose logs -f
 ### 1. Use Application Load Balancer
 
 Create ALB to route traffic:
+
 - `/auth/*` → Auth Service (4001)
 - `/doctors/*` → Doctor Service (4002)
 - `/appointments/*` → Appointment Service (4003)
@@ -310,6 +323,7 @@ docker run -d \
 ### 4. Auto-Scaling
 
 Set up Auto Scaling Groups for each service:
+
 - Min instances: 2
 - Max instances: 10
 - Target tracking: CPU 70%
@@ -317,6 +331,7 @@ Set up Auto Scaling Groups for each service:
 ### 5. Health Checks
 
 All services have `/health` endpoint:
+
 ```bash
 # Test health checks
 curl http://service-ip:port/health

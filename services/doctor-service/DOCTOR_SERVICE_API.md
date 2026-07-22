@@ -35,6 +35,7 @@ curl http://localhost:4003/health
 ```
 
 Response:
+
 ```json
 {
   "service": "doctor-service",
@@ -54,6 +55,7 @@ curl http://localhost:3000/api/doctor/filters/options
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -110,6 +112,7 @@ curl -X POST http://localhost:3000/api/auth/login \
 ```
 
 Returns:
+
 ```json
 {
   "success": true,
@@ -148,6 +151,7 @@ Returns:
 | `limit` | number | Results per page (default: 10, max: 100) | `20` |
 
 **Example:**
+
 ```bash
 # Search by specialty and location
 curl "http://localhost:3000/api/doctor/search?specialization=Cardiology&location=Boston"
@@ -160,6 +164,7 @@ curl "http://localhost:3000/api/doctor/search?specialization=Pediatrics&page=2&l
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -231,6 +236,7 @@ curl "http://localhost:3000/api/doctor/search?specialization=Pediatrics&page=2&l
 | `limit` | number | Results per page (default: 10) |
 
 **Example:**
+
 ```bash
 curl "http://localhost:3000/api/doctor/available?date=2026-02-10&specialization=Pediatrics"
 ```
@@ -249,6 +255,7 @@ curl "http://localhost:3000/api/doctor/available?date=2026-02-10&specialization=
 | `specialization` | string | Specialization name (e.g., Cardiology) |
 
 **Example:**
+
 ```bash
 curl "http://localhost:3000/api/doctor/specialization/Cardiology?page=1&limit=10"
 ```
@@ -267,6 +274,7 @@ curl "http://localhost:3000/api/doctor/specialization/Cardiology?page=1&limit=10
 | `id` | string | MongoDB ObjectId of the doctor |
 
 **Example:**
+
 ```bash
 curl "http://localhost:3000/api/doctor/69837b2355813aca43cdbc67"
 ```
@@ -285,6 +293,7 @@ curl "http://localhost:3000/api/doctor/69837b2355813aca43cdbc67"
 | `id` | string | MongoDB ObjectId of the doctor |
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -310,6 +319,7 @@ curl "http://localhost:3000/api/doctor/69837b2355813aca43cdbc67"
 **Description:** Get available options for filter dropdowns
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -341,6 +351,7 @@ curl "http://localhost:3000/api/doctor/69837b2355813aca43cdbc67"
 ## Protected Endpoints
 
 **All protected endpoints require:**
+
 - JWT authentication via `Authorization: Bearer <token>` header
 - Appropriate user role (doctor or admin)
 
@@ -351,6 +362,7 @@ curl "http://localhost:3000/api/doctor/69837b2355813aca43cdbc67"
 **Authentication:** Required (doctor role)
 
 **Request Body:**
+
 ```json
 {
   "firstName": "John",
@@ -389,6 +401,7 @@ curl "http://localhost:3000/api/doctor/69837b2355813aca43cdbc67"
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -417,6 +430,7 @@ curl "http://localhost:3000/api/doctor/69837b2355813aca43cdbc67"
 **Description:** Get the authenticated doctor's own profile
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -444,6 +458,7 @@ curl "http://localhost:3000/api/doctor/69837b2355813aca43cdbc67"
 | `id` | string | MongoDB ObjectId of the doctor |
 
 **Request Body:**
+
 ```json
 {
   "bio": "Updated bio text",
@@ -453,6 +468,7 @@ curl "http://localhost:3000/api/doctor/69837b2355813aca43cdbc67"
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -478,6 +494,7 @@ curl "http://localhost:3000/api/doctor/69837b2355813aca43cdbc67"
 | `id` | string | MongoDB ObjectId of the doctor |
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -502,6 +519,7 @@ curl "http://localhost:3000/api/doctor/69837b2355813aca43cdbc67"
 | `id` | string | MongoDB ObjectId of the doctor |
 
 **Request Body:**
+
 ```json
 {
   "date": "2026-02-10T00:00:00Z",
@@ -512,6 +530,7 @@ curl "http://localhost:3000/api/doctor/69837b2355813aca43cdbc67"
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -541,6 +560,7 @@ curl "http://localhost:3000/api/doctor/69837b2355813aca43cdbc67"
 | `slotId` | string | MongoDB ObjectId of the slot |
 
 **Request Body:**
+
 ```json
 {
   "status": "booked",
@@ -549,12 +569,14 @@ curl "http://localhost:3000/api/doctor/69837b2355813aca43cdbc67"
 ```
 
 **Slot Status Options:**
+
 - `available` - Slot is available for booking
 - `booked` - Slot is booked with an appointment
 - `cancelled` - Slot was cancelled
 - `completed` - Appointment completed
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -579,6 +601,7 @@ curl -X GET "http://localhost:3000/api/doctor/search?specialization=Pediatrics&l
 ```
 
 **Response (Excerpt):**
+
 ```json
 {
   "success": true,
@@ -649,6 +672,7 @@ curl -X POST "http://localhost:3000/api/doctor" \
 The doctor service provides powerful search capabilities through full-text indexing on multiple fields:
 
 ### Text-Indexed Fields
+
 - Doctor first name
 - Doctor last name
 - Specializations
@@ -659,6 +683,7 @@ The doctor service provides powerful search capabilities through full-text index
 - Bio
 
 ### Compound Indexes for Performance
+
 1. `(specialization, city, status)` - Optimized for specialty + location searches
 2. `(specialization, isAvailable, status)` - Optimized for availability checks
 3. `(city, status)` - Optimized for location-based searches
@@ -668,21 +693,25 @@ The doctor service provides powerful search capabilities through full-text index
 ### Search Examples
 
 **By Name:**
+
 ```bash
 curl "http://localhost:3000/api/doctor/search?query=Sarah%20Johnson"
 ```
 
 **By Condition:**
+
 ```bash
 curl "http://localhost:3000/api/doctor/search?condition=Hypertension"
 ```
 
 **By Symptom:**
+
 ```bash
 curl "http://localhost:3000/api/doctor/search?symptom=Chest%20Pain"
 ```
 
 **By Multiple Filters:**
+
 ```bash
 curl "http://localhost:3000/api/doctor/search?specialization=Cardiology&location=Boston&condition=Heart%20Disease"
 ```
@@ -692,6 +721,7 @@ curl "http://localhost:3000/api/doctor/search?specialization=Cardiology&location
 ## Filter Options
 
 ### Getting Specializations
+
 Use the filter options endpoint to populate dropdowns:
 
 ```bash
@@ -699,6 +729,7 @@ curl "http://localhost:3000/api/doctor/filters/options"
 ```
 
 **Available Specializations:**
+
 - Cardiology
 - Dermatology
 - Family Medicine
@@ -711,6 +742,7 @@ curl "http://localhost:3000/api/doctor/filters/options"
 - Sports Medicine
 
 **Available Locations:**
+
 - Austin
 - Boston
 - Denver
@@ -718,6 +750,7 @@ curl "http://localhost:3000/api/doctor/filters/options"
 - San Francisco
 
 **Available Conditions:**
+
 - Heart Disease
 - Hypertension
 - Asthma
@@ -750,15 +783,15 @@ All errors follow a consistent format:
 
 ### Common Error Codes
 
-| Status | Error | Description |
-|--------|-------|-------------|
-| 400 | Validation Error | Invalid request parameters |
-| 401 | Unauthorized | Missing or invalid authentication token |
-| 403 | Forbidden | User role doesn't have permission |
-| 404 | Not Found | Doctor or resource doesn't exist |
-| 409 | Conflict | Resource already exists (e.g., duplicate email) |
-| 500 | Internal Server Error | Server-side error |
-| 503 | Service Unavailable | Database or external service unavailable |
+| Status | Error                 | Description                                     |
+| ------ | --------------------- | ----------------------------------------------- |
+| 400    | Validation Error      | Invalid request parameters                      |
+| 401    | Unauthorized          | Missing or invalid authentication token         |
+| 403    | Forbidden             | User role doesn't have permission               |
+| 404    | Not Found             | Doctor or resource doesn't exist                |
+| 409    | Conflict              | Resource already exists (e.g., duplicate email) |
+| 500    | Internal Server Error | Server-side error                               |
+| 503    | Service Unavailable   | Database or external service unavailable        |
 
 ### Example Error Response
 
@@ -783,6 +816,7 @@ All errors follow a consistent format:
 ### API Gateway Integration
 
 The doctor service is integrated with the API Gateway at:
+
 ```
 API Gateway: http://localhost:3000
 Doctor Service: http://localhost:3000/api/doctor
@@ -798,6 +832,7 @@ Proxied to: `GET http://localhost:4003/api/doctor/filters/options`
 ### Custom Headers
 
 The API Gateway forwards the following headers to the doctor service:
+
 - `x-correlation-id` - Request tracking ID
 - `x-user-id` - Authenticated user ID
 - `x-user-email` - Authenticated user email
@@ -807,11 +842,12 @@ The API Gateway forwards the following headers to the doctor service:
 ### Service Configuration
 
 **Environment Variables:**
+
 ```env
 PORT=4003
 NODE_ENV=development
 MONGODB_URI=mongodb://localhost:27017/doctor_db
-AUTH_SERVICE_URL=http://localhost:4001
+GW_AUTH_SERVICE_URL=http://localhost:4001
 CORS_ORIGIN=*
 LOG_LEVEL=info
 ```
@@ -896,11 +932,13 @@ This provides overall system health including doctor service status.
 ### Service Not Responding
 
 1. Check if service is running:
+
    ```bash
    curl http://localhost:4003/health
    ```
 
 2. Check if MongoDB is connected:
+
    ```bash
    curl http://localhost:4003/health | grep database
    ```
@@ -916,6 +954,7 @@ This provides overall system health including doctor service status.
 ### Authentication Issues
 
 1. Verify JWT token is valid:
+
    ```bash
    curl -X POST http://localhost:3000/api/auth/verify \
      -H "Authorization: Bearer <token>"
@@ -929,6 +968,7 @@ This provides overall system health including doctor service status.
 ## API Rate Limiting
 
 The API Gateway applies rate limiting to all requests:
+
 - **General limit:** 100 requests per 15 minutes
 - **Auth limit:** 5 requests per 15 minutes
 - **Doctor Service:** Uses general rate limit
@@ -950,6 +990,7 @@ Access the interactive API documentation to test endpoints directly.
 ## Support
 
 For issues or questions:
+
 1. Check the Swagger documentation at `/api-docs`
 2. Review error messages and response codes
 3. Check service logs for detailed error information
