@@ -6,6 +6,10 @@
  * any other require so auto-instrumentation can patch http/express/etc.
  */
 
+// Force IPv4 DNS resolution process-wide — ECS Service Connect DNS may return
+// IPv6 first, causing ENETUNREACH which triggers unhandledRejection → process.exit(1).
+require("dns").setDefaultResultOrder("ipv4first");
+
 // ── Bootstrap telemetry first ─────────────────────────────────────────────────
 require("./telemetry/tracing"); // OpenTelemetry SDK + auto-instrumentation
 const {

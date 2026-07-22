@@ -1,3 +1,7 @@
+// Force IPv4 DNS resolution process-wide — ECS Service Connect DNS may return
+// IPv6 first, causing ENETUNREACH.
+require("dns").setDefaultResultOrder("ipv4first");
+
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
