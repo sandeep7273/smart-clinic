@@ -72,9 +72,31 @@ jobs:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
         run: |
           # Derive per-service MongoDB URIs from base URI
-          # Strip database name and query params to get just: mongodb+srv://user:pass@host
           BASE_HOST=$(echo "${MONGODB_URI}" | sed 's|\(mongodb+srv://[^@]*@[^/]*\).*|\1|')
           QP="appName=Cluster0"
+          REGISTRY="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com"
+
+          # Look up the latest pushed image tag for each service in ECR.
+          # Falls back to PLACEHOLDER only when ECR has no image yet (first-ever deploy).
+          # This prevents Terraform apply from overwriting a live image with PLACEHOLDER.
+          get_latest_image() {
+            local repo="smartclinic/$1"
+            local tag
+            tag=$(aws ecr describe-images --repository-name "$repo" \
+              --query 'sort_by(imageDetails, &imagePushedAt)[-1].imageTags[0]' \
+              --output text 2>/dev/null || true)
+            if [ -z "$tag" ] || [ "$tag" = "None" ] || [ "$tag" = "null" ]; then
+              echo "PLACEHOLDER"
+            else
+              echo "${REGISTRY}/${repo}:${tag}"
+            fi
+          }
+
+          API_GW_IMAGE=$(get_latest_image api-gateway)
+          AUTH_IMAGE=$(get_latest_image auth-service)
+          DOCTOR_IMAGE=$(get_latest_image doctor-service)
+          APPT_IMAGE=$(get_latest_image appointment-service)
+          AI_IMAGE=$(get_latest_image ai-service)
 
           mkdir -p environments/${{ env.ENVIRONMENT }}
           cat > environments/${{ env.ENVIRONMENT }}/terraform.tfvars << EOF
@@ -85,11 +107,11 @@ jobs:
           availability_zones = ["ap-south-1a", "ap-south-1b"]
           acm_certificate_arn = ""
 
-          api_gateway_image         = "PLACEHOLDER"
-          auth_service_image        = "PLACEHOLDER"
-          doctor_service_image      = "PLACEHOLDER"
-          appointment_service_image = "PLACEHOLDER"
-          ai_service_image          = "PLACEHOLDER"
+          api_gateway_image         = "${API_GW_IMAGE}"
+          auth_service_image        = "${AUTH_IMAGE}"
+          doctor_service_image      = "${DOCTOR_IMAGE}"
+          appointment_service_image = "${APPT_IMAGE}"
+          ai_service_image          = "${AI_IMAGE}"
 
           jwt_secret   = "${JWT_SECRET}"
           groq_api_key = "${GROQ_API_KEY}"
@@ -144,7 +166,7 @@ jobs:
         if: |
           steps.plan.outcome == 'success' &&
           (
-            (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+            (github.event_name == 'push' && contains(fromJSON('["refs/heads/main","refs/heads/master","refs/heads/develop"]'), github.ref)) ||
             (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
           )
         run: terraform apply -auto-approve tfplan
