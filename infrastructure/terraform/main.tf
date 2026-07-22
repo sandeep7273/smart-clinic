@@ -58,7 +58,7 @@ module "secrets" {
     "KAFKA_BROKERS"           = "localhost:9092" # replace with MSK endpoint after creation
     "LOG_LEVEL"               = "info"
     "OTLP_ENDPOINT"           = "http://otel-collector.${var.project}.local:4318"
-    "AUTH_SERVICE_URL"        = "http://auth-service.${var.project}.local:4001"
+    "GW_AUTH_SERVICE_URL"     = "http://auth-service.${var.project}.local:4001"
     "DOCTOR_SERVICE_URL"      = "http://doctor-service.${var.project}.local:4002"
     "APPOINTMENT_SERVICE_URL" = "http://appointment-service.${var.project}.local:4003"
     "AI_SERVICE_URL"          = "http://ai-service.${var.project}.local:4004"
@@ -175,12 +175,18 @@ module "api_gateway_service" {
     { name = "PORT", value = "3000" },
     { name = "SERVICE_NAME", value = "api-gateway" },
     { name = "SERVICE_VERSION", value = "1.0.0" },
+    { name = "GW_AUTH_SERVICE_URL", value = "http://auth-service.${var.project}.local:4001" },
+    { name = "DOCTOR_SERVICE_URL", value = "http://doctor-service.${var.project}.local:4002" },
+    { name = "APPOINTMENT_SERVICE_URL", value = "http://appointment-service.${var.project}.local:4003" },
+    { name = "AI_SERVICE_URL", value = "http://ai-service.${var.project}.local:4004" },
+    { name = "CORS_ORIGIN", value = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://localhost:19006,http://smartclinic-web-ui-791732163161-aps1.s3-website.ap-south-1.amazonaws.com,http://smartclinic-dev-alb-1797412677.ap-south-1.elb.amazonaws.com" },
     { name = "OTLP_ENDPOINT", value = module.otel_collector.otel_collector_endpoint },
     { name = "LOG_LEVEL", value = "info" },
   ]
 
   secrets = [
-    { name = "JWT_SECRET", valueFrom = module.secrets.jwt_secret_arn },
+    { name = "JWT_ACCESS_SECRET", valueFrom = module.secrets.jwt_secret_arn },
+    { name = "JWT_REFRESH_SECRET", valueFrom = module.secrets.jwt_refresh_secret_arn },
     { name = "INTERNAL_SERVICE_TOKEN", valueFrom = module.secrets.internal_token_arn },
   ]
 }
@@ -212,6 +218,9 @@ module "auth_service" {
     { name = "PORT", value = "4001" },
     { name = "SERVICE_NAME", value = "auth-service" },
     { name = "SERVICE_VERSION", value = "1.0.0" },
+    { name = "ACCESS_TOKEN_EXPIRY", value = "500m" },
+    { name = "REFRESH_TOKEN_EXPIRY", value = "7d" },
+    { name = "JWT_ISSUER", value = "auth-service" },
     { name = "OTLP_ENDPOINT", value = module.otel_collector.otel_collector_endpoint },
     { name = "LOG_LEVEL", value = "info" },
   ]
@@ -251,6 +260,7 @@ module "doctor_service" {
     { name = "GRPC_PORT", value = "50051" },
     { name = "SERVICE_NAME", value = "doctor-service" },
     { name = "SERVICE_VERSION", value = "1.0.0" },
+    { name = "API_GATEWAY_URL", value = "http://api-gateway.${var.project}.local:3000" },
     { name = "OTLP_ENDPOINT", value = module.otel_collector.otel_collector_endpoint },
     { name = "LOG_LEVEL", value = "info" },
   ]
@@ -288,9 +298,10 @@ module "appointment_service" {
     { name = "GRPC_PORT", value = "50052" },
     { name = "SERVICE_NAME", value = "appointment-service" },
     { name = "SERVICE_VERSION", value = "1.0.0" },
+    { name = "API_GATEWAY_URL", value = "http://api-gateway.${var.project}.local:3000" },
+    { name = "DOCTOR_GRPC_URL", value = "doctor-service.${var.project}.local:50051" },
     { name = "OTLP_ENDPOINT", value = module.otel_collector.otel_collector_endpoint },
     { name = "LOG_LEVEL", value = "info" },
-    { name = "DOCTOR_GRPC_URL", value = "doctor-service.${var.project}.local:50051" },
   ]
 
   secrets = [
@@ -333,6 +344,7 @@ module "ai_service" {
     { name = "DOCTOR_SERVICE_GRPC_PORT", value = "50051" },
     { name = "APPOINTMENT_SERVICE_GRPC_HOST", value = "appointment-service.${var.project}.local" },
     { name = "APPOINTMENT_SERVICE_GRPC_PORT", value = "50052" },
+    { name = "API_GATEWAY_URL", value = "http://api-gateway.${var.project}.local:3000" },
     { name = "SERVICE_VERSION", value = "1.0.0" },
     { name = "OTLP_ENDPOINT", value = module.otel_collector.otel_collector_endpoint },
     { name = "LOG_LEVEL", value = "info" },

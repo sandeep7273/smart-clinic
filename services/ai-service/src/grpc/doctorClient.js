@@ -1,3 +1,6 @@
+// Force IPv4 DNS resolution — ECS Service Connect DNS may return IPv6 first.
+require('dns').setDefaultResultOrder('ipv4first');
+
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 const path = require('path');

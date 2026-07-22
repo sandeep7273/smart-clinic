@@ -103,7 +103,7 @@ describe('GraphQL Context', () => {
       const context = await createContext({ req: mockReq });
 
       expect(context.correlationId).toBeDefined();
-      expect(context.correlationId).toMatch(/^appt-/);
+      expect(context.correlationId).toMatch(/^ai-/);
     });
 
     it('should use x-request-id as fallback for correlation ID', async () => {

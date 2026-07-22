@@ -5,6 +5,7 @@ This directory contains automated deployment scripts for the Smart Appointment S
 ## 📋 Overview
 
 The deployment system consists of:
+
 - **deploy.sh** - Automated build and deployment script
 - **docker-compose.yml** - Production configuration (API Gateway only exposed)
 - **docker-compose.dev.yml** - Development configuration (all ports exposed)
@@ -40,17 +41,21 @@ docker-compose -f docker-compose.dev.yml down
 ## 🔒 Security Model
 
 ### Production (docker-compose.yml)
+
 **Only API Gateway port 3000 is exposed externally.**
 
 All other services (auth, doctor, appointment, ai, mongodb, redis, kafka) are:
+
 - ✅ Accessible within Docker network
 - ❌ NOT accessible from outside
 - 🔐 Secured by network isolation
 
 **Public Access:**
+
 - Port 3000 → API Gateway (GraphQL endpoint)
 
 **Internal Only (No direct external access):**
+
 - Port 4001 → Auth Service
 - Port 4003 → Doctor Service (HTTP)
 - Port 50051 → Doctor Service (gRPC)
@@ -63,6 +68,7 @@ All other services (auth, doctor, appointment, ai, mongodb, redis, kafka) are:
 - Port 2181 → Zookeeper
 
 ### Development (docker-compose.dev.yml)
+
 **All service ports are exposed for debugging and testing.**
 
 ⚠️ **WARNING:** Never use docker-compose.dev.yml in production!
@@ -122,6 +128,7 @@ Options:
 ## 🎯 Service Endpoints
 
 ### Production (docker-compose.yml)
+
 ```
 Public:
   • API Gateway:        http://localhost:3000
@@ -132,6 +139,7 @@ All other services: Internal network only
 ```
 
 ### Development (docker-compose.dev.yml)
+
 ```
 API Gateway:
   • Health:             http://localhost:3000/health
@@ -268,6 +276,7 @@ sudo usermod -aG docker $USER
 For deploying to AWS EC2, see [EC2_DEPLOYMENT_GUIDE.md](EC2_DEPLOYMENT_GUIDE.md)
 
 Key steps:
+
 1. Set up EC2 instance (t3.large recommended)
 2. Configure security group (only port 80, 443, and optionally 3000)
 3. Install Docker and Docker Compose
@@ -296,7 +305,7 @@ services/ai-service/.env.ai
 NODE_ENV=production
 
 # Service URLs (use Docker service names)
-AUTH_SERVICE_URL=http://auth-service:4001
+GW_AUTH_SERVICE_URL=http://auth-service:4001
 DOCTOR_SERVICE_URL=http://doctor-service:4003
 APPOINTMENT_SERVICE_URL=http://appointment-service:4004
 AI_SERVICE_URL=http://ai-service:4005

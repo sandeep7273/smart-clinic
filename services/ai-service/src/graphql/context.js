@@ -2,7 +2,12 @@ const { validateToken, extractTokenFromHeader } = require('../utils/auth');
 
 /**
  * Create GraphQL context
- * Extracts user from JWT token and adds to context
+ * Extracts user from JWT token and adds to context.
+ *
+ * When called through the API Gateway, the gateway has already validated the
+ * token and forwarded user info as x-user-* headers.  Trust those headers
+ * directly to avoid a circular validation call back to the gateway.
+ * Fall back to remote token validation only for direct (non-gateway) calls.
  */
 const createContext = async ({ req }) => {
   const context = {
@@ -11,31 +16,44 @@ const createContext = async ({ req }) => {
     ip: req.ip || req.connection.remoteAddress,
     requestId: req.id,
     timestamp: new Date().toISOString(),
-    token: null, // Initialize token as null
-    correlationId : req.headers['x-correlation-id'] || 
-          req.headers['x-request-id'] || 
-          `appt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    causationId : req.headers['x-causation-id'] || null
+    token: null,
+    correlationId: req.headers['x-correlation-id'] ||
+      req.headers['x-request-id'] ||
+      `ai-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    causationId: req.headers['x-causation-id'] || null,
   };
 
-  try {
-    const authHeader = req.headers.authorization;
-    const token = extractTokenFromHeader(authHeader);
+  const authHeader = req.headers.authorization;
+  const token = extractTokenFromHeader(authHeader);
 
-    if (token) {
-      const decoded = await validateToken(token);
-      context.token = token; // Set the token in context for forwarding to downstream services (even if validation failed)
+  if (token) {
+    const gatewayUserId = req.headers['x-user-id'];
+    if (gatewayUserId) {
+      // API Gateway already validated the token — set token and trust forwarded headers
+      context.token = token;
       context.user = {
-        userId: decoded.id,
-        email: decoded.email,
-        role: decoded.role || [],
-        tenantId: decoded.tenantId || null,
-        phone: decoded.phoneNumber,
+        userId: gatewayUserId,
+        id: gatewayUserId,
+        email: req.headers['x-user-email'] || null,
+        role: req.headers['x-user-role'] || null,
+        tenantId: req.headers['x-tenant-id'] || null,
       };
+    } else {
+      // Direct call (dev / testing) — validate remotely as fallback
+      try {
+        const decoded = await validateToken(token);
+        context.token = token; // only set after successful validation
+        context.user = {
+          userId: decoded.id,
+          email: decoded.email,
+          role: decoded.role || [],
+          tenantId: decoded.tenantId || null,
+          phone: decoded.phoneNumber,
+        };
+      } catch (error) {
+        // Validation failed — leave context.token and context.user as null.
+      }
     }
-  } catch (error) {
-    // Token verification failed - user will be null
-    // GraphQL resolvers will handle authentication
   }
 
   return context;

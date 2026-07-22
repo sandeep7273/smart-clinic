@@ -15,7 +15,7 @@ const config = {
 
   // Service URLs
   services: {
-    auth: process.env.AUTH_SERVICE_URL || "http://localhost:4001",
+    auth: process.env.GW_AUTH_SERVICE_URL || "http://localhost:4001",
     // patient: process.env.PATIENT_SERVICE_URL || 'http://localhost:4002',
     doctor: process.env.DOCTOR_SERVICE_URL || "http://localhost:4002",
     appointment: process.env.APPOINTMENT_SERVICE_URL || "http://localhost:4003",
@@ -104,7 +104,7 @@ function validateConfig() {
 
   // Check if at least auth service is configured
   if (!config.services.auth) {
-    errors.push("AUTH_SERVICE_URL must be configured");
+    errors.push("GW_AUTH_SERVICE_URL must be configured");
   }
 
   if (errors.length > 0) {

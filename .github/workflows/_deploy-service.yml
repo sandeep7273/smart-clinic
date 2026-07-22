@@ -50,6 +50,8 @@ jobs:
       - name: Install dependencies
         working-directory: ${{ inputs.service_dir }}
         run: npm install --prefer-offline
+        env:
+          MONGOMS_DISABLE_POSTINSTALL: 1
 
       # Use test:ci if available, fall back to test
       - name: Run tests
@@ -57,6 +59,7 @@ jobs:
         run: npm run test:ci
         env:
           NODE_ENV: test
+          MONGOMS_DISABLE_POSTINSTALL: 1
 
       - name: Lint
         working-directory: ${{ inputs.service_dir }}

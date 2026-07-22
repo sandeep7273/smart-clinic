@@ -5,17 +5,20 @@
 The API Gateway has been successfully implemented with all core features:
 
 ✅ **Project Setup**
+
 - Directory structure created
 - Dependencies installed (Express, Apollo, GraphQL Tools, Circuit Breaker, etc.)
 - Environment configuration (.env, config/index.js)
 
 ✅ **Core Utilities**
+
 - Winston logger with correlation ID support
 - Custom error classes (8 types)
 - JWT utilities (verify, decode, extract)
 - Correlation ID management
 
 ✅ **Middleware**
+
 - Correlation ID middleware
 - Request/response logging middleware
 - Authentication & authorization middleware (JWT-based with RBAC)
@@ -23,20 +26,24 @@ The API Gateway has been successfully implemented with all core features:
 - Error handling middleware
 
 ✅ **Services**
+
 - Circuit breaker implementation (Opossum)
 - Service client with HTTP methods and circuit breaker integration
 - In-memory caching with NodeCache
 
 ✅ **Routes**
+
 - Health check routes (/health, /ready, /status)
 - REST API proxy routes for all services (auth, patient, doctor, appointment, notification, search)
 
 ✅ **GraphQL**
+
 - Base schema and resolvers
 - Context creation with user extraction
 - Schema stitching configuration (needs GraphQL endpoints from services)
 
 ✅ **Main Server**
+
 - Express app with security (Helmet, CORS)
 - Apollo Server integration
 - Graceful shutdown handling
@@ -45,33 +52,39 @@ The API Gateway has been successfully implemented with all core features:
 ## Features
 
 ### 1. Authentication & Authorization
+
 - JWT-based authentication
 - Role-based access control (RBAC)
 - Token verification and user extraction
 - Forwards user info to downstream services via headers
 
 ### 2. Rate Limiting
+
 - General endpoints: 100 req/15min
 - Auth endpoints: 5 req/15min
 - GraphQL endpoint: 200 req/15min
 
 ### 3. Circuit Breakers
+
 - Automatic failure detection
 - 3-second timeout
 - 50% error threshold
 - 30-second reset timeout
 
 ### 4. Distributed Tracing
+
 - Correlation ID generation/extraction
 - Propagation to all services
 - Included in all logs and responses
 
 ### 5. Caching
+
 - In-memory caching for GET requests
 - 5-minute TTL
 - Cache key includes user ID, path, and query params
 
 ### 6. Security
+
 - Helmet for security headers
 - CORS configuration
 - Input validation
@@ -108,12 +121,13 @@ curl http://localhost:3000/health
 ## Configuration
 
 ### Environment Variables (.env)
+
 ```env
 PORT=3000
 NODE_ENV=development
 
 # Service URLs
-AUTH_SERVICE_URL=http://localhost:4001
+GW_AUTH_SERVICE_URL=http://localhost:4001
 PATIENT_SERVICE_URL=http://localhost:4002
 DOCTOR_SERVICE_URL=http://localhost:4003
 APPOINTMENT_SERVICE_URL=http://localhost:4004
@@ -137,11 +151,13 @@ CIRCUIT_BREAKER_RESET_TIMEOUT=30000
 ## API Endpoints
 
 ### Health Checks
+
 - `GET /health` - Basic health check
 - `GET /ready` - Readiness check (includes critical services)
 - `GET /status` - Detailed status of all services
 
 ### REST API Proxy
+
 All backend services are accessible through `/api/{service}/{path}`:
 
 - `/api/auth/*` - Auth service (4001)
@@ -152,6 +168,7 @@ All backend services are accessible through `/api/{service}/{path}`:
 - `/api/search/*` - Search service (4006)
 
 ### GraphQL (when services have GraphQL endpoints)
+
 - `POST /graphql` - Unified GraphQL endpoint with schema stitching
 
 ## Architecture

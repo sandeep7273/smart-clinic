@@ -72,7 +72,7 @@ DOCTOR_SERVICE_GRPC_HOST=localhost
 DOCTOR_SERVICE_GRPC_PORT=50051
 
 # Auth Service
-AUTH_SERVICE_URL=http://localhost:4001
+GW_AUTH_SERVICE_URL=http://localhost:4001
 ```
 
 **⚠️ IMPORTANT**: You must obtain an OpenAI API key from [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys)
@@ -154,11 +154,11 @@ The mobile app is already configured! Just:
 
 The AI provides actionable buttons:
 
-| Action Button | Function |
-|--------------|----------|
-| 🔍 Search Doctors | Navigate to doctor search with specialization |
-| 📅 View Appointments | Navigate to appointments list |
-| 📝 Book Appointment | Navigate to doctor search for booking |
+| Action Button        | Function                                      |
+| -------------------- | --------------------------------------------- |
+| 🔍 Search Doctors    | Navigate to doctor search with specialization |
+| 📅 View Appointments | Navigate to appointments list                 |
+| 📝 Book Appointment  | Navigate to doctor search for booking         |
 
 ## 🧪 Testing with GraphQL Playground
 
@@ -168,10 +168,7 @@ Access: `http://localhost:4005/graphql`
 
 ```graphql
 mutation {
-  sendChatMessage(
-    userId: "your-user-id"
-    message: "I have chest pain"
-  ) {
+  sendChatMessage(userId: "your-user-id", message: "I have chest pain") {
     success
     data {
       message
@@ -230,6 +227,7 @@ The AI automatically detects user intent:
 ### 2. Entity Extraction
 
 Extracts structured data:
+
 - Medical specializations (Cardiologist, Dermatologist, etc.)
 - Symptoms
 - Date preferences
@@ -238,6 +236,7 @@ Extracts structured data:
 ### 3. Context-Aware Conversations
 
 Redis stores conversation history (last 10 messages) with 1-hour TTL, enabling:
+
 - Multi-turn conversations
 - Context retention
 - Follow-up questions
@@ -255,16 +254,17 @@ chat:context:{userId} → 1 hour
 ### 5. Medical Disclaimer
 
 Automatically includes disclaimers for health queries:
+
 > "This is not a substitute for professional medical advice."
 
 ## 🎯 Intent to Action Mapping
 
-| User Query | Detected Intent | Action Type | Navigation |
-|-----------|----------------|-------------|-----------|
-| "I have chest pain" | HEALTH_QUERY | SEARCH_DOCTOR | DoctorList (Cardiologist) |
-| "Find a cardiologist" | SEARCH_DOCTOR | SEARCH_DOCTOR | DoctorList (Cardiologist) |
-| "Show my appointments" | SHOW_APPOINTMENTS | SHOW_APPOINTMENTS | AppointmentList |
-| "Book an appointment" | BOOK_APPOINTMENT | SEARCH_DOCTOR | DoctorList |
+| User Query             | Detected Intent   | Action Type       | Navigation                |
+| ---------------------- | ----------------- | ----------------- | ------------------------- |
+| "I have chest pain"    | HEALTH_QUERY      | SEARCH_DOCTOR     | DoctorList (Cardiologist) |
+| "Find a cardiologist"  | SEARCH_DOCTOR     | SEARCH_DOCTOR     | DoctorList (Cardiologist) |
+| "Show my appointments" | SHOW_APPOINTMENTS | SHOW_APPOINTMENTS | AppointmentList           |
+| "Book an appointment"  | BOOK_APPOINTMENT  | SEARCH_DOCTOR     | DoctorList                |
 
 ## 🔧 Component Architecture
 
@@ -309,6 +309,7 @@ mobile_ui_app/src/
 ### Issue: "OpenAI API Error"
 
 **Solution**: Verify your API key:
+
 ```bash
 echo $OPENAI_API_KEY
 ```
@@ -318,6 +319,7 @@ Check rate limits: [https://platform.openai.com/account/limits](https://platform
 ### Issue: "Doctor service unavailable"
 
 **Solution**: Ensure doctor-service gRPC is running:
+
 ```bash
 # Check doctor service logs
 cd services/doctor-service
@@ -331,6 +333,7 @@ Verify gRPC port 50051 is accessible.
 **Solution**: ChromaDB is optional. Service works without it, but with reduced medical knowledge.
 
 To enable:
+
 ```bash
 chroma run --host localhost --port 8000
 npm run seed:embeddings
@@ -339,6 +342,7 @@ npm run seed:embeddings
 ### Issue: "Redis connection error"
 
 **Solution**: Start Redis:
+
 ```bash
 # macOS
 brew services start redis
@@ -353,11 +357,13 @@ docker run -d -p 6379:6379 redis
 ### Issue: "No response from AI"
 
 **Solution**: Check service logs:
+
 ```bash
 tail -f services/ai-service/logs/combined.log
 ```
 
 Verify all dependencies are running:
+
 ```bash
 # Check health endpoints
 curl http://localhost:4001/health  # Auth service
@@ -375,6 +381,7 @@ curl http://localhost:4005/health
 ```
 
 Response:
+
 ```json
 {
   "status": "healthy",
@@ -420,6 +427,7 @@ Authorization: Bearer <token>
 ### User Isolation
 
 Users can only:
+
 - Send messages as themselves
 - Access their own conversation history
 - Clear their own context
@@ -436,10 +444,10 @@ Edit `services/ai-service/src/services/intentDetectionService.js`:
 
 ```javascript
 this.INTENTS = {
-  HEALTH_QUERY: 'HEALTH_QUERY',
-  SEARCH_DOCTOR: 'SEARCH_DOCTOR',
-  SHOW_APPOINTMENTS: 'SHOW_APPOINTMENTS',
-  YOUR_NEW_INTENT: 'YOUR_NEW_INTENT',  // Add here
+  HEALTH_QUERY: "HEALTH_QUERY",
+  SEARCH_DOCTOR: "SEARCH_DOCTOR",
+  SHOW_APPOINTMENTS: "SHOW_APPOINTMENTS",
+  YOUR_NEW_INTENT: "YOUR_NEW_INTENT", // Add here
   // ...
 };
 ```
@@ -451,8 +459,8 @@ Edit `services/ai-service/src/scripts/seedEmbeddings.js`:
 ```javascript
 const medicalDocuments = [
   {
-    text: 'Your medical knowledge here...',
-    metadata: { category: 'specialty', severity: 'medium' }
+    text: "Your medical knowledge here...",
+    metadata: { category: "specialty", severity: "medium" },
   },
   // Add more documents
 ];
@@ -466,8 +474,8 @@ Edit `services/ai-service/src/services/intentDetectionService.js`:
 
 ```javascript
 this.specializationMap = {
-  'heart': 'Cardiologist',
-  'your-keyword': 'Your-Specialist',
+  heart: "Cardiologist",
+  "your-keyword": "Your-Specialist",
   // Add more mappings
 };
 ```
@@ -506,13 +514,13 @@ OPENAI_TEMPERATURE=0.7        # Creativity (0-1)
 
 Check all services are running:
 
-| Service | Port | Health Check |
-|---------|------|-------------|
-| Auth Service | 4001 | http://localhost:4001/health |
-| Doctor Service | 4003 | http://localhost:4003/health |
-| Appointment Service | 4004 | http://localhost:4004/health |
-| **AI Service** | **4005** | **http://localhost:4005/health** |
-| API Gateway | 3000 | http://localhost:3000/health |
+| Service             | Port     | Health Check                     |
+| ------------------- | -------- | -------------------------------- |
+| Auth Service        | 4001     | http://localhost:4001/health     |
+| Doctor Service      | 4003     | http://localhost:4003/health     |
+| Appointment Service | 4004     | http://localhost:4004/health     |
+| **AI Service**      | **4005** | **http://localhost:4005/health** |
+| API Gateway         | 3000     | http://localhost:3000/health     |
 
 ## 📚 API Reference
 
@@ -622,6 +630,7 @@ Before launching:
 ## 🎉 Success!
 
 If you can:
+
 1. ✅ Open AI Assistant in mobile app
 2. ✅ Send a message about symptoms
 3. ✅ Get an AI response with action button
