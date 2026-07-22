@@ -218,6 +218,9 @@ module "auth_service" {
     { name = "PORT", value = "4001" },
     { name = "SERVICE_NAME", value = "auth-service" },
     { name = "SERVICE_VERSION", value = "1.0.0" },
+    { name = "ACCESS_TOKEN_EXPIRY", value = "500m" },
+    { name = "REFRESH_TOKEN_EXPIRY", value = "7d" },
+    { name = "JWT_ISSUER", value = "auth-service" },
     { name = "OTLP_ENDPOINT", value = module.otel_collector.otel_collector_endpoint },
     { name = "LOG_LEVEL", value = "info" },
   ]
@@ -257,6 +260,7 @@ module "doctor_service" {
     { name = "GRPC_PORT", value = "50051" },
     { name = "SERVICE_NAME", value = "doctor-service" },
     { name = "SERVICE_VERSION", value = "1.0.0" },
+    { name = "API_GATEWAY_URL", value = "http://api-gateway.${var.project}.local:3000" },
     { name = "OTLP_ENDPOINT", value = module.otel_collector.otel_collector_endpoint },
     { name = "LOG_LEVEL", value = "info" },
   ]
@@ -294,9 +298,10 @@ module "appointment_service" {
     { name = "GRPC_PORT", value = "50052" },
     { name = "SERVICE_NAME", value = "appointment-service" },
     { name = "SERVICE_VERSION", value = "1.0.0" },
+    { name = "API_GATEWAY_URL", value = "http://api-gateway.${var.project}.local:3000" },
+    { name = "DOCTOR_GRPC_URL", value = "doctor-service.${var.project}.local:50051" },
     { name = "OTLP_ENDPOINT", value = module.otel_collector.otel_collector_endpoint },
     { name = "LOG_LEVEL", value = "info" },
-    { name = "DOCTOR_GRPC_URL", value = "doctor-service.${var.project}.local:50051" },
   ]
 
   secrets = [
@@ -339,6 +344,7 @@ module "ai_service" {
     { name = "DOCTOR_SERVICE_GRPC_PORT", value = "50051" },
     { name = "APPOINTMENT_SERVICE_GRPC_HOST", value = "appointment-service.${var.project}.local" },
     { name = "APPOINTMENT_SERVICE_GRPC_PORT", value = "50052" },
+    { name = "API_GATEWAY_URL", value = "http://api-gateway.${var.project}.local:3000" },
     { name = "SERVICE_VERSION", value = "1.0.0" },
     { name = "OTLP_ENDPOINT", value = module.otel_collector.otel_collector_endpoint },
     { name = "LOG_LEVEL", value = "info" },
