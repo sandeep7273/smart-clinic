@@ -1,3 +1,8 @@
+output "nat_public_ips" {
+  description = "NAT Gateway Elastic IPs — add ALL of these to MongoDB Atlas Network Access List"
+  value       = module.vpc.nat_public_ips
+}
+
 output "alb_dns_name" {
   description = "ALB DNS name — point your Route 53 record here"
   value       = module.alb.alb_dns_name

@@ -170,7 +170,18 @@ resource "aws_security_group_rule" "services_out_https" {
   to_port           = 443
   protocol          = "tcp"
   cidr_blocks       = ["0.0.0.0/0"]
-  description       = "Outbound HTTPS (Atlas, ECR, Secrets Manager, Groq)"
+  description       = "Outbound HTTPS (ECR, Secrets Manager, Groq)"
+}
+
+# MongoDB Atlas uses port 27017 (NOT 443) — required for all services that connect to Atlas
+resource "aws_security_group_rule" "services_out_mongodb" {
+  type              = "egress"
+  security_group_id = aws_security_group.services.id
+  from_port         = 27015
+  to_port           = 27017
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "MongoDB Atlas (ports 27015-27017)"
 }
 
 resource "aws_security_group_rule" "services_out_otel" {
