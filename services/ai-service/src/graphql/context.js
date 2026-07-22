@@ -27,12 +27,10 @@ const createContext = async ({ req }) => {
   const token = extractTokenFromHeader(authHeader);
 
   if (token) {
-    // Always set token so requireAuthentication() checks pass
-    context.token = token;
-
     const gatewayUserId = req.headers['x-user-id'];
     if (gatewayUserId) {
-      // API Gateway already validated the token — trust its forwarded headers
+      // API Gateway already validated the token — set token and trust forwarded headers
+      context.token = token;
       context.user = {
         userId: gatewayUserId,
         id: gatewayUserId,
@@ -44,16 +42,16 @@ const createContext = async ({ req }) => {
       // Direct call (dev / testing) — validate remotely as fallback
       try {
         const decoded = await validateToken(token);
+        context.token = token; // only set after successful validation
         context.user = {
           userId: decoded.id,
-          id: decoded.id,
           email: decoded.email,
           role: decoded.role || [],
           tenantId: decoded.tenantId || null,
           phone: decoded.phoneNumber,
         };
       } catch (error) {
-        // Validation failed; context.token is still set.
+        // Validation failed — leave context.token and context.user as null.
       }
     }
   }
