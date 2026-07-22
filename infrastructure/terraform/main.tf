@@ -254,6 +254,17 @@ module "doctor_service" {
   desired_count           = var.doctor_service_min_tasks
   alarm_sns_topic_arn     = aws_sns_topic.alerts.arn
 
+  additional_service_ports = [
+    {
+      name              = "doctor-service-grpc"
+      container_port    = 50051
+      protocol          = "tcp"
+      discovery_name    = "doctor-service-grpc"
+      dns_name          = "doctor-service-grpc.${var.project}.local"
+      client_alias_port = 50051
+    }
+  ]
+
   environment_vars = [
     { name = "NODE_ENV", value = "production" },
     { name = "PORT", value = "4002" },
@@ -292,6 +303,17 @@ module "appointment_service" {
   desired_count           = var.appointment_service_min_tasks
   alarm_sns_topic_arn     = aws_sns_topic.alerts.arn
 
+  additional_service_ports = [
+    {
+      name              = "appointment-service-grpc"
+      container_port    = 50052
+      protocol          = "tcp"
+      discovery_name    = "appointment-service-grpc"
+      dns_name          = "appointment-service-grpc.${var.project}.local"
+      client_alias_port = 50052
+    }
+  ]
+
   environment_vars = [
     { name = "NODE_ENV", value = "production" },
     { name = "PORT", value = "4003" },
@@ -299,7 +321,8 @@ module "appointment_service" {
     { name = "SERVICE_NAME", value = "appointment-service" },
     { name = "SERVICE_VERSION", value = "1.0.0" },
     { name = "API_GATEWAY_URL", value = "http://api-gateway.${var.project}.local:3000" },
-    { name = "DOCTOR_GRPC_URL", value = "doctor-service.${var.project}.local:50051" },
+    { name = "DOCTOR_GRPC_URL", value = "doctor-service-grpc.${var.project}.local:50051" },
+    { name = "GRPC_NODE_USE_ALTERNATIVE_RESOLVER", value = "true" },
     { name = "OTLP_ENDPOINT", value = module.otel_collector.otel_collector_endpoint },
     { name = "LOG_LEVEL", value = "info" },
   ]
@@ -340,12 +363,13 @@ module "ai_service" {
     { name = "SERVICE_NAME", value = "ai-service" },
     { name = "REDIS_HOST", value = module.redis.redis_endpoint },
     { name = "REDIS_PORT", value = tostring(module.redis.redis_port) },
-    { name = "DOCTOR_SERVICE_GRPC_HOST", value = "doctor-service.${var.project}.local" },
+    { name = "DOCTOR_SERVICE_GRPC_HOST", value = "doctor-service-grpc.${var.project}.local" },
     { name = "DOCTOR_SERVICE_GRPC_PORT", value = "50051" },
-    { name = "APPOINTMENT_SERVICE_GRPC_HOST", value = "appointment-service.${var.project}.local" },
+    { name = "APPOINTMENT_SERVICE_GRPC_HOST", value = "appointment-service-grpc.${var.project}.local" },
     { name = "APPOINTMENT_SERVICE_GRPC_PORT", value = "50052" },
     { name = "API_GATEWAY_URL", value = "http://api-gateway.${var.project}.local:3000" },
     { name = "SERVICE_VERSION", value = "1.0.0" },
+    { name = "GRPC_NODE_USE_ALTERNATIVE_RESOLVER", value = "true" },
     { name = "OTLP_ENDPOINT", value = module.otel_collector.otel_collector_endpoint },
     { name = "LOG_LEVEL", value = "info" },
   ]

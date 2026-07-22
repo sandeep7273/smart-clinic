@@ -118,3 +118,17 @@ resource "aws_lb_listener" "http" {
     target_group_arn = aws_lb_target_group.api_gateway.arn
   }
 }
+
+# Dev-only alternate HTTP listener. Some local networks hang on the default
+# port-80 ALB response path; 8080 keeps dev environments reachable without TLS.
+resource "aws_lb_listener" "http_dev_alt" {
+  count             = var.environment == "prod" ? 0 : 1
+  load_balancer_arn = aws_lb.main.arn
+  port              = 8080
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.api_gateway.arn
+  }
+}

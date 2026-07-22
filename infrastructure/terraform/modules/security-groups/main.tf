@@ -61,6 +61,17 @@ resource "aws_security_group_rule" "alb_in_http" {
   description       = "HTTP (redirect to HTTPS)"
 }
 
+resource "aws_security_group_rule" "alb_in_dev_http_alt" {
+  count             = var.environment == "prod" ? 0 : 1
+  type              = "ingress"
+  security_group_id = aws_security_group.alb.id
+  from_port         = 8080
+  to_port           = 8080
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Dev HTTP alternate listener"
+}
+
 resource "aws_security_group_rule" "alb_out_api_gw" {
   type                     = "egress"
   security_group_id        = aws_security_group.alb.id
@@ -151,6 +162,16 @@ resource "aws_security_group_rule" "services_in_grpc_api_gw" {
   protocol                 = "tcp"
   source_security_group_id = aws_security_group.api_gateway.id
   description              = "gRPC from API Gateway to AI service"
+}
+
+resource "aws_security_group_rule" "services_out_grpc_self" {
+  type              = "egress"
+  security_group_id = aws_security_group.services.id
+  from_port         = 50051
+  to_port           = 50053
+  protocol          = "tcp"
+  self              = true
+  description       = "gRPC inter-service calls"
 }
 
 resource "aws_security_group_rule" "services_out_databases" {

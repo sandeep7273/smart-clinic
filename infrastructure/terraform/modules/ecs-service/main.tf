@@ -38,13 +38,22 @@ resource "aws_ecs_task_definition" "service" {
       image     = var.image_uri
       essential = true
 
-      portMappings = [
-        {
-          name          = var.service_name # used by Service Connect
-          containerPort = var.container_port
-          protocol      = "tcp"
-        }
-      ]
+      portMappings = concat(
+        [
+          {
+            name          = var.service_name # used by Service Connect
+            containerPort = var.container_port
+            protocol      = "tcp"
+          }
+        ],
+        [
+          for port in var.additional_service_ports : {
+            name          = port.name
+            containerPort = port.container_port
+            protocol      = port.protocol
+          }
+        ]
+      )
 
       environment = var.environment_vars # non-sensitive config
       secrets     = var.secrets          # from Secrets Manager / SSM
@@ -140,6 +149,18 @@ resource "aws_ecs_service" "service" {
         }
       }
     }
+
+    dynamic "service" {
+      for_each = var.expose_via_service_connect ? var.additional_service_ports : []
+      content {
+        port_name      = service.value.name
+        discovery_name = service.value.discovery_name
+        client_alias {
+          port     = service.value.client_alias_port
+          dns_name = service.value.dns_name
+        }
+      }
+    }
   }
 
   deployment_minimum_healthy_percent = 100
@@ -162,8 +183,7 @@ resource "aws_ecs_service" "service" {
 
   lifecycle {
     ignore_changes = [
-      desired_count,   # Managed by auto-scaling
-      task_definition, # Managed by CI/CD service pipelines (not Terraform)
+      desired_count, # Managed by auto-scaling
     ]
   }
 

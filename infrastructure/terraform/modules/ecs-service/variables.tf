@@ -46,6 +46,17 @@ variable "environment_vars" {
   type    = list(object({ name = string, value = string }))
   default = []
 }
+variable "additional_service_ports" {
+  type = list(object({
+    name              = string
+    container_port    = number
+    protocol          = string
+    discovery_name    = string
+    dns_name          = string
+    client_alias_port = number
+  }))
+  default = []
+}
 variable "secrets" {
   type      = list(object({ name = string, valueFrom = string }))
   default   = []
