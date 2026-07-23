@@ -50,3 +50,13 @@ output "cloudwatch_dashboard" {
   description = "CloudWatch Dashboard name — open in AWS Console"
   value       = module.cloudwatch.dashboard_name
 }
+
+output "web_cdn_distribution_id" {
+  description = "CloudFront distribution ID for the web UI CDN"
+  value       = try(module.web_cdn[0].distribution_id, "")
+}
+
+output "web_cdn_domain_name" {
+  description = "CloudFront CDN domain for static web/mobile assets"
+  value       = try(module.web_cdn[0].domain_name, "")
+}

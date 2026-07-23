@@ -68,6 +68,24 @@ variable "acm_certificate_arn" {
   default     = ""
 }
 
+variable "cloudfront_acm_certificate_arn" {
+  description = "Optional us-east-1 ACM certificate ARN for CloudFront custom domains."
+  type        = string
+  default     = ""
+}
+
+variable "cloudfront_aliases" {
+  description = "Optional custom domain aliases for the CloudFront distribution."
+  type        = list(string)
+  default     = []
+}
+
+variable "web_ui_bucket_name" {
+  description = "S3 bucket name used for static web/mobile content. Leave empty to skip CloudFront."
+  type        = string
+  default     = ""
+}
+
 variable "mongodb_uris" {
   description = "Map of service name -> MongoDB Atlas URI (each service has its own database)"
   type        = map(string)

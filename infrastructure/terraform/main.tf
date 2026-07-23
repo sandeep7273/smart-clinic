@@ -140,6 +140,19 @@ module "cloudwatch" {
   aws_region       = var.aws_region
 }
 
+# 8d. CloudFront CDN for static web/mobile assets hosted in S3
+module "web_cdn" {
+  count       = var.web_ui_bucket_name != "" ? 1 : 0
+  source      = "./modules/cloudfront"
+  project     = var.project
+  environment = var.environment
+  aws_region  = var.aws_region
+
+  web_ui_bucket_name  = var.web_ui_bucket_name
+  acm_certificate_arn = var.cloudfront_acm_certificate_arn
+  aliases             = var.cloudfront_aliases
+}
+
 # ── SNS Alert Topic ────────────────────────────────────────────────────────────
 resource "aws_sns_topic" "alerts" {
   name = "${var.project}-${var.environment}-alerts"

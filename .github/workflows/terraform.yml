@@ -110,6 +110,9 @@ jobs:
           vpc_cidr           = "10.0.0.0/16"
           availability_zones = ["ap-south-1a", "ap-south-1b"]
           acm_certificate_arn = ""
+          cloudfront_acm_certificate_arn = ""
+          cloudfront_aliases = []
+          web_ui_bucket_name = "smartclinic-web-ui-${{ secrets.AWS_ACCOUNT_ID }}-aps1"
 
           api_gateway_image         = "${API_GW_IMAGE}"
           auth_service_image        = "${AUTH_IMAGE}"
