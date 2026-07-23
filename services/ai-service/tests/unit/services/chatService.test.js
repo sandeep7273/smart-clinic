@@ -124,12 +124,12 @@ describe("ChatService", () => {
 
     it("should return deferred doctor search before external lookups", async () => {
       config.chat.doctorLookupMode = "deferred";
-      const message = "show me cardiologists";
+      const message = "Search for doctors";
       const ruleBasedIntent = {
         intent: "SEARCH_DOCTOR",
         confidence: 0.9,
         entities: {
-          specialization: "Cardiology",
+          specialization: null,
           symptoms: [],
           date: null,
           location: null,
@@ -138,9 +138,6 @@ describe("ChatService", () => {
 
       intentDetectionService.detectIntentFallback.mockReturnValue(
         ruleBasedIntent,
-      );
-      intentDetectionService.normalizeSpecialization.mockReturnValue(
-        "Cardiology",
       );
 
       const result = await chatService.processMessage(
@@ -152,7 +149,7 @@ describe("ChatService", () => {
       expect(result.success).toBe(true);
       expect(result.intent).toBe("SEARCH_DOCTOR");
       expect(result.data.actionType).toBe("SEARCH_DOCTOR");
-      expect(result.data.payload.specialization).toBe("Cardiology");
+      expect(result.data.payload.specialization).toBeNull();
       expect(redisClient.getContext).not.toHaveBeenCalled();
       expect(intentDetectionService.detectIntent).not.toHaveBeenCalled();
       expect(doctorClient.searchDoctors).not.toHaveBeenCalled();

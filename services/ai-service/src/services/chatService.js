@@ -207,9 +207,10 @@ class ChatService {
     try {
       let specialization =
         intentResult.entities.specialization ||
-        intentDetectionService.extractSpecialization(message);
-      const location = intentResult.entities.location;
-      const symptoms = intentResult.entities.symptoms;
+        intentDetectionService.extractSpecialization(message) ||
+        null;
+      const location = intentResult.entities.location || null;
+      const symptoms = intentResult.entities.symptoms || [];
 
       // Normalize specialization to match database format
       if (specialization) {
@@ -219,15 +220,6 @@ class ChatService {
           original: intentResult.entities.specialization,
           normalized: specialization,
         });
-      }
-
-      if (!specialization && !location && !symptoms) {
-        return {
-          message:
-            "I can help you find a doctor. Which type of specialist are you looking for? (e.g., Cardiologist, Dermatologist, Pediatrician)",
-          actionType: "NONE",
-          payload: {},
-        };
       }
 
       if (config.chat.doctorLookupMode === "deferred") {
@@ -246,6 +238,15 @@ class ChatService {
             total: 0,
             doctors: [],
           },
+        };
+      }
+
+      if (!specialization && !location && symptoms.length === 0) {
+        return {
+          message:
+            "I can help you find a doctor. Which type of specialist are you looking for? (e.g., Cardiologist, Dermatologist, Pediatrician)",
+          actionType: "NONE",
+          payload: {},
         };
       }
 

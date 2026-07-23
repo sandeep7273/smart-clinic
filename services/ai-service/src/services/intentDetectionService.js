@@ -221,18 +221,18 @@ class IntentDetectionService {
 
     // ── SEARCH_DOCTOR ─────────────────────────────────────────────
     const searchPatterns = [
-      /\bfind\b.{0,30}\b(doctor|physician|specialist|surgeon)\b/,
-      /\bsearch\b.{0,30}\b(doctor|physician|specialist)\b/,
-      /\bshow\b.{0,30}\b(doctor|physician|specialist)\b/,
-      /\blook(ing)?\b.{0,30}\b(doctor|physician|specialist)\b/,
-      /\bneed\b.{0,30}\b(doctor|physician|specialist|appointment)\b/,
-      /\bwant\b.{0,30}\b(doctor|physician|specialist)\b/,
-      /\brecommend\b.{0,30}\b(doctor|physician|specialist)\b/,
-      /\blist\b.{0,30}\b(doctor|physician|specialist)\b/,
-      /\bget\b.{0,30}\b(doctor|physician|specialist)\b/,
-      /\bsee\b.{0,30}\b(doctor|physician|specialist)\b/,
-      /\bavailable\b.{0,30}\b(doctor|physician|specialist)\b/,
-      /\b(doctor|physician|specialist)\b.{0,30}\bavailable\b/,
+      /\bfind\b.{0,30}\b(doctors?|physicians?|specialists?|surgeons?)\b/,
+      /\bsearch\b.{0,30}\b(doctors?|physicians?|specialists?)\b/,
+      /\bshow\b.{0,30}\b(doctors?|physicians?|specialists?)\b/,
+      /\blook(ing)?\b.{0,30}\b(doctors?|physicians?|specialists?)\b/,
+      /\bneed\b.{0,30}\b(doctors?|physicians?|specialists?|appointments?)\b/,
+      /\bwant\b.{0,30}\b(doctors?|physicians?|specialists?)\b/,
+      /\brecommend\b.{0,30}\b(doctors?|physicians?|specialists?)\b/,
+      /\blist\b.{0,30}\b(doctors?|physicians?|specialists?)\b/,
+      /\bget\b.{0,30}\b(doctors?|physicians?|specialists?)\b/,
+      /\bsee\b.{0,30}\b(doctors?|physicians?|specialists?)\b/,
+      /\bavailable\b.{0,30}\b(doctors?|physicians?|specialists?)\b/,
+      /\b(doctors?|physicians?|specialists?)\b.{0,30}\bavailable\b/,
     ];
 
     // Direct specialist name patterns (e.g. "show me neurologists", "i need a cardiologist")
@@ -324,7 +324,6 @@ class IntentDetectionService {
     try {
       const simpleDoctorSearch =
         ruleBasedIntent.intent === this.INTENTS.SEARCH_DOCTOR &&
-        !!ruleBasedIntent.entities.specialization &&
         !/\b(in|near|around|at|on|tomorrow|today|next|after|before)\b/i.test(
           userQuery,
         );
@@ -416,7 +415,10 @@ Respond in strict JSON format:
     for (const [keyword, specialization] of Object.entries(
       this.specializationMap,
     )) {
-      if (lowerQuery.includes(keyword)) {
+      const pattern = new RegExp(
+        `\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}s?\\b`,
+      );
+      if (pattern.test(lowerQuery)) {
         return specialization;
       }
     }

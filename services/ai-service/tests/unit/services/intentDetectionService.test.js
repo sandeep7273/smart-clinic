@@ -244,6 +244,14 @@ describe('IntentDetectionService', () => {
 
       expect(result.intent).toBe('UNKNOWN');
     });
+
+    it('should detect generic plural doctor search without the LLM', async () => {
+      const result = await intentDetectionService.detectIntent('Search for doctors');
+
+      expect(result.intent).toBe('SEARCH_DOCTOR');
+      expect(result.entities.specialization).toBe(null);
+      expect(mockGroqInstance.chat.completions.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('extractSpecialization', () => {
@@ -306,6 +314,13 @@ describe('IntentDetectionService', () => {
     it('should return null for unrecognized specialization', () => {
       const result = intentDetectionService.extractSpecialization(
         'I need help with something else'
+      );
+      expect(result).toBe(null);
+    });
+
+    it('should not match specialization keywords inside unrelated words', () => {
+      const result = intentDetectionService.extractSpecialization(
+        'Search for doctors'
       );
       expect(result).toBe(null);
     });
