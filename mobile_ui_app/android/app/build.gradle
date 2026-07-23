@@ -125,3 +125,8 @@ dependencies {
         implementation jscFlavor
     }
 }
+
+afterEvaluate {
+    // Temporary: allow HTTP calls from release builds while the AWS ALB is still HTTP-only.
+    android.buildTypes.release.manifestPlaceholders["usesCleartextTraffic"] = "true"
+}
