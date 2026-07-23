@@ -71,7 +71,9 @@ test-output.txt
 **/terraform.tfstate.backup
 **/terraform.tfstate.*.backup
 **/tfplan
+**/tf-*-plan
 **/plan-output.txt
+.terraform-recovery/
 
 # terraform.tfvars files contain real secrets — never commit
 **/terraform.tfvars
