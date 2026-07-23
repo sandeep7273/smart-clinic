@@ -16,6 +16,7 @@ const ragService = require("../../../src/services/ragService");
 const doctorClient = require("../../../src/grpc/doctorClient");
 const appointmentClient = require("../../../src/grpc/appointmentClient");
 const redisClient = require("../../../src/config/redis");
+const config = require("../../../src/config");
 
 describe("ChatService", () => {
   const mockAuthToken = "Bearer test-token";
@@ -27,6 +28,7 @@ describe("ChatService", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    config.chat.doctorLookupMode = "immediate";
     // Require ChatService after mocks are cleared and configured so that
     // hoisted jest.mock calls prevent loading ESM-only dependencies from
     // `ragService` during module initialization.
@@ -118,6 +120,42 @@ describe("ChatService", () => {
         role: "assistant",
         content: expect.any(String),
       });
+    });
+
+    it("should return deferred doctor search before external lookups", async () => {
+      config.chat.doctorLookupMode = "deferred";
+      const message = "show me cardiologists";
+      const ruleBasedIntent = {
+        intent: "SEARCH_DOCTOR",
+        confidence: 0.9,
+        entities: {
+          specialization: "Cardiology",
+          symptoms: [],
+          date: null,
+          location: null,
+        },
+      };
+
+      intentDetectionService.detectIntentFallback.mockReturnValue(
+        ruleBasedIntent,
+      );
+      intentDetectionService.normalizeSpecialization.mockReturnValue(
+        "Cardiology",
+      );
+
+      const result = await chatService.processMessage(
+        mockUserId,
+        message,
+        mockAuthToken,
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.intent).toBe("SEARCH_DOCTOR");
+      expect(result.data.actionType).toBe("SEARCH_DOCTOR");
+      expect(result.data.payload.specialization).toBe("Cardiology");
+      expect(redisClient.getContext).not.toHaveBeenCalled();
+      expect(intentDetectionService.detectIntent).not.toHaveBeenCalled();
+      expect(doctorClient.searchDoctors).not.toHaveBeenCalled();
     });
   });
 

@@ -55,6 +55,26 @@ class ChatService {
     try {
       logger.info(`Processing message for user ${userId}: ${message}`);
 
+      if (config.chat.doctorLookupMode === "deferred") {
+        const ruleBasedIntent =
+          intentDetectionService.detectIntentFallback(message);
+
+        if (ruleBasedIntent.intent === this.INTENTS.SEARCH_DOCTOR) {
+          const response = await this.handleSearchDoctor(
+            message,
+            ruleBasedIntent,
+            authToken,
+          );
+
+          return {
+            success: true,
+            data: response,
+            intent: ruleBasedIntent.intent,
+            entities: ruleBasedIntent.entities,
+          };
+        }
+      }
+
       // Get conversation context
       const context = await redisClient.getContext(userId);
 
@@ -207,6 +227,25 @@ class ChatService {
             "I can help you find a doctor. Which type of specialist are you looking for? (e.g., Cardiologist, Dermatologist, Pediatrician)",
           actionType: "NONE",
           payload: {},
+        };
+      }
+
+      if (config.chat.doctorLookupMode === "deferred") {
+        const searchText =
+          [specialization, location ? `in ${location}` : null]
+            .filter(Boolean)
+            .join(" ") || "doctors";
+
+        return {
+          message: `I can show you ${searchText}. Would you like to view matching doctors?`,
+          actionType: "SEARCH_DOCTOR",
+          payload: {
+            specialization,
+            location,
+            count: 0,
+            total: 0,
+            doctors: [],
+          },
         };
       }
 

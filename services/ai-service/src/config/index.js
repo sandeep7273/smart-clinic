@@ -62,6 +62,7 @@ module.exports = {
 
   chat: {
     timeoutMs: parseInt(process.env.CHAT_PROCESSING_TIMEOUT_MS) || 18000,
+    doctorLookupMode: process.env.CHAT_DOCTOR_LOOKUP_MODE || "immediate",
   },
 
   // Rate Limiting

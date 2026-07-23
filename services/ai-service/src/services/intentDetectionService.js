@@ -319,7 +319,21 @@ class IntentDetectionService {
    * Tries LLM first; falls back to rule-based detection if LLM is unavailable.
    */
   async detectIntent(userQuery, context = []) {
+    const ruleBasedIntent = this.detectIntentFallback(userQuery);
+
     try {
+      const simpleDoctorSearch =
+        ruleBasedIntent.intent === this.INTENTS.SEARCH_DOCTOR &&
+        !!ruleBasedIntent.entities.specialization &&
+        !/\b(in|near|around|at|on|tomorrow|today|next|after|before)\b/i.test(
+          userQuery,
+        );
+
+      if (simpleDoctorSearch) {
+        logger.info("Intent detected (rule-based):", ruleBasedIntent);
+        return ruleBasedIntent;
+      }
+
       const systemPrompt = `You are a medical assistant AI that helps users book doctor appointments.
 Your task is to analyze the user's query and determine their intent.
 
@@ -388,9 +402,8 @@ Respond in strict JSON format:
       } else {
         logger.error("Error detecting intent:", error.message);
       }
-      const fallback = this.detectIntentFallback(userQuery);
-      logger.info("Intent detected (rule-based fallback):", fallback);
-      return fallback;
+      logger.info("Intent detected (rule-based fallback):", ruleBasedIntent);
+      return ruleBasedIntent;
     }
   }
 

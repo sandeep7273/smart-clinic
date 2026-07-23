@@ -137,6 +137,14 @@ function isRetryableResolutionError(error) {
   );
 }
 
+function shouldPreferIpv4Target(target) {
+  const { host } = parseTarget(target);
+  return (
+    process.env.GRPC_PREFER_CLOUD_MAP_IPV4 !== "false" &&
+    host.endsWith(".smartclinic.local")
+  );
+}
+
 function createCloudMapGrpcClient({
   configuredTarget,
   createClient,
@@ -195,6 +203,31 @@ function createCloudMapGrpcClient({
   }
 
   async function call(methodName, request) {
+    if (shouldPreferIpv4Target(configuredTarget)) {
+      const fallbackClient = await getFallbackClient();
+      try {
+        return await callGrpc(fallbackClient, methodName, request);
+      } catch (fallbackError) {
+        if (!isRetryableResolutionError(fallbackError)) {
+          throw fallbackError;
+        }
+
+        logger.warn(
+          `${logPrefix}: Refreshing preferred IPv4 target after connection failure`,
+          {
+            methodName,
+            staleTarget: activeTarget,
+            error: fallbackError.message,
+          },
+        );
+
+        const refreshedFallbackClient = await getFallbackClient({
+          forceRefresh: true,
+        });
+        return callGrpc(refreshedFallbackClient, methodName, request);
+      }
+    }
+
     try {
       return await callGrpc(client, methodName, request);
     } catch (error) {
