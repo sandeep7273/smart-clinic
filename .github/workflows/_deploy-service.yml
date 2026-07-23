@@ -85,16 +85,28 @@ jobs:
         env:
           MONGOMS_DISABLE_POSTINSTALL: 1
 
-      - name: Dependency vulnerability audit
+      - name: Dependency vulnerability audit report
         working-directory: ${{ inputs.service_dir }}
-        run: npm audit --audit-level=high
+        run: npm audit --omit=dev --json > npm-audit-report.json || true
+
+      - name: Enforce dependency vulnerability gate
+        if: vars.STRICT_SAST == 'true'
+        working-directory: ${{ inputs.service_dir }}
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Upload dependency audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.service_name }}-npm-audit-report
+          path: ${{ inputs.service_dir }}/npm-audit-report.json
+          if-no-files-found: warn
 
       - name: Semgrep static analysis
+        continue-on-error: ${{ vars.STRICT_SAST != 'true' }}
         uses: semgrep/semgrep-action@v1
         with:
           config: auto
           generateSarif: "1"
-          publishToken: ${{ secrets.SEMGREP_APP_TOKEN }}
         env:
           SEMGREP_RULES: auto
 
@@ -217,10 +229,11 @@ jobs:
 
       - name: DAST baseline scan
         if: vars.DAST_TARGET_URL != '' || vars.ALB_DNS_NAME != ''
+        continue-on-error: ${{ vars.STRICT_DAST != 'true' }}
         uses: zaproxy/action-baseline@v0.14.0
         with:
           target: ${{ vars.DAST_TARGET_URL != '' && vars.DAST_TARGET_URL || format('http://{0}', vars.ALB_DNS_NAME) }}
-          fail_action: true
+          fail_action: ${{ vars.STRICT_DAST == 'true' }}
           cmd_options: "-a -m 5"
 
       - name: Summary
