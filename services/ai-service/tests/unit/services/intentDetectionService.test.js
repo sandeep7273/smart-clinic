@@ -305,6 +305,29 @@ describe("IntentDetectionService", () => {
       expect(result.entities.symptoms).toEqual(["chest pain"]);
     });
 
+    it("should infer Cardiology from heart and blood pressure symptom phrases", () => {
+      const heartAttack = intentDetectionService.detectIntentFallback(
+        "heart attack symptoms",
+      );
+      const bloodPressure = intentDetectionService.detectIntentFallback(
+        "high blood pressure symptoms",
+      );
+
+      expect(heartAttack.entities.specialization).toBe("Cardiology");
+      expect(heartAttack.entities.symptoms).toEqual(["heart attack"]);
+      expect(bloodPressure.intent).toBe("HEALTH_QUERY");
+      expect(bloodPressure.entities.specialization).toBe("Cardiology");
+      expect(bloodPressure.entities.symptoms).toEqual(["high blood pressure"]);
+    });
+
+    it("should infer General Medicine from common symptom-only phrases", () => {
+      const result = intentDetectionService.detectIntentFallback("tooth pain");
+
+      expect(result.intent).toBe("HEALTH_QUERY");
+      expect(result.entities.specialization).toBe("General Medicine");
+      expect(result.entities.symptoms).toEqual(["tooth pain"]);
+    });
+
     it("should infer specialization when searching doctors by symptoms", () => {
       const result = intentDetectionService.detectIntentFallback(
         "find doctors for fever and cough",

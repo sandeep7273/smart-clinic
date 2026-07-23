@@ -202,6 +202,38 @@ describe("ChatService", () => {
       expect(intentDetectionService.detectIntent).not.toHaveBeenCalled();
     });
 
+    it("should return appointment action without gRPC lookup in deferred mode", async () => {
+      config.chat.doctorLookupMode = "deferred";
+      const ruleBasedIntent = {
+        intent: "SHOW_APPOINTMENTS",
+        confidence: 0.9,
+        entities: {
+          specialization: null,
+          symptoms: [],
+          date: null,
+          location: null,
+        },
+      };
+
+      intentDetectionService.detectIntentFallback.mockReturnValue(
+        ruleBasedIntent,
+      );
+
+      const result = await chatService.processMessage(
+        mockUserId,
+        "view your appointments",
+        mockAuthToken,
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.intent).toBe("SHOW_APPOINTMENTS");
+      expect(result.data.actionType).toBe("SHOW_APPOINTMENTS");
+      expect(result.data.message).toContain("show your appointments");
+      expect(redisClient.getContext).not.toHaveBeenCalled();
+      expect(intentDetectionService.detectIntent).not.toHaveBeenCalled();
+      expect(appointmentClient.getUserAppointments).not.toHaveBeenCalled();
+    });
+
     it("should route generic booking requests to appointment booking action", async () => {
       const ruleBasedIntent = {
         intent: "BOOK_APPOINTMENT",
@@ -255,6 +287,43 @@ describe("ChatService", () => {
       const result = await chatService.processMessage(
         mockUserId,
         "I have fever and cough",
+        mockAuthToken,
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.intent).toBe("HEALTH_QUERY");
+      expect(result.data.actionType).toBe("SEARCH_DOCTOR");
+      expect(result.data.payload.specialization).toBe("General Medicine");
+      expect(redisClient.getContext).not.toHaveBeenCalled();
+      expect(intentDetectionService.detectIntent).not.toHaveBeenCalled();
+      expect(ragService.generateResponseWithRAG).not.toHaveBeenCalled();
+    });
+
+    it("should route generic health queries to General Medicine in deferred mode", async () => {
+      config.chat.doctorLookupMode = "deferred";
+      const ruleBasedIntent = {
+        intent: "HEALTH_QUERY",
+        confidence: 0.75,
+        entities: {
+          specialization: null,
+          symptoms: [],
+          date: null,
+          location: null,
+        },
+      };
+
+      intentDetectionService.detectIntentFallback.mockReturnValue(
+        ruleBasedIntent,
+      );
+      intentDetectionService.extractSpecialization.mockReturnValue(null);
+      intentDetectionService.inferSpecializationFromSymptoms.mockReturnValue(
+        null,
+      );
+      intentDetectionService.normalizeSpecialization.mockReturnValue(null);
+
+      const result = await chatService.processMessage(
+        mockUserId,
+        "high blood pressure symptoms",
         mockAuthToken,
       );
 

@@ -28,8 +28,7 @@ class ChatService {
   shouldUseRuleBasedFastPath(intentResult) {
     if (
       intentResult.intent === this.INTENTS.HEALTH_QUERY &&
-      (intentResult.entities?.specialization ||
-        intentResult.entities?.symptoms?.length)
+      config.chat.doctorLookupMode === "deferred"
     ) {
       return true;
     }
@@ -200,10 +199,7 @@ class ChatService {
           symptoms,
         );
 
-      if (
-        config.chat.doctorLookupMode === "deferred" &&
-        (specialization || symptoms.length > 0)
-      ) {
+      if (config.chat.doctorLookupMode === "deferred") {
         const normalizedSpecialization =
           intentDetectionService.normalizeSpecialization(specialization) ||
           "General Medicine";
@@ -212,7 +208,7 @@ class ChatService {
           : "your symptoms";
 
         return {
-          message: `For ${symptomText}, a ${normalizedSpecialization} doctor can help assess you. Would you like to view matching doctors?`,
+          message: `${symptoms.length ? `For ${symptomText}, a` : "A"} ${normalizedSpecialization} doctor can help assess ${symptoms.length ? "you" : "this"}. Would you like to view matching doctors?`,
           actionType: "SEARCH_DOCTOR",
           payload: {
             specialization: normalizedSpecialization,
@@ -453,6 +449,14 @@ class ChatService {
    */
   async handleShowAppointments(userId, message, authToken) {
     try {
+      if (config.chat.doctorLookupMode === "deferred") {
+        return {
+          message: "I can show your appointments. Would you like to view them?",
+          actionType: "SHOW_APPOINTMENTS",
+          payload: {},
+        };
+      }
+
       // Check cache first
       let appointments = await redisClient.getCachedUserAppointments(userId);
 

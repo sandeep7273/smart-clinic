@@ -447,8 +447,17 @@ Respond in strict JSON format:
     const symptomKeywords = [
       "fever",
       "cough",
+      "cold",
+      "flu",
       "chest pain",
+      "heart attack",
+      "palpitations",
+      "high blood pressure",
+      "blood pressure",
+      "hypertension",
       "shortness of breath",
+      "breathing difficulty",
+      "dizziness",
       "headache",
       "migraine",
       "rash",
@@ -458,9 +467,15 @@ Respond in strict JSON format:
       "bone pain",
       "stomach pain",
       "abdominal pain",
+      "nausea",
+      "vomiting",
+      "diarrhea",
       "ear pain",
+      "sore throat",
       "throat pain",
       "eye pain",
+      "tooth pain",
+      "dental pain",
       "anxiety",
       "depression",
       "diabetes",
@@ -468,19 +483,28 @@ Respond in strict JSON format:
       "pregnancy",
     ];
 
-    return symptomKeywords.filter((symptom) => {
+    return symptomKeywords.reduce((matches, symptom) => {
       const pattern = new RegExp(
         `\\b${symptom.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
       );
-      return pattern.test(lowerQuery);
-    });
+
+      if (
+        pattern.test(lowerQuery) &&
+        !matches.some((match) => match.includes(symptom))
+      ) {
+        matches.push(symptom);
+      }
+
+      return matches;
+    }, []);
   }
 
   inferSpecializationFromSymptoms(query, symptoms = []) {
     const symptomText = `${query} ${symptoms.join(" ")}`.toLowerCase();
     const mappings = [
       {
-        pattern: /\b(chest pain|shortness of breath|heart)\b/,
+        pattern:
+          /\b(chest pain|shortness of breath|breathing difficulty|heart|heart attack|palpitations|high blood pressure|blood pressure|hypertension)\b/,
         specialization: "Cardiology",
       },
       { pattern: /\b(rash|acne|skin)\b/, specialization: "Dermatology" },
@@ -511,7 +535,8 @@ Respond in strict JSON format:
         specialization: "Gynecology",
       },
       {
-        pattern: /\b(fever|cough|infection|sick|stomach pain|abdominal pain)\b/,
+        pattern:
+          /\b(fever|cough|cold|flu|infection|sick|stomach pain|abdominal pain|nausea|vomiting|diarrhea|tooth pain|dental pain|dizziness)\b/,
         specialization: "General Medicine",
       },
     ];
