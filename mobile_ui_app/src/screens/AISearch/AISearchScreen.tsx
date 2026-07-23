@@ -13,14 +13,15 @@ import {
 } from 'react-native';
 import { AISearchScreenProps } from '../../navigation/types';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  aiChatApi, 
-  ChatMessage, 
-  ActionType, 
-  DoctorInfo, 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  aiChatApi,
+  ChatMessage,
+  ActionType,
+  DoctorInfo,
   AppointmentInfo,
   SearchDoctorPayload,
-  ShowAppointmentsPayload 
+  ShowAppointmentsPayload,
 } from '../../api/ai.api';
 
 interface DisplayMessage extends ChatMessage {
@@ -31,6 +32,8 @@ interface DisplayMessage extends ChatMessage {
 
 export default function AISearchScreen({ navigation }: AISearchScreenProps) {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
+  const inputBottomPadding = 10 + insets.bottom;
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -45,11 +48,12 @@ export default function AISearchScreen({ navigation }: AISearchScreenProps) {
         id: 'welcome',
         userId: 'system',
         role: 'assistant',
-        content: 'Hello! I\'m your AI health assistant. How can I help you today?\n\nYou can:\n• Ask about symptoms\n• Search for doctors\n• View your appointments\n• Book appointments',
+        content:
+          "Hello! I'm your AI health assistant. How can I help you today?\n\nYou can:\n• Ask about symptoms\n• Search for doctors\n• View your appointments\n• Book appointments",
         timestamp: new Date().toISOString(),
       },
     ]);
-    
+
     // Load conversation history in background
     loadConversationHistory();
   }, []);
@@ -108,7 +112,7 @@ export default function AISearchScreen({ navigation }: AISearchScreenProps) {
         };
 
         setMessages(prev => [...prev, assistantMessage]);
-        
+
         // Scroll to bottom after a short delay
         setTimeout(() => {
           scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -119,7 +123,7 @@ export default function AISearchScreen({ navigation }: AISearchScreenProps) {
     } catch (error: any) {
       console.error('Error sending message:', error);
       Alert.alert('Error', 'Failed to send message. Please try again.');
-      
+
       // Add error message
       const errorMessage: DisplayMessage = {
         id: `error-${Date.now()}`,
@@ -138,28 +142,28 @@ export default function AISearchScreen({ navigation }: AISearchScreenProps) {
     switch (actionType) {
       case ActionType.SEARCH_DOCTOR:
         if (payload?.specialization) {
-          navigation.navigate('DoctorList', { 
-            specialization: payload.specialization 
+          navigation.navigate('DoctorList', {
+            specialization: payload.specialization,
           });
         } else {
           navigation.navigate('DoctorList', {});
         }
         break;
-      
+
       case ActionType.SHOW_APPOINTMENTS:
         navigation.navigate('AppointmentList');
         break;
-      
+
       case ActionType.BOOK_APPOINTMENT:
         if (payload?.specialization) {
-          navigation.navigate('DoctorList', { 
-            specialization: payload.specialization 
+          navigation.navigate('DoctorList', {
+            specialization: payload.specialization,
           });
         } else {
           navigation.navigate('DoctorList', {});
         }
         break;
-      
+
       default:
         break;
     }
@@ -186,25 +190,38 @@ export default function AISearchScreen({ navigation }: AISearchScreenProps) {
             }
           },
         },
-      ]
+      ],
     );
   };
 
   const renderDoctorCard = (doctor: DoctorInfo) => {
     // Build location string safely
     const locationParts: string[] = [];
-    if (doctor.street && typeof doctor.street === 'string') locationParts.push(doctor.street);
-    if (doctor.city && typeof doctor.city === 'string') locationParts.push(doctor.city);
-    if (doctor.state && typeof doctor.state === 'string') locationParts.push(doctor.state);
+    if (doctor.street && typeof doctor.street === 'string')
+      locationParts.push(doctor.street);
+    if (doctor.city && typeof doctor.city === 'string')
+      locationParts.push(doctor.city);
+    if (doctor.state && typeof doctor.state === 'string')
+      locationParts.push(doctor.state);
     const locationStr = locationParts.join(', ');
 
     // Ensure all values are strings or numbers
-    const doctorName = doctor.name && typeof doctor.name === 'string' ? doctor.name : 'Unknown Doctor';
-    const doctorSpec = doctor.specialization && typeof doctor.specialization === 'string' ? doctor.specialization : 'General Practitioner';
+    const doctorName =
+      doctor.name && typeof doctor.name === 'string'
+        ? doctor.name
+        : 'Unknown Doctor';
+    const doctorSpec =
+      doctor.specialization && typeof doctor.specialization === 'string'
+        ? doctor.specialization
+        : 'General Practitioner';
     const doctorRating = typeof doctor.rating === 'number' ? doctor.rating : 0;
-    const doctorExp = typeof doctor.experience === 'number' ? doctor.experience : 0;
-    const doctorFee = typeof doctor.consultationFee === 'number' ? doctor.consultationFee : 0;
-    const doctorLangs = Array.isArray(doctor.languages) ? doctor.languages.filter(l => typeof l === 'string') : [];
+    const doctorExp =
+      typeof doctor.experience === 'number' ? doctor.experience : 0;
+    const doctorFee =
+      typeof doctor.consultationFee === 'number' ? doctor.consultationFee : 0;
+    const doctorLangs = Array.isArray(doctor.languages)
+      ? doctor.languages.filter(l => typeof l === 'string')
+      : [];
 
     return (
       <View key={doctor.id} style={styles.infoCard}>
@@ -217,7 +234,9 @@ export default function AISearchScreen({ navigation }: AISearchScreenProps) {
           <Text style={styles.cardDetail}>📅 {doctorExp} years experience</Text>
         )}
         {doctorFee > 0 && (
-          <Text style={styles.cardDetail}>💰 ₹{doctorFee} consultation fee</Text>
+          <Text style={styles.cardDetail}>
+            💰 ₹{doctorFee} consultation fee
+          </Text>
         )}
         {locationStr.length > 0 && (
           <Text style={styles.cardDetail}>📍 {locationStr}</Text>
@@ -237,7 +256,7 @@ export default function AISearchScreen({ navigation }: AISearchScreenProps) {
           weekday: 'short',
           year: 'numeric',
           month: 'short',
-          day: 'numeric'
+          day: 'numeric',
         });
       } catch {
         return dateStr || 'Date not available';
@@ -275,23 +294,30 @@ export default function AISearchScreen({ navigation }: AISearchScreenProps) {
     };
 
     // Extract safe values
-    const doctorName = appointment.doctorName && typeof appointment.doctorName === 'string' 
-      ? appointment.doctorName 
-      : 'Unknown Doctor';
-    const specialization = appointment.specialization && typeof appointment.specialization === 'string'
-      ? appointment.specialization
-      : '';
-    const status = appointment.status && typeof appointment.status === 'string'
-      ? appointment.status
-      : 'unknown';
-    const appointmentType = appointment.type && typeof appointment.type === 'string'
-      ? appointment.type
-      : '';
-    
+    const doctorName =
+      appointment.doctorName && typeof appointment.doctorName === 'string'
+        ? appointment.doctorName
+        : 'Unknown Doctor';
+    const specialization =
+      appointment.specialization &&
+      typeof appointment.specialization === 'string'
+        ? appointment.specialization
+        : '';
+    const status =
+      appointment.status && typeof appointment.status === 'string'
+        ? appointment.status
+        : 'unknown';
+    const appointmentType =
+      appointment.type && typeof appointment.type === 'string'
+        ? appointment.type
+        : '';
+
     // Build location string safely
     const locationParts: string[] = [];
-    if (appointment.city && typeof appointment.city === 'string') locationParts.push(appointment.city);
-    if (appointment.state && typeof appointment.state === 'string') locationParts.push(appointment.state);
+    if (appointment.city && typeof appointment.city === 'string')
+      locationParts.push(appointment.city);
+    if (appointment.state && typeof appointment.state === 'string')
+      locationParts.push(appointment.state);
     const locationStr = locationParts.join(', ');
 
     const formattedDate = formatDate(appointment.date || '');
@@ -302,7 +328,12 @@ export default function AISearchScreen({ navigation }: AISearchScreenProps) {
       <View key={appointment.id} style={styles.infoCard}>
         <View style={styles.appointmentHeader}>
           <Text style={styles.cardTitle}>{doctorName}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(status) }]}>
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: getStatusColor(status) },
+            ]}
+          >
             <Text style={styles.statusText}>{status}</Text>
           </View>
         </View>
@@ -316,9 +347,7 @@ export default function AISearchScreen({ navigation }: AISearchScreenProps) {
           </Text>
         )}
         {locationStr.length > 0 && (
-          <Text style={styles.cardDetail}>
-            📍 {locationStr}
-          </Text>
+          <Text style={styles.cardDetail}>📍 {locationStr}</Text>
         )}
         {appointmentType.length > 0 && (
           <Text style={styles.cardDetail}>📋 {appointmentType}</Text>
@@ -332,7 +361,10 @@ export default function AISearchScreen({ navigation }: AISearchScreenProps) {
 
     // Log payload for debugging
     if (!isUser && message.payload) {
-      console.log('AI Message Payload:', JSON.stringify(message.payload, null, 2));
+      console.log(
+        'AI Message Payload:',
+        JSON.stringify(message.payload, null, 2),
+      );
     }
 
     return (
@@ -340,13 +372,17 @@ export default function AISearchScreen({ navigation }: AISearchScreenProps) {
         key={message.id}
         style={[
           styles.messageContainer,
-          isUser ? styles.userMessageContainer : styles.assistantMessageContainer,
-        ]}>
+          isUser
+            ? styles.userMessageContainer
+            : styles.assistantMessageContainer,
+        ]}
+      >
         <View
           style={[
             styles.messageBubble,
             isUser ? styles.userBubble : styles.assistantBubble,
-          ]}>
+          ]}
+        >
           {!isUser && (
             <Text style={styles.assistantLabel}>🤖 AI Assistant</Text>
           )}
@@ -354,36 +390,56 @@ export default function AISearchScreen({ navigation }: AISearchScreenProps) {
             style={[
               styles.messageText,
               isUser ? styles.userMessageText : styles.assistantMessageText,
-            ]}>
+            ]}
+          >
             {message.content}
           </Text>
-          
+
           {message.disclaimer && (
             <Text style={styles.disclaimer}>⚠️ {message.disclaimer}</Text>
           )}
 
           {/* Render doctor cards if available */}
-          {!isUser && message.payload && 'doctors' in message.payload && message.payload.doctors && message.payload.doctors.length > 0 && (
-            <View style={styles.cardsContainer}>
-              {message.payload.doctors.map((doctor: DoctorInfo) => renderDoctorCard(doctor))}
-            </View>
-          )}
+          {!isUser &&
+            message.payload &&
+            'doctors' in message.payload &&
+            message.payload.doctors &&
+            message.payload.doctors.length > 0 && (
+              <View style={styles.cardsContainer}>
+                {message.payload.doctors.map((doctor: DoctorInfo) =>
+                  renderDoctorCard(doctor),
+                )}
+              </View>
+            )}
 
           {/* Render appointment cards if available */}
-          {!isUser && message.payload && 'appointments' in message.payload && message.payload.appointments && message.payload.appointments.length > 0 && (
-            <View style={styles.cardsContainer}>
-              {message.payload.appointments.map((appointment: AppointmentInfo) => renderAppointmentCard(appointment))}
-            </View>
-          )}
+          {!isUser &&
+            message.payload &&
+            'appointments' in message.payload &&
+            message.payload.appointments &&
+            message.payload.appointments.length > 0 && (
+              <View style={styles.cardsContainer}>
+                {message.payload.appointments.map(
+                  (appointment: AppointmentInfo) =>
+                    renderAppointmentCard(appointment),
+                )}
+              </View>
+            )}
 
           {message.actionType && message.actionType !== ActionType.NONE && (
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => handleActionButton(message.actionType!, message.payload)}>
+              onPress={() =>
+                handleActionButton(message.actionType!, message.payload)
+              }
+            >
               <Text style={styles.actionButtonText}>
-                {message.actionType === ActionType.SEARCH_DOCTOR && '🔍 Search Doctors'}
-                {message.actionType === ActionType.SHOW_APPOINTMENTS && '📅 View Appointments'}
-                {message.actionType === ActionType.BOOK_APPOINTMENT && '📝 Book Appointment'}
+                {message.actionType === ActionType.SEARCH_DOCTOR &&
+                  '🔍 Search Doctors'}
+                {message.actionType === ActionType.SHOW_APPOINTMENTS &&
+                  '📅 View Appointments'}
+                {message.actionType === ActionType.BOOK_APPOINTMENT &&
+                  '📝 Book Appointment'}
               </Text>
             </TouchableOpacity>
           )}
@@ -402,15 +458,21 @@ export default function AISearchScreen({ navigation }: AISearchScreenProps) {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
         <View style={styles.headerTitle}>
           <Text style={styles.headerText}>AI Health Assistant</Text>
-          <Text style={styles.headerSubtext}>Ask me anything about your health</Text>
+          <Text style={styles.headerSubtext}>
+            Ask me anything about your health
+          </Text>
         </View>
         <TouchableOpacity onPress={clearChat} style={styles.clearButton}>
           <Text style={styles.clearButtonText}>🗑️</Text>
@@ -422,7 +484,10 @@ export default function AISearchScreen({ navigation }: AISearchScreenProps) {
         ref={scrollViewRef}
         style={styles.messagesContainer}
         contentContainerStyle={styles.messagesContent}
-        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}>
+        onContentSizeChange={() =>
+          scrollViewRef.current?.scrollToEnd({ animated: true })
+        }
+      >
         {messages.map(renderMessage)}
         {isLoading && (
           <View style={styles.typingIndicator}>
@@ -435,7 +500,9 @@ export default function AISearchScreen({ navigation }: AISearchScreenProps) {
       </ScrollView>
 
       {/* Input Area */}
-      <View style={styles.inputContainer}>
+      <View
+        style={[styles.inputContainer, { paddingBottom: inputBottomPadding }]}
+      >
         <TextInput
           style={styles.input}
           value={inputText}
@@ -447,12 +514,14 @@ export default function AISearchScreen({ navigation }: AISearchScreenProps) {
           editable={!isLoading}
         />
         <TouchableOpacity
-          style={[styles.sendButton, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}
+          style={[
+            styles.sendButton,
+            (!inputText.trim() || isLoading) && styles.sendButtonDisabled,
+          ]}
           onPress={sendMessage}
-          disabled={!inputText.trim() || isLoading}>
-          <Text style={styles.sendButtonText}>
-            {isLoading ? '⏳' : '📤'}
-          </Text>
+          disabled={!inputText.trim() || isLoading}
+        >
+          <Text style={styles.sendButtonText}>{isLoading ? '⏳' : '📤'}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

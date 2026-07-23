@@ -19,6 +19,7 @@ NC='\033[0m' # No Color
 # Configuration
 IMAGE_NAME="appointment-service"
 IMAGE_TAG="latest"
+IMAGE_PLATFORM="${IMAGE_PLATFORM:-linux/amd64}"
 FULL_IMAGE_NAME="${IMAGE_NAME}:${IMAGE_TAG}"
 CONTAINER_NAME="appointment-service-test"
 
@@ -28,7 +29,7 @@ docker rm ${CONTAINER_NAME} 2>/dev/null || true
 
 echo ""
 echo -e "${YELLOW}Step 2: Building Docker image...${NC}"
-docker build -t ${FULL_IMAGE_NAME} .
+docker build --platform ${IMAGE_PLATFORM} -t ${FULL_IMAGE_NAME} .
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ Build successful!${NC}"

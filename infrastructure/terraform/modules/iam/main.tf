@@ -121,6 +121,11 @@ resource "aws_iam_role_policy" "common_task_permissions" {
         Effect   = "Allow"
         Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
         Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/ecs/${var.project}/${var.environment}/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["servicediscovery:DiscoverInstances"]
+        Resource = "*"
       }
     ]
   })

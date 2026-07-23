@@ -9,6 +9,8 @@ export interface Appointment {
   doctorId: string;
   doctor: {
     id: string;
+    name?: string;
+    specialization?: string;
     firstName: string;
     lastName: string;
     specializations: string[];

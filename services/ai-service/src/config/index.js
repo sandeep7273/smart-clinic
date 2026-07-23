@@ -25,6 +25,7 @@ module.exports = {
     model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
     maxTokens: parseInt(process.env.GROQ_MAX_TOKENS) || 1000,
     temperature: parseFloat(process.env.GROQ_TEMPERATURE) || 0.7,
+    timeoutMs: parseInt(process.env.GROQ_TIMEOUT_MS) || 8000,
   },
 
   // Vector Database
@@ -49,7 +50,7 @@ module.exports = {
       url:
         process.env.API_GATEWAY_INTERNAL_URL ||
         process.env.API_GATEWAY_URL ||
-        "http://api-gateway:3000",
+        "http://api-gateway.smartclinic.local:3000",
     },
   },
 
@@ -57,6 +58,11 @@ module.exports = {
   context: {
     maxMessages: parseInt(process.env.MAX_CONTEXT_MESSAGES) || 10,
     ttl: parseInt(process.env.CONTEXT_TTL) || 3600, // 1 hour
+  },
+
+  chat: {
+    timeoutMs: parseInt(process.env.CHAT_PROCESSING_TIMEOUT_MS) || 18000,
+    doctorLookupMode: process.env.CHAT_DOCTOR_LOOKUP_MODE || "immediate",
   },
 
   // Rate Limiting

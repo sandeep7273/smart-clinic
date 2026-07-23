@@ -4,7 +4,17 @@
 
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import BookingConfirmationScreen from '../../src/screens/BookingConfirmation/BookingConfirmationScreen';
+
+jest.mock('react-native-safe-area-context', () => {
+  const React = require('react');
+
+  return {
+    SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children,
+    useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+  };
+});
 
 // Mock navigation
 const mockNavigate = jest.fn();
@@ -58,10 +68,16 @@ describe('BookingConfirmationScreen', () => {
 
   const renderBookingConfirmationScreen = () => {
     return render(
-      <BookingConfirmationScreen
-        navigation={mockNavigation as any}
-        route={{ params: { appointment: mockAppointment, doctor: mockDoctor } } as any}
-      />
+      <SafeAreaProvider>
+        <BookingConfirmationScreen
+          navigation={mockNavigation as any}
+          route={
+            {
+              params: { appointment: mockAppointment, doctor: mockDoctor },
+            } as any
+          }
+        />
+      </SafeAreaProvider>,
     );
   };
 
@@ -87,7 +103,7 @@ describe('BookingConfirmationScreen', () => {
   it('should display appointment date and time', () => {
     const { getByText } = renderBookingConfirmationScreen();
 
-    expect(getByText(/09:00 - 09:30/)).toBeTruthy();
+    expect(getByText(/09:00\s*-\s*09:30/)).toBeTruthy();
   });
 
   it('should display appointment status', () => {

@@ -20,12 +20,18 @@ import { Appointment } from '../../types/appointment.types';
 import { ErrorModal } from '../../components/ErrorModal';
 import { getErrorMessage, getErrorTitle } from '../../utils/errorHandler';
 import { useAuth } from '../../context/AuthContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export default function AppointmentListScreen({ navigation }: AppointmentListScreenProps) {
+export default function AppointmentListScreen({
+  navigation,
+}: AppointmentListScreenProps) {
+  const insets = useSafeAreaInsets();
+  const footerBottomPadding = 16 + insets.bottom;
+  const listBottomPadding = 100 + insets.bottom;
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-const { user } = useAuth();
+  const { user } = useAuth();
   // Error modal state
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorTitle, setErrorTitle] = useState('Error');
@@ -38,8 +44,12 @@ const { user } = useAuth();
     try {
       setLoading(true);
       console.log('Fetching appointments for user:', user);
-      const response = await getPatientAppointments(user?.id || '', undefined, 20);
-      
+      const response = await getPatientAppointments(
+        user?.id || '',
+        undefined,
+        20,
+      );
+
       if (response.success) {
         console.log('Appointments fetched successfully:', response.data);
         setAppointments(response.data);
@@ -75,8 +85,23 @@ const { user } = useAuth();
    */
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return `${
+      months[date.getMonth()]
+    } ${date.getDate()}, ${date.getFullYear()}`;
   };
 
   /**
@@ -105,8 +130,12 @@ const { user } = useAuth();
   const handleAppointmentPress = (appointment: Appointment) => {
     Alert.alert(
       'Appointment Details',
-      `Appointment #${appointment.appointmentNumber}\n\nDate: ${formatDate(appointment.date)}\nTime: ${appointment.startTime} - ${appointment.endTime}\nStatus: ${appointment.status}\n\nReason: ${appointment.reason}`,
-      [{ text: 'OK' }]
+      `Appointment #${appointment.appointmentNumber}\n\nDate: ${formatDate(
+        appointment.date,
+      )}\nTime: ${appointment.startTime} - ${appointment.endTime}\nStatus: ${
+        appointment.status
+      }\n\nReason: ${appointment.reason}`,
+      [{ text: 'OK' }],
     );
   };
 
@@ -131,10 +160,14 @@ const { user } = useAuth();
         {/* Header */}
         <View style={styles.cardHeader}>
           <View>
-            <Text style={styles.appointmentNumber}>#{item.appointmentNumber}</Text>
+            <Text style={styles.appointmentNumber}>
+              #{item.appointmentNumber}
+            </Text>
             <Text style={styles.doctorName}>Dr. {item.doctor.name}</Text>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
+          <View
+            style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}
+          >
             <Text style={[styles.statusText, { color: statusColors.text }]}>
               {item.status.toUpperCase()}
             </Text>
@@ -218,8 +251,13 @@ const { user } = useAuth();
         <FlatList
           data={appointments}
           renderItem={renderAppointmentItem}
-          keyExtractor={(item, index) => item.id?.toString() || `appointment-${index}`}
-          contentContainerStyle={styles.listContent}
+          keyExtractor={(item, index) =>
+            item.id?.toString() || `appointment-${index}`
+          }
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: listBottomPadding },
+          ]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -233,7 +271,7 @@ const { user } = useAuth();
       )}
 
       {/* AI Chat Assistant Button */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: footerBottomPadding }]}>
         <TouchableOpacity
           style={styles.aiChatButton}
           onPress={handleAIChatAssistant}
@@ -341,8 +379,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
-  cardContent: {
-  },
+  cardContent: {},
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',

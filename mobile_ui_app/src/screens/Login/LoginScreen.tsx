@@ -25,11 +25,20 @@ import {
   saveBiometricCredentials,
   getBiometricEmail,
 } from '../../services/biometric.service';
+import {
+  authenticateWithPin,
+  getPinEmail,
+  isPinEnabled,
+  isPinValid,
+  savePinCredentials,
+} from '../../services/pin.service';
 import styles from './Login.styles';
 
 export default function LoginScreen({ navigation }: LoginScreenProps) {
   const dispatch = useAppDispatch();
-  const { loading, error, isAuthenticated } = useAppSelector(state => state.auth);
+  const { loading, error, isAuthenticated } = useAppSelector(
+    state => state.auth,
+  );
   const { checkAuth } = useAuth();
 
   // Form state
@@ -42,6 +51,14 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [biometricName, setBiometricName] = useState('Biometric');
   const [biometricLoading, setBiometricLoading] = useState(false);
+  const [pinEnabled, setPinEnabled] = useState(false);
+  const [pinLoading, setPinLoading] = useState(false);
+  const [showPinLogin, setShowPinLogin] = useState(false);
+  const [pin, setPin] = useState('');
+  const [pinSetupVisible, setPinSetupVisible] = useState(false);
+  const [setupPin, setSetupPin] = useState('');
+  const [confirmSetupPin, setConfirmSetupPin] = useState('');
+  const [pinError, setPinError] = useState<string | null>(null);
   const [shouldNavigate, setShouldNavigate] = useState(false);
 
   // Validation errors
@@ -52,17 +69,20 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
   useFocusEffect(
     useCallback(() => {
       checkBiometricAvailability();
+      checkPinAvailability();
       setShouldNavigate(false);
-    }, [])
+    }, []),
   );
 
   // Re-check biometric availability when email changes
   useEffect(() => {
     if (email.trim()) {
       checkBiometricAvailability();
+      checkPinAvailability();
     } else {
       // Reset biometric enabled state if no email
       setBiometricEnabled(false);
+      checkPinAvailability();
     }
   }, [email]);
 
@@ -74,15 +94,15 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
       if (supported) {
         // Check if biometric is enabled for the current email
         const currentEmail = email.trim();
-        const enabled = currentEmail 
+        const enabled = currentEmail
           ? await isBiometricEnabled(currentEmail)
           : await isBiometricEnabled();
-        
+
         setBiometricEnabled(enabled);
 
         const name = await getBiometricName();
         setBiometricName(name);
-        
+
         // Log for debugging
         if (currentEmail) {
           const storedEmail = await getBiometricEmail();
@@ -93,6 +113,25 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
       }
     } catch (error) {
       console.error('Error checking biometric availability:', error);
+    }
+  };
+
+  const checkPinAvailability = async () => {
+    try {
+      const currentEmail = email.trim();
+      const enabled = currentEmail
+        ? await isPinEnabled(currentEmail)
+        : await isPinEnabled();
+      setPinEnabled(enabled);
+
+      if (!currentEmail && enabled) {
+        const storedEmail = await getPinEmail();
+        if (storedEmail) {
+          setEmail(storedEmail);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking PIN availability:', error);
     }
   };
 
@@ -151,16 +190,23 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     // Dispatch login action
     try {
       await dispatch(loginUser({ email: email.trim(), password })).unwrap();
-      
-      // Re-check if biometric is enabled for THIS specific user
+
+      // Re-check if biometric and PIN are enabled for THIS specific user
       const isEnabledForThisUser = await isBiometricEnabled(email.trim());
-      
+      const isPinEnabledForThisUser = await isPinEnabled(email.trim());
+      const completeLoginSetup = () => {
+        if (!isPinEnabledForThisUser) {
+          setPinSetupVisible(true);
+        } else {
+          setShouldNavigate(true);
+        }
+      };
+
       // Offer to enable biometric if not enabled for this user
       if (biometricSupported && !isEnabledForThisUser) {
-        offerBiometricSetup();
+        offerBiometricSetup(completeLoginSetup);
       } else {
-        // No biometric setup needed, navigate immediately
-        setShouldNavigate(true);
+        completeLoginSetup();
       }
     } catch (err) {
       // Error is handled by Redux state
@@ -169,7 +215,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
   };
 
   // Offer to enable biometric login after successful password login
-  const offerBiometricSetup = () => {
+  const offerBiometricSetup = (onComplete: () => void) => {
     setTimeout(() => {
       Alert.alert(
         `Enable ${biometricName} Login?`,
@@ -178,14 +224,17 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           {
             text: 'Not Now',
             style: 'cancel',
-            onPress: () => setShouldNavigate(true),
+            onPress: onComplete,
           },
           {
             text: 'Enable',
             onPress: async () => {
               console.log('💾 Saving biometric credentials for:', email.trim());
-              const success = await saveBiometricCredentials(email.trim(), password);
-              
+              const success = await saveBiometricCredentials(
+                email.trim(),
+                password,
+              );
+
               if (success) {
                 setBiometricEnabled(true);
                 console.log('✅ Biometric enabled for new user:', email.trim());
@@ -195,9 +244,9 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
                   [
                     {
                       text: 'OK',
-                      onPress: () => setShouldNavigate(true),
+                      onPress: onComplete,
                     },
-                  ]
+                  ],
                 );
               } else {
                 console.error('Failed to enable biometric login');
@@ -207,18 +256,18 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
                   [
                     {
                       text: 'OK',
-                      onPress: () => setShouldNavigate(true),
+                      onPress: onComplete,
                     },
-                  ]
+                  ],
                 );
               }
             },
           },
         ],
-        { 
+        {
           cancelable: false,
-          onDismiss: () => setShouldNavigate(true)
-        }
+          onDismiss: onComplete,
+        },
       );
     }, 500);
   };
@@ -237,9 +286,9 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           loginUser({
             email: credentials.email,
             password: credentials.password,
-          })
+          }),
         ).unwrap();
-        
+
         // Navigate immediately after biometric login
         setShouldNavigate(true);
       }
@@ -247,11 +296,80 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
       console.error('Biometric login error:', err);
       Alert.alert(
         'Login Failed',
-        'Could not sign in with biometrics. Please try using your password.'
+        'Could not sign in with biometrics. Please try using your password.',
       );
     } finally {
       setBiometricLoading(false);
     }
+  };
+
+  const handlePinLogin = async () => {
+    setPinLoading(true);
+    setPinError(null);
+    dispatch(clearError());
+
+    try {
+      const credentials = await authenticateWithPin(
+        pin,
+        email.trim() || undefined,
+      );
+
+      if (!credentials) {
+        setPinError('Invalid PIN. Please try again or use your password.');
+        return;
+      }
+
+      await dispatch(
+        loginUser({
+          email: credentials.email,
+          password: credentials.password,
+        }),
+      ).unwrap();
+
+      setPin('');
+      setShowPinLogin(false);
+      setShouldNavigate(true);
+    } catch (err) {
+      console.error('PIN login error:', err);
+      setPinError('Could not sign in with PIN. Please use your password.');
+    } finally {
+      setPinLoading(false);
+    }
+  };
+
+  const handleSavePinSetup = async () => {
+    setPinError(null);
+
+    if (!isPinValid(setupPin)) {
+      setPinError('Enter a 4 to 6 digit PIN.');
+      return;
+    }
+
+    if (setupPin !== confirmSetupPin) {
+      setPinError('PIN entries do not match.');
+      return;
+    }
+
+    const success = await savePinCredentials(email.trim(), password, setupPin);
+
+    if (!success) {
+      setPinError('Failed to enable PIN login. Please try again.');
+      return;
+    }
+
+    setPinEnabled(true);
+    setPinSetupVisible(false);
+    setSetupPin('');
+    setConfirmSetupPin('');
+    setShouldNavigate(true);
+  };
+
+  const handleSkipPinSetup = () => {
+    setPinSetupVisible(false);
+    setPinError(null);
+    setSetupPin('');
+    setConfirmSetupPin('');
+    setShouldNavigate(true);
   };
 
   // Handle forgot password
@@ -267,10 +385,12 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled">
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
@@ -321,8 +441,11 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
                 />
                 <TouchableOpacity
                   style={styles.eyeIcon}
-                  onPress={() => setShowPassword(!showPassword)}>
-                  <Text style={styles.eyeText}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Text style={styles.eyeText}>
+                    {showPassword ? '👁️' : '👁️‍🗨️'}
+                  </Text>
                 </TouchableOpacity>
               </View>
               {passwordError && (
@@ -341,7 +464,8 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
             <TouchableOpacity
               onPress={handleForgotPassword}
               disabled={loading}
-              style={styles.forgotPassword}>
+              style={styles.forgotPassword}
+            >
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
 
@@ -349,7 +473,8 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
             <TouchableOpacity
               style={[styles.button, loading && styles.buttonDisabled]}
               onPress={handleLogin}
-              disabled={loading}>
+              disabled={loading}
+            >
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
@@ -360,9 +485,13 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
             {/* Biometric Login Button */}
             {biometricSupported && biometricEnabled && (
               <TouchableOpacity
-                style={[styles.biometricButton, biometricLoading && styles.buttonDisabled]}
+                style={[
+                  styles.biometricButton,
+                  biometricLoading && styles.buttonDisabled,
+                ]}
                 onPress={handleBiometricLogin}
-                disabled={loading || biometricLoading}>
+                disabled={loading || biometricLoading}
+              >
                 {biometricLoading ? (
                   <ActivityIndicator color="#007AFF" />
                 ) : (
@@ -378,6 +507,95 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
               </TouchableOpacity>
             )}
 
+            {/* PIN Fallback */}
+            {pinEnabled && (
+              <View style={styles.pinContainer}>
+                {showPinLogin && (
+                  <TextInput
+                    placeholder="Enter PIN"
+                    value={pin}
+                    onChangeText={text => {
+                      setPin(text.replace(/\D/g, '').slice(0, 6));
+                      setPinError(null);
+                    }}
+                    style={[styles.input, pinError && styles.inputError]}
+                    keyboardType="number-pad"
+                    secureTextEntry
+                    editable={!loading && !pinLoading}
+                    maxLength={6}
+                  />
+                )}
+                {pinError && <Text style={styles.errorText}>{pinError}</Text>}
+                <TouchableOpacity
+                  style={[
+                    styles.pinButton,
+                    pinLoading && styles.buttonDisabled,
+                  ]}
+                  onPress={
+                    showPinLogin ? handlePinLogin : () => setShowPinLogin(true)
+                  }
+                  disabled={loading || pinLoading}
+                >
+                  {pinLoading ? (
+                    <ActivityIndicator color="#007AFF" />
+                  ) : (
+                    <Text style={styles.pinButtonText}>
+                      {showPinLogin ? 'Sign in with PIN' : 'Use PIN instead'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* PIN Setup */}
+            {pinSetupVisible && (
+              <View style={styles.pinSetupCard}>
+                <Text style={styles.pinSetupTitle}>Create PIN fallback</Text>
+                <Text style={styles.pinSetupText}>
+                  Use a 4 to 6 digit PIN if biometric login is unavailable.
+                </Text>
+                <TextInput
+                  placeholder="New PIN"
+                  value={setupPin}
+                  onChangeText={text => {
+                    setSetupPin(text.replace(/\D/g, '').slice(0, 6));
+                    setPinError(null);
+                  }}
+                  style={styles.input}
+                  keyboardType="number-pad"
+                  secureTextEntry
+                  maxLength={6}
+                />
+                <TextInput
+                  placeholder="Confirm PIN"
+                  value={confirmSetupPin}
+                  onChangeText={text => {
+                    setConfirmSetupPin(text.replace(/\D/g, '').slice(0, 6));
+                    setPinError(null);
+                  }}
+                  style={[styles.input, styles.pinConfirmInput]}
+                  keyboardType="number-pad"
+                  secureTextEntry
+                  maxLength={6}
+                />
+                {pinError && <Text style={styles.errorText}>{pinError}</Text>}
+                <View style={styles.pinSetupActions}>
+                  <TouchableOpacity
+                    style={styles.pinSkipButton}
+                    onPress={handleSkipPinSetup}
+                  >
+                    <Text style={styles.pinSkipButtonText}>Not Now</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.pinSaveButton}
+                    onPress={handleSavePinSetup}
+                  >
+                    <Text style={styles.pinSaveButtonText}>Save PIN</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
             {/* Divider */}
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
@@ -389,13 +607,13 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
             <TouchableOpacity
               onPress={handleRegister}
               disabled={loading}
-              style={styles.registerContainer}>
+              style={styles.registerContainer}
+            >
               <Text style={styles.registerText}>
                 Don't have an account?{' '}
                 <Text style={styles.registerLink}>Sign Up</Text>
               </Text>
             </TouchableOpacity>
-            
           </View>
         </View>
       </ScrollView>

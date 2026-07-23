@@ -12,7 +12,11 @@
     "test:coverage": "jest --coverage",
     "test:verbose": "jest --verbose",
     "test:screens": "jest __tests__/screens",
-    "test:update-snapshots": "jest -u"
+    "test:update-snapshots": "jest -u",
+    "build:android:apk": "cd android && ./gradlew assembleRelease",
+    "build:android:aab": "cd android && ./gradlew bundleRelease",
+    "build:ios:archive": "xcodebuild -workspace ios/mobile_ui_app.xcworkspace -scheme mobile_ui_app -configuration Release -archivePath ios/build/mobile_ui_app.xcarchive archive",
+    "build:ios:ipa": "xcodebuild -exportArchive -archivePath ios/build/mobile_ui_app.xcarchive -exportPath ios/build/export -exportOptionsPlist ios/ExportOptions.plist"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",

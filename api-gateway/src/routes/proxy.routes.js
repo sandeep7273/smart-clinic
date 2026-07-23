@@ -20,6 +20,13 @@ const { getCorrelationId } = require("../utils/correlationId");
 
 const router = express.Router();
 
+const rewriteServicePath = (serviceName) => (_path, req) => {
+  return req.originalUrl.replace(
+    new RegExp(`^/api/${serviceName}(?=/|$)`),
+    `/${serviceName}`,
+  );
+};
+
 /**
  * Create proxy configuration for a service
  */
@@ -27,9 +34,7 @@ const createProxyConfig = (serviceName, serviceUrl) => {
   return {
     target: serviceUrl,
     changeOrigin: true,
-    pathRewrite: {
-      [`^/api/${serviceName}`]: `/${serviceName}`, // Replace /api/{service} with /{service}
-    },
+    pathRewrite: rewriteServicePath(serviceName),
     timeout: 30000, // 30 second timeout
     proxyTimeout: 30000,
     onProxyReq: (proxyReq, req, res) => {
@@ -136,3 +141,5 @@ router.use(
 );
 
 module.exports = router;
+module.exports.createProxyConfig = createProxyConfig;
+module.exports.rewriteServicePath = rewriteServicePath;

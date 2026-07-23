@@ -2,6 +2,20 @@ const Groq = require("groq-sdk");
 const config = require("../config");
 const logger = require("../utils/logger");
 
+function withTimeout(promise, timeoutMs, label) {
+  let timeout;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeout = setTimeout(
+      () => reject(new Error(`${label} timed out after ${timeoutMs}ms`)),
+      timeoutMs,
+    );
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() =>
+    clearTimeout(timeout),
+  );
+}
+
 class IntentDetectionService {
   constructor() {
     this.groq = new Groq({
@@ -135,6 +149,7 @@ class IntentDetectionService {
    */
   detectIntentFallback(userQuery) {
     const q = userQuery.toLowerCase().trim();
+    const extractedSpec = this.extractSpecialization(q);
 
     // ── SHOW_APPOINTMENTS ─────────────────────────────────────────
     const appointmentViewPatterns = [
@@ -188,8 +203,13 @@ class IntentDetectionService {
     // ── BOOK_APPOINTMENT ──────────────────────────────────────────
     if (
       /\bbook\b.{0,30}\bappointment\b/.test(q) ||
+      /\bbook\b.{0,30}\b(doctors?|physicians?|specialists?)\b/.test(q) ||
       /\bschedule\b.{0,30}\bappointment\b/.test(q) ||
-      /\bmake\b.{0,30}\bappointment\b/.test(q)
+      /\bschedule\b.{0,30}\b(doctors?|physicians?|specialists?)\b/.test(q) ||
+      /\bmake\b.{0,30}\bappointment\b/.test(q) ||
+      /\bappointment\b.{0,30}\bwith\b.{0,30}\b(doctors?|physicians?|specialists?|cardiologist|dermatologist|orthopedist|neurologist|pediatrician|ophthalmologist|psychiatrist|endocrinologist|gynecologist)\b/.test(
+        q,
+      )
     ) {
       const specialization = this.extractSpecialization(q);
       return {
@@ -207,18 +227,18 @@ class IntentDetectionService {
 
     // ── SEARCH_DOCTOR ─────────────────────────────────────────────
     const searchPatterns = [
-      /\bfind\b.{0,30}\b(doctor|physician|specialist|surgeon)\b/,
-      /\bsearch\b.{0,30}\b(doctor|physician|specialist)\b/,
-      /\bshow\b.{0,30}\b(doctor|physician|specialist)\b/,
-      /\blook(ing)?\b.{0,30}\b(doctor|physician|specialist)\b/,
-      /\bneed\b.{0,30}\b(doctor|physician|specialist|appointment)\b/,
-      /\bwant\b.{0,30}\b(doctor|physician|specialist)\b/,
-      /\brecommend\b.{0,30}\b(doctor|physician|specialist)\b/,
-      /\blist\b.{0,30}\b(doctor|physician|specialist)\b/,
-      /\bget\b.{0,30}\b(doctor|physician|specialist)\b/,
-      /\bsee\b.{0,30}\b(doctor|physician|specialist)\b/,
-      /\bavailable\b.{0,30}\b(doctor|physician|specialist)\b/,
-      /\b(doctor|physician|specialist)\b.{0,30}\bavailable\b/,
+      /\bfind\b.{0,30}\b(doctors?|physicians?|specialists?|surgeons?)\b/,
+      /\bsearch\b.{0,30}\b(doctors?|physicians?|specialists?)\b/,
+      /\bshow\b.{0,30}\b(doctors?|physicians?|specialists?)\b/,
+      /\blook(ing)?\b.{0,30}\b(doctors?|physicians?|specialists?)\b/,
+      /\bneed\b.{0,30}\b(doctors?|physicians?|specialists?|appointments?)\b/,
+      /\bwant\b.{0,30}\b(doctors?|physicians?|specialists?)\b/,
+      /\brecommend\b.{0,30}\b(doctors?|physicians?|specialists?)\b/,
+      /\blist\b.{0,30}\b(doctors?|physicians?|specialists?)\b/,
+      /\bget\b.{0,30}\b(doctors?|physicians?|specialists?)\b/,
+      /\bsee\b.{0,30}\b(doctors?|physicians?|specialists?)\b/,
+      /\bavailable\b.{0,30}\b(doctors?|physicians?|specialists?)\b/,
+      /\b(doctors?|physicians?|specialists?)\b.{0,30}\bavailable\b/,
     ];
 
     // Direct specialist name patterns (e.g. "show me neurologists", "i need a cardiologist")
@@ -232,15 +252,21 @@ class IntentDetectionService {
 
     const hasSearchPattern = searchPatterns.some((p) => p.test(q));
     const hasSpecialistName = specialistNamePattern.test(q);
-    const extractedSpec = this.extractSpecialization(q);
+    const extractedSymptoms = this.extractSymptoms(q);
+    const inferredSymptomSpecialization = this.inferSpecializationFromSymptoms(
+      q,
+      extractedSymptoms,
+    );
 
     if (hasSearchPattern || (hasSpecialistName && extractedSpec)) {
       return {
         intent: this.INTENTS.SEARCH_DOCTOR,
         confidence: 0.9,
         entities: {
-          specialization: this.normalizeSpecialization(extractedSpec),
-          symptoms: [],
+          specialization: this.normalizeSpecialization(
+            extractedSpec || inferredSymptomSpecialization,
+          ),
+          symptoms: extractedSymptoms,
           date: null,
           location: null,
         },
@@ -273,12 +299,16 @@ class IntentDetectionService {
       /\bhurt\b/,
     ];
     if (healthPatterns.some((p) => p.test(q))) {
+      const symptoms = this.extractSymptoms(q);
+      const inferredSpecialization =
+        extractedSpec || this.inferSpecializationFromSymptoms(q, symptoms);
+
       return {
         intent: this.INTENTS.HEALTH_QUERY,
         confidence: 0.75,
         entities: {
-          specialization: this.normalizeSpecialization(extractedSpec),
-          symptoms: [],
+          specialization: this.normalizeSpecialization(inferredSpecialization),
+          symptoms,
           date: null,
           location: null,
         },
@@ -305,7 +335,20 @@ class IntentDetectionService {
    * Tries LLM first; falls back to rule-based detection if LLM is unavailable.
    */
   async detectIntent(userQuery, context = []) {
+    const ruleBasedIntent = this.detectIntentFallback(userQuery);
+
     try {
+      const simpleDoctorSearch =
+        ruleBasedIntent.intent === this.INTENTS.SEARCH_DOCTOR &&
+        !/\b(in|near|around|at|on|tomorrow|today|next|after|before)\b/i.test(
+          userQuery,
+        );
+
+      if (simpleDoctorSearch) {
+        logger.info("Intent detected (rule-based):", ruleBasedIntent);
+        return ruleBasedIntent;
+      }
+
       const systemPrompt = `You are a medical assistant AI that helps users book doctor appointments.
 Your task is to analyze the user's query and determine their intent.
 
@@ -347,13 +390,17 @@ Respond in strict JSON format:
         { role: "user", content: userQuery },
       ];
 
-      const response = await this.groq.chat.completions.create({
-        model: config.groq.model,
-        messages,
-        temperature: 0.3,
-        max_tokens: 500,
-        response_format: { type: "json_object" },
-      });
+      const response = await withTimeout(
+        this.groq.chat.completions.create({
+          model: config.groq.model,
+          messages,
+          temperature: 0.3,
+          max_tokens: 500,
+          response_format: { type: "json_object" },
+        }),
+        config.groq.timeoutMs,
+        "Groq intent detection",
+      );
 
       const result = JSON.parse(response.choices[0].message.content);
       logger.info("Intent detected (LLM):", result);
@@ -370,9 +417,8 @@ Respond in strict JSON format:
       } else {
         logger.error("Error detecting intent:", error.message);
       }
-      const fallback = this.detectIntentFallback(userQuery);
-      logger.info("Intent detected (rule-based fallback):", fallback);
-      return fallback;
+      logger.info("Intent detected (rule-based fallback):", ruleBasedIntent);
+      return ruleBasedIntent;
     }
   }
 
@@ -385,12 +431,120 @@ Respond in strict JSON format:
     for (const [keyword, specialization] of Object.entries(
       this.specializationMap,
     )) {
-      if (lowerQuery.includes(keyword)) {
+      const pattern = new RegExp(
+        `\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}s?\\b`,
+      );
+      if (pattern.test(lowerQuery)) {
         return specialization;
       }
     }
 
     return null;
+  }
+
+  extractSymptoms(query) {
+    const lowerQuery = query.toLowerCase();
+    const symptomKeywords = [
+      "fever",
+      "cough",
+      "cold",
+      "flu",
+      "chest pain",
+      "heart attack",
+      "palpitations",
+      "high blood pressure",
+      "blood pressure",
+      "hypertension",
+      "shortness of breath",
+      "breathing difficulty",
+      "dizziness",
+      "headache",
+      "migraine",
+      "rash",
+      "acne",
+      "joint pain",
+      "back pain",
+      "bone pain",
+      "stomach pain",
+      "abdominal pain",
+      "nausea",
+      "vomiting",
+      "diarrhea",
+      "ear pain",
+      "sore throat",
+      "throat pain",
+      "eye pain",
+      "tooth pain",
+      "dental pain",
+      "anxiety",
+      "depression",
+      "diabetes",
+      "thyroid",
+      "pregnancy",
+    ];
+
+    return symptomKeywords.reduce((matches, symptom) => {
+      const pattern = new RegExp(
+        `\\b${symptom.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
+      );
+
+      if (
+        pattern.test(lowerQuery) &&
+        !matches.some((match) => match.includes(symptom))
+      ) {
+        matches.push(symptom);
+      }
+
+      return matches;
+    }, []);
+  }
+
+  inferSpecializationFromSymptoms(query, symptoms = []) {
+    const symptomText = `${query} ${symptoms.join(" ")}`.toLowerCase();
+    const mappings = [
+      {
+        pattern:
+          /\b(chest pain|shortness of breath|breathing difficulty|heart|heart attack|palpitations|high blood pressure|blood pressure|hypertension)\b/,
+        specialization: "Cardiology",
+      },
+      { pattern: /\b(rash|acne|skin)\b/, specialization: "Dermatology" },
+      {
+        pattern: /\b(joint pain|back pain|bone pain|arthritis|fracture)\b/,
+        specialization: "Orthopedics",
+      },
+      { pattern: /\b(headache|migraine|brain)\b/, specialization: "Neurology" },
+      {
+        pattern: /\b(child|children|baby|infant)\b/,
+        specialization: "Pediatrics",
+      },
+      { pattern: /\b(eye pain|vision|eye)\b/, specialization: "Ophthalmology" },
+      {
+        pattern: /\b(ear pain|throat pain|sinus|hearing)\b/,
+        specialization: "ENT",
+      },
+      {
+        pattern: /\b(anxiety|depression|stress|mental)\b/,
+        specialization: "Psychiatry",
+      },
+      {
+        pattern: /\b(diabetes|thyroid|hormone|insulin)\b/,
+        specialization: "Endocrinology",
+      },
+      {
+        pattern: /\b(pregnancy|women|gynecology)\b/,
+        specialization: "Gynecology",
+      },
+      {
+        pattern:
+          /\b(fever|cough|cold|flu|infection|sick|stomach pain|abdominal pain|nausea|vomiting|diarrhea|tooth pain|dental pain|dizziness)\b/,
+        specialization: "General Medicine",
+      },
+    ];
+
+    return (
+      mappings.find(({ pattern }) => pattern.test(symptomText))
+        ?.specialization || null
+    );
   }
 
   /**

@@ -26,8 +26,12 @@ on:
         options: [plan, apply, destroy]
 
 env:
-  TF_VERSION: "1.6.6"
+  TF_VERSION: "1.15.8"
   ENVIRONMENT: ${{ github.event.inputs.environment || 'dev' }}
+
+concurrency:
+  group: terraform-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: false
 
 jobs:
   terraform:
@@ -106,6 +110,9 @@ jobs:
           vpc_cidr           = "10.0.0.0/16"
           availability_zones = ["ap-south-1a", "ap-south-1b"]
           acm_certificate_arn = ""
+          cloudfront_acm_certificate_arn = ""
+          cloudfront_aliases = []
+          web_ui_bucket_name = "smartclinic-web-ui-${{ secrets.AWS_ACCOUNT_ID }}-aps1"
 
           api_gateway_image         = "${API_GW_IMAGE}"
           auth_service_image        = "${AUTH_IMAGE}"
@@ -139,9 +146,11 @@ jobs:
       - name: Terraform Plan
         id: plan
         run: |
+          set -o pipefail
           terraform plan \
             -var-file="environments/${{ env.ENVIRONMENT }}/terraform.tfvars" \
             -out=tfplan \
+            -lock-timeout=10m \
             -no-color 2>&1 | tee plan-output.txt
 
       - name: Post plan output to PR
@@ -169,11 +178,22 @@ jobs:
             (github.event_name == 'push' && contains(fromJSON('["refs/heads/main","refs/heads/master","refs/heads/develop"]'), github.ref)) ||
             (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
           )
-        run: terraform apply -auto-approve tfplan
+        run: |
+          test -f tfplan
+          terraform apply -lock-timeout=10m -auto-approve tfplan
+
+      - name: Upload errored Terraform state
+        if: failure() && hashFiles('infrastructure/terraform/errored.tfstate') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-errored-state-${{ env.ENVIRONMENT }}-${{ github.run_id }}
+          path: infrastructure/terraform/errored.tfstate
+          retention-days: 7
 
       - name: Terraform Destroy (manual only — requires explicit trigger)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
         run: |
           terraform destroy \
             -var-file="environments/${{ env.ENVIRONMENT }}/terraform.tfvars" \
+            -lock-timeout=10m \
             -auto-approve

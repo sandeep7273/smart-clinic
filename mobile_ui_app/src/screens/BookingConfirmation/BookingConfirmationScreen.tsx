@@ -11,20 +11,50 @@ import {
   ScrollView,
   StyleSheet,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BookingConfirmationScreenProps } from '../../navigation/types';
 
-export default function BookingConfirmationScreen({ route, navigation }: BookingConfirmationScreenProps) {
+export default function BookingConfirmationScreen({
+  route,
+  navigation,
+}: BookingConfirmationScreenProps) {
   const { appointment, doctor } = route.params;
+  const insets = useSafeAreaInsets();
+  const footerBottomPadding = 16 + insets.bottom;
+  const bottomSpacingHeight = 80 + insets.bottom;
 
   /**
    * Format date for display
    */
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
-    return `${days[date.getDay()]}, ${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+    const days = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+    ];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
+    return `${days[date.getDay()]}, ${
+      months[date.getMonth()]
+    } ${date.getDate()}, ${date.getFullYear()}`;
   };
 
   /**
@@ -55,7 +85,10 @@ export default function BookingConfirmationScreen({ route, navigation }: Booking
         <View style={styles.backButton} />
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Confirmation Title */}
         <Text style={styles.title}>Booking Confirmed</Text>
         <Text style={styles.subtitle}>
@@ -65,17 +98,21 @@ export default function BookingConfirmationScreen({ route, navigation }: Booking
         {/* Appointment Details Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Appointment Details</Text>
-          
+
           {/* Appointment Number */}
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Appointment Number</Text>
-            <Text style={styles.detailValue}>{appointment.appointmentNumber}</Text>
+            <Text style={styles.detailValue}>
+              {appointment.appointmentNumber}
+            </Text>
           </View>
 
           {/* Date */}
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Date</Text>
-            <Text style={styles.detailValue}>{formatDate(appointment.date)}</Text>
+            <Text style={styles.detailValue}>
+              {formatDate(appointment.date)}
+            </Text>
           </View>
 
           {/* Time */}
@@ -90,7 +127,9 @@ export default function BookingConfirmationScreen({ route, navigation }: Booking
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Status</Text>
             <View style={styles.statusBadge}>
-              <Text style={styles.statusText}>{appointment.status.toUpperCase()}</Text>
+              <Text style={styles.statusText}>
+                {appointment.status.toUpperCase()}
+              </Text>
             </View>
           </View>
         </View>
@@ -98,12 +137,13 @@ export default function BookingConfirmationScreen({ route, navigation }: Booking
         {/* Doctor Details Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Doctor Information</Text>
-          
+
           {/* Doctor Name */}
           <View style={styles.doctorHeader}>
             <View style={styles.doctorAvatar}>
               <Text style={styles.doctorInitial}>
-                {doctor.firstName.charAt(0)}{doctor.lastName.charAt(0)}
+                {doctor.firstName.charAt(0)}
+                {doctor.lastName.charAt(0)}
               </Text>
             </View>
             <View style={styles.doctorInfo}>
@@ -123,9 +163,12 @@ export default function BookingConfirmationScreen({ route, navigation }: Booking
           {doctor.address && (
             <View style={styles.locationSection}>
               <Text style={styles.locationLabel}>Clinic Address</Text>
-              <Text style={styles.locationAddress}>{doctor.address.street}</Text>
+              <Text style={styles.locationAddress}>
+                {doctor.address.street}
+              </Text>
               <Text style={styles.locationCity}>
-                {doctor.address.city}, {doctor.address.state} {doctor.address.zipCode}
+                {doctor.address.city}, {doctor.address.state}{' '}
+                {doctor.address.zipCode}
               </Text>
             </View>
           )}
@@ -148,7 +191,7 @@ export default function BookingConfirmationScreen({ route, navigation }: Booking
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Reason for Visit</Text>
             <Text style={styles.reasonText}>{appointment.reason}</Text>
-            
+
             {appointment.symptoms && appointment.symptoms.length > 0 && (
               <View style={styles.symptomsSection}>
                 <Text style={styles.symptomsLabel}>Symptoms:</Text>
@@ -179,11 +222,11 @@ export default function BookingConfirmationScreen({ route, navigation }: Booking
         </View>
 
         {/* Spacing for button */}
-        <View style={styles.bottomSpacing} />
+        <View style={[styles.bottomSpacing, { height: bottomSpacingHeight }]} />
       </ScrollView>
 
       {/* View My Bookings Button */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: footerBottomPadding }]}>
         <TouchableOpacity
           style={styles.viewBookingsButton}
           onPress={handleViewMyBookings}

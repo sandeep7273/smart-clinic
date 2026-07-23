@@ -15,17 +15,27 @@ import {
   TextInput,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TimeSlot } from '../../types/appointment.types';
 import { bookAppointment } from '../../api/appointment.api';
 import { getDoctorAvailableSlots } from '../../api/doctor.api';
 import { BookAppointmentScreenProps } from '../../navigation/types';
 import { ErrorModal } from '../../components/ErrorModal';
-import { getBookingErrorMessage, getErrorTitle } from '../../utils/errorHandler';
+import {
+  getBookingErrorMessage,
+  getErrorTitle,
+} from '../../utils/errorHandler';
 import { useAuth } from '../../context/AuthContext';
 
-export default function BookAppointmentScreen({ route, navigation }: BookAppointmentScreenProps) {
+export default function BookAppointmentScreen({
+  route,
+  navigation,
+}: BookAppointmentScreenProps) {
   const { doctor } = route.params;
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
+  const footerBottomPadding = 16 + insets.bottom;
+  const bottomSpacingHeight = 80 + insets.bottom;
 
   // State
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -148,21 +158,25 @@ export default function BookAppointmentScreen({ route, navigation }: BookAppoint
     // Validation
     if (!selectedSlot) {
       setErrorTitle('Validation Error');
-      setErrorMessage('Please select a time slot before confirming your booking.');
+      setErrorMessage(
+        'Please select a time slot before confirming your booking.',
+      );
       setErrorModalVisible(true);
       return;
     }
 
     if (!reasonForVisit.trim()) {
       setErrorTitle('Validation Error');
-      setErrorMessage('Please enter the reason for your visit. This helps the doctor prepare for your appointment.');
+      setErrorMessage(
+        'Please enter the reason for your visit. This helps the doctor prepare for your appointment.',
+      );
       setErrorModalVisible(true);
       return;
     }
 
     try {
       setBooking(true);
-      console.log("debugging Booking appointment with data:", doctor);
+      console.log('debugging Booking appointment with data:', doctor);
       const bookingData = {
         userId: user?.id || '', // Patient user ID from logged-in user
         doctorId: doctor.id,
@@ -192,7 +206,9 @@ export default function BookAppointmentScreen({ route, navigation }: BookAppoint
         });
       } else {
         setErrorTitle('Booking Failed');
-        setErrorMessage(response.message || 'Failed to book appointment. Please try again.');
+        setErrorMessage(
+          response.message || 'Failed to book appointment. Please try again.',
+        );
         setErrorModalVisible(true);
       }
     } catch (error: any) {
@@ -207,10 +223,33 @@ export default function BookAppointmentScreen({ route, navigation }: BookAppoint
    * Format date for display
    */
   const formatDate = (date: Date): string => {
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
-    return `${days[date.getDay()]}, ${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+    const days = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+    ];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
+    return `${days[date.getDay()]}, ${
+      months[date.getMonth()]
+    } ${date.getDate()}, ${date.getFullYear()}`;
   };
 
   /**
@@ -250,27 +289,37 @@ export default function BookAppointmentScreen({ route, navigation }: BookAppoint
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Book Appointment</Text>
         <View style={styles.backButton} />
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Doctor Info */}
         <View style={styles.doctorInfo}>
           <Text style={styles.doctorName}>
             Dr. {doctor.firstName} {doctor.lastName}
           </Text>
-          <Text style={styles.doctorSpecialty}>{doctor.specializations.join(', ')}</Text>
-          <Text style={styles.doctorRating}>⭐ {doctor.rating} ({doctor.reviewCount} reviews)</Text>
+          <Text style={styles.doctorSpecialty}>
+            {doctor.specializations.join(', ')}
+          </Text>
+          <Text style={styles.doctorRating}>
+            ⭐ {doctor.rating} ({doctor.reviewCount} reviews)
+          </Text>
         </View>
 
         {/* Date Selection */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Select Date</Text>
-          
+
           {/* Quick Date Buttons */}
           <View style={styles.quickDateButtons}>
             <TouchableOpacity
@@ -345,7 +394,8 @@ export default function BookAppointmentScreen({ route, navigation }: BookAppoint
                 {doctor.address.street}
               </Text>
               <Text style={styles.locationCity}>
-                {doctor.address.city}, {doctor.address.state} {doctor.address.zipCode}
+                {doctor.address.city}, {doctor.address.state}{' '}
+                {doctor.address.zipCode}
               </Text>
             </View>
           </View>
@@ -354,7 +404,7 @@ export default function BookAppointmentScreen({ route, navigation }: BookAppoint
         {/* Available Time Slots */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Available Time Slots</Text>
-          
+
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#007AFF" />
@@ -362,7 +412,9 @@ export default function BookAppointmentScreen({ route, navigation }: BookAppoint
             </View>
           ) : availableSlots.length === 0 ? (
             <View style={styles.noSlotsContainer}>
-              <Text style={styles.noSlotsText}>No slots available for this date</Text>
+              <Text style={styles.noSlotsText}>
+                No slots available for this date
+              </Text>
               <Text style={styles.noSlotsSubtext}>Please try another date</Text>
             </View>
           ) : (
@@ -373,7 +425,8 @@ export default function BookAppointmentScreen({ route, navigation }: BookAppoint
                   style={[
                     styles.slotCard,
                     !slot.available && styles.slotCardDisabled,
-                    selectedSlot?.startTime === slot.startTime && styles.slotCardActive,
+                    selectedSlot?.startTime === slot.startTime &&
+                      styles.slotCardActive,
                   ]}
                   onPress={() => handleSlotSelect(slot)}
                   disabled={!slot.available}
@@ -382,7 +435,8 @@ export default function BookAppointmentScreen({ route, navigation }: BookAppoint
                     style={[
                       styles.slotTime,
                       !slot.available && styles.slotTimeDisabled,
-                      selectedSlot?.startTime === slot.startTime && styles.slotTimeActive,
+                      selectedSlot?.startTime === slot.startTime &&
+                        styles.slotTimeActive,
                     ]}
                   >
                     {slot.startTime}
@@ -391,7 +445,8 @@ export default function BookAppointmentScreen({ route, navigation }: BookAppoint
                     style={[
                       styles.slotTo,
                       !slot.available && styles.slotToDisabled,
-                      selectedSlot?.startTime === slot.startTime && styles.slotToActive,
+                      selectedSlot?.startTime === slot.startTime &&
+                        styles.slotToActive,
                     ]}
                   >
                     to
@@ -400,7 +455,8 @@ export default function BookAppointmentScreen({ route, navigation }: BookAppoint
                     style={[
                       styles.slotTime,
                       !slot.available && styles.slotTimeDisabled,
-                      selectedSlot?.startTime === slot.startTime && styles.slotTimeActive,
+                      selectedSlot?.startTime === slot.startTime &&
+                        styles.slotTimeActive,
                     ]}
                   >
                     {slot.endTime}
@@ -432,14 +488,16 @@ export default function BookAppointmentScreen({ route, navigation }: BookAppoint
                 key={index}
                 style={[
                   styles.symptomChip,
-                  selectedSymptoms.includes(symptom) && styles.symptomChipActive,
+                  selectedSymptoms.includes(symptom) &&
+                    styles.symptomChipActive,
                 ]}
                 onPress={() => toggleSymptom(symptom)}
               >
                 <Text
                   style={[
                     styles.symptomChipText,
-                    selectedSymptoms.includes(symptom) && styles.symptomChipTextActive,
+                    selectedSymptoms.includes(symptom) &&
+                      styles.symptomChipTextActive,
                   ]}
                 >
                   {symptom}
@@ -464,15 +522,16 @@ export default function BookAppointmentScreen({ route, navigation }: BookAppoint
         </View>
 
         {/* Spacing for button */}
-        <View style={styles.bottomSpacing} />
+        <View style={[styles.bottomSpacing, { height: bottomSpacingHeight }]} />
       </ScrollView>
 
       {/* Confirm Booking Button */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: footerBottomPadding }]}>
         <TouchableOpacity
           style={[
             styles.confirmButton,
-            (!selectedSlot || !reasonForVisit.trim() || booking) && styles.confirmButtonDisabled,
+            (!selectedSlot || !reasonForVisit.trim() || booking) &&
+              styles.confirmButtonDisabled,
           ]}
           onPress={handleConfirmBooking}
           disabled={!selectedSlot || !reasonForVisit.trim() || booking}

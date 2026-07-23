@@ -24,6 +24,19 @@ const formatDate = (dateStr: string) => {
   });
 };
 
+const getDoctorName = (appointment: Appointment) => {
+  const doctor = appointment.doctor;
+  const name =
+    doctor?.name ||
+    [doctor?.firstName, doctor?.lastName].filter(Boolean).join(" ");
+
+  return name ? `Dr. ${name}` : "Doctor";
+};
+
+const getDoctorSpecialization = (appointment: Appointment) =>
+  appointment.doctor?.specialization ||
+  appointment.doctor?.specializations?.[0];
+
 const AppointmentListPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -139,12 +152,10 @@ const AppointmentListPage: React.FC = () => {
                       <p className={styles.apptNumber}>
                         #{appt.appointmentNumber}
                       </p>
-                      <p className={styles.doctorName}>
-                        Dr. {appt.doctor?.firstName} {appt.doctor?.lastName}
-                      </p>
-                      {appt.doctor?.specializations?.length > 0 && (
+                      <p className={styles.doctorName}>{getDoctorName(appt)}</p>
+                      {getDoctorSpecialization(appt) && (
                         <p className={styles.specialization}>
-                          {appt.doctor.specializations[0]}
+                          {getDoctorSpecialization(appt)}
                         </p>
                       )}
                     </div>
@@ -200,10 +211,7 @@ const AppointmentListPage: React.FC = () => {
               </div>
               <div className={styles.modalRow}>
                 <span>Doctor</span>
-                <span>
-                  Dr. {selectedAppointment.doctor?.firstName}{" "}
-                  {selectedAppointment.doctor?.lastName}
-                </span>
+                <span>{getDoctorName(selectedAppointment)}</span>
               </div>
               <div className={styles.modalRow}>
                 <span>Date</span>

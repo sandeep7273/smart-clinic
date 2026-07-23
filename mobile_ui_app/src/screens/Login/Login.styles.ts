@@ -158,6 +158,72 @@ export default StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  pinContainer: {
+    marginTop: 12,
+  },
+  pinButton: {
+    backgroundColor: COLORS.white,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: COLORS.primaryLight,
+    marginTop: 8,
+  },
+  pinButtonText: {
+    color: COLORS.primary,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  pinSetupCard: {
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: COLORS.backgroundLight,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  pinSetupTitle: {
+    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  pinSetupText: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    marginBottom: 12,
+  },
+  pinConfirmInput: {
+    marginTop: 10,
+  },
+  pinSetupActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 14,
+  },
+  pinSkipButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginRight: 8,
+  },
+  pinSkipButtonText: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  pinSaveButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  pinSaveButtonText: {
+    color: COLORS.white,
+    fontSize: 14,
+    fontWeight: '700',
+  },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',

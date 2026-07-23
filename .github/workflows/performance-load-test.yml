@@ -1,0 +1,52 @@
+name: Performance — Load Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "API Gateway base URL, e.g. https://api.example.com"
+        required: true
+        type: string
+      vus:
+        description: "Virtual users"
+        required: true
+        default: "20"
+        type: string
+      duration:
+        description: "Test duration"
+        required: true
+        default: "2m"
+        type: string
+  schedule:
+    - cron: "0 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  k6:
+    name: k6 latency and availability check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run k6 load test
+        env:
+          BASE_URL: ${{ github.event.inputs.base_url || vars.PERFORMANCE_BASE_URL }}
+          AUTH_TOKEN: ${{ secrets.PERFORMANCE_AUTH_TOKEN }}
+          VUS: ${{ github.event.inputs.vus || '20' }}
+          DURATION: ${{ github.event.inputs.duration || '2m' }}
+        run: k6 run --summary-export summary.json performance/k6/smartclinic-load-test.js
+
+      - name: Upload k6 summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-performance-results-${{ github.run_id }}
+          path: |
+            summary.json
+            performance/k6/*.js
+          if-no-files-found: ignore

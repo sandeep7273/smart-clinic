@@ -1,0 +1,250 @@
+name: Mobile UI — Test & Build
+
+on:
+  push:
+    branches: [main, master, develop]
+    paths:
+      - "mobile_ui_app/**"
+      - ".github/workflows/mobile-ui-build.yml"
+  pull_request:
+    branches: [main, master, develop]
+    paths:
+      - "mobile_ui_app/**"
+      - ".github/workflows/mobile-ui-build.yml"
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "App version name, e.g. 1.0.3"
+        required: false
+        default: "1.0"
+        type: string
+      build_number:
+        description: "Build number override. Defaults to GitHub run number."
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "20"
+  JAVA_VERSION: "17"
+  WORKING_DIRECTORY: mobile_ui_app
+  APP_VERSION_NAME: ${{ github.event.inputs.version_name || '1.0' }}
+  APP_BUILD_NUMBER: ${{ github.event.inputs.build_number || github.run_number }}
+
+jobs:
+  test:
+    name: Test mobile app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: mobile_ui_app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Jest tests
+        run: npm test -- --runInBand --ci
+
+  android:
+    name: Build Android APK and AAB
+    needs: test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: mobile_ui_app/package-lock.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Restore Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Configure release keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "No Android signing keystore configured; release artifacts will use the debug signing fallback."
+            exit 0
+          fi
+
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-key.keystore
+          cat >> android/gradle.properties << EOF
+          MYAPP_UPLOAD_STORE_FILE=upload-key.keystore
+          MYAPP_UPLOAD_KEY_ALIAS=${ANDROID_KEY_ALIAS}
+          MYAPP_UPLOAD_STORE_PASSWORD=${ANDROID_KEYSTORE_PASSWORD}
+          MYAPP_UPLOAD_KEY_PASSWORD=${ANDROID_KEY_PASSWORD}
+          EOF
+
+      - name: Build release APK
+        run: |
+          cd android
+          ./gradlew assembleRelease \
+            -PAPP_VERSION_CODE=${{ env.APP_BUILD_NUMBER }} \
+            -PAPP_VERSION_NAME=${{ env.APP_VERSION_NAME }}
+
+      - name: Build release AAB
+        run: |
+          cd android
+          ./gradlew bundleRelease \
+            -PAPP_VERSION_CODE=${{ env.APP_BUILD_NUMBER }} \
+            -PAPP_VERSION_NAME=${{ env.APP_VERSION_NAME }}
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ env.APP_VERSION_NAME }}-${{ env.APP_BUILD_NUMBER }}
+          path: |
+            mobile_ui_app/android/app/build/outputs/apk/release/*.apk
+            mobile_ui_app/android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+
+  ios:
+    name: Build iOS IPA
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: mobile_ui_app/package-lock.json
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Install Ruby gems
+        run: bundle install
+
+      - name: Install CocoaPods
+        run: bundle exec pod install --project-directory=ios
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Import Apple signing certificate
+        env:
+          IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+        run: |
+          if [ -z "$IOS_CERTIFICATE_P12_BASE64" ]; then
+            echo "IOS_CERTIFICATE_P12_BASE64 is required to build a signed IPA."
+            exit 1
+          fi
+
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          CERTIFICATE_PATH="$RUNNER_TEMP/certificate.p12"
+
+          echo "$IOS_CERTIFICATE_P12_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+      - name: Install provisioning profile
+        env:
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          if [ -z "$IOS_PROVISIONING_PROFILE_BASE64" ]; then
+            echo "IOS_PROVISIONING_PROFILE_BASE64 is required to build a signed IPA."
+            exit 1
+          fi
+
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          PROFILE_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/mobile_ui_app.mobileprovision"
+          echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
+
+      - name: Create export options
+        env:
+          IOS_EXPORT_METHOD: ${{ vars.IOS_EXPORT_METHOD || 'ad-hoc' }}
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+          IOS_PROVISIONING_PROFILE_NAME: ${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}
+        run: |
+          cat > ios/ExportOptions.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>${IOS_EXPORT_METHOD}</string>
+            <key>teamID</key>
+            <string>${IOS_TEAM_ID}</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>org.reactjs.native.example.mobile-ui-app</key>
+              <string>${IOS_PROVISIONING_PROFILE_NAME}</string>
+            </dict>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Archive iOS app
+        run: |
+          xcodebuild archive \
+            -workspace ios/mobile_ui_app.xcworkspace \
+            -scheme mobile_ui_app \
+            -configuration Release \
+            -archivePath ios/build/mobile_ui_app.xcarchive \
+            CURRENT_PROJECT_VERSION=${{ env.APP_BUILD_NUMBER }} \
+            MARKETING_VERSION=${{ env.APP_VERSION_NAME }} \
+            DEVELOPMENT_TEAM=${{ secrets.IOS_TEAM_ID }} \
+            CODE_SIGN_STYLE=Manual \
+            clean archive
+
+      - name: Export IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath ios/build/mobile_ui_app.xcarchive \
+            -exportPath ios/build/export \
+            -exportOptionsPlist ios/ExportOptions.plist
+
+      - name: Upload iOS IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-${{ env.APP_VERSION_NAME }}-${{ env.APP_BUILD_NUMBER }}
+          path: mobile_ui_app/ios/build/export/*.ipa
+          if-no-files-found: error

@@ -1,3 +1,8 @@
+output "nat_public_ips" {
+  description = "NAT Gateway Elastic IPs — add ALL of these to MongoDB Atlas Network Access List"
+  value       = module.vpc.nat_public_ips
+}
+
 output "alb_dns_name" {
   description = "ALB DNS name — point your Route 53 record here"
   value       = module.alb.alb_dns_name
@@ -44,4 +49,14 @@ output "otel_collector_endpoint" {
 output "cloudwatch_dashboard" {
   description = "CloudWatch Dashboard name — open in AWS Console"
   value       = module.cloudwatch.dashboard_name
+}
+
+output "web_cdn_distribution_id" {
+  description = "CloudFront distribution ID for the web UI CDN"
+  value       = try(module.web_cdn[0].distribution_id, "")
+}
+
+output "web_cdn_domain_name" {
+  description = "CloudFront CDN domain for static web/mobile assets"
+  value       = try(module.web_cdn[0].domain_name, "")
 }

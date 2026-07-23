@@ -1,13 +1,71 @@
-const intentDetectionService = require('./intentDetectionService');
-const ragService = require('./ragService');
-const doctorClient = require('../grpc/doctorClient');
-const appointmentClient = require('../grpc/appointmentClient');
-const redisClient = require('../config/redis');
-const logger = require('../utils/logger');
+const intentDetectionService = require("./intentDetectionService");
+const ragService = require("./ragService");
+const doctorClient = require("../grpc/doctorClient");
+const appointmentClient = require("../grpc/appointmentClient");
+const redisClient = require("../config/redis");
+const logger = require("../utils/logger");
+const config = require("../config");
+
+function withTimeout(promise, timeoutMs, label) {
+  let timeout;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeout = setTimeout(
+      () => reject(new Error(`${label} timed out after ${timeoutMs}ms`)),
+      timeoutMs,
+    );
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() =>
+    clearTimeout(timeout),
+  );
+}
 
 class ChatService {
   constructor() {
     this.INTENTS = intentDetectionService.INTENTS;
+  }
+
+  shouldUseRuleBasedFastPath(intentResult) {
+    if (
+      intentResult.intent === this.INTENTS.HEALTH_QUERY &&
+      config.chat.doctorLookupMode === "deferred"
+    ) {
+      return true;
+    }
+
+    return [
+      this.INTENTS.SEARCH_DOCTOR,
+      this.INTENTS.SHOW_APPOINTMENTS,
+      this.INTENTS.BOOK_APPOINTMENT,
+      this.INTENTS.CANCEL_APPOINTMENT,
+    ].includes(intentResult.intent);
+  }
+
+  async handleIntent(userId, message, authToken, intentResult, context = []) {
+    switch (intentResult.intent) {
+      case this.INTENTS.HEALTH_QUERY:
+        return this.handleHealthQuery(
+          message,
+          intentResult,
+          context,
+          authToken,
+        );
+
+      case this.INTENTS.SEARCH_DOCTOR:
+        return this.handleSearchDoctor(message, intentResult, authToken);
+
+      case this.INTENTS.SHOW_APPOINTMENTS:
+        return this.handleShowAppointments(userId, message, authToken);
+
+      case this.INTENTS.BOOK_APPOINTMENT:
+        return this.handleBookAppointment(message, intentResult);
+
+      case this.INTENTS.CANCEL_APPOINTMENT:
+        return this.handleCancelAppointment(message, intentResult);
+
+      default:
+        return this.handleUnknown(message, context);
+    }
   }
 
   /**
@@ -15,65 +73,114 @@ class ChatService {
    */
   async processMessage(userId, message, authToken) {
     try {
+      return await withTimeout(
+        this.processMessageInternal(userId, message, authToken),
+        config.chat.timeoutMs,
+        "AI chat processing",
+      );
+    } catch (error) {
+      logger.error("Chat processing timed out or failed:", error);
+      return {
+        success: true,
+        data: {
+          message:
+            "I am having trouble reaching one of the clinic services right now. Please try again in a moment.",
+          actionType: "NONE",
+          payload: {},
+        },
+        intent: this.INTENTS.UNKNOWN,
+        entities: {},
+      };
+    }
+  }
+
+  async processMessageInternal(userId, message, authToken) {
+    try {
       logger.info(`Processing message for user ${userId}: ${message}`);
+
+      const ruleBasedIntent =
+        intentDetectionService.detectIntentFallback(message);
+
+      if (this.shouldUseRuleBasedFastPath(ruleBasedIntent)) {
+        const response = await this.handleIntent(
+          userId,
+          message,
+          authToken,
+          ruleBasedIntent,
+        );
+
+        return {
+          success: true,
+          data: response,
+          intent: ruleBasedIntent.intent,
+          entities: ruleBasedIntent.entities,
+        };
+      }
+
+      if (config.chat.doctorLookupMode === "deferred") {
+        if (ruleBasedIntent.intent === this.INTENTS.SEARCH_DOCTOR) {
+          const response = await this.handleSearchDoctor(
+            message,
+            ruleBasedIntent,
+            authToken,
+          );
+
+          return {
+            success: true,
+            data: response,
+            intent: ruleBasedIntent.intent,
+            entities: ruleBasedIntent.entities,
+          };
+        }
+      }
 
       // Get conversation context
       const context = await redisClient.getContext(userId);
 
       // Detect intent
-      const intentResult = await intentDetectionService.detectIntent(message, context);
-      
+      const intentResult = await intentDetectionService.detectIntent(
+        message,
+        context,
+      );
+
       // Store user message in context
       await redisClient.storeContext(userId, {
-        role: 'user',
-        content: message
+        role: "user",
+        content: message,
       });
 
-      // Process based on intent
-      let response;
-      switch (intentResult.intent) {
-        case this.INTENTS.HEALTH_QUERY:
-          response = await this.handleHealthQuery(message, intentResult, context, authToken);
-          break;
-        
-        case this.INTENTS.SEARCH_DOCTOR:
-          response = await this.handleSearchDoctor(message, intentResult, authToken);
-          break;
-        
-        case this.INTENTS.SHOW_APPOINTMENTS:
-          response = await this.handleShowAppointments(userId, message, authToken);
-          break;
-        
-        case this.INTENTS.BOOK_APPOINTMENT:
-          response = await this.handleBookAppointment(message, intentResult);
-          break;
-        
-        case this.INTENTS.CANCEL_APPOINTMENT:
-          response = await this.handleCancelAppointment(message, intentResult);
-          break;
-        
-        default:
-          response = await this.handleUnknown(message, context);
-      }
+      const response = await this.handleIntent(
+        userId,
+        message,
+        authToken,
+        intentResult,
+        context,
+      );
 
       // Store assistant response in context
       await redisClient.storeContext(userId, {
-        role: 'assistant',
-        content: response.message
+        role: "assistant",
+        content: response.message,
       });
 
       return {
         success: true,
         data: response,
         intent: intentResult.intent,
-        entities: intentResult.entities
+        entities: intentResult.entities,
       };
     } catch (error) {
-      logger.error('Error processing message:', error);
+      logger.error("Error processing message:", error);
       return {
-        success: false,
-        message: 'Sorry, I encountered an error processing your request. Please try again.',
-        actionType: 'NONE'
+        success: true,
+        data: {
+          message:
+            "I am having trouble processing that request right now. Please try again in a moment.",
+          actionType: "NONE",
+          payload: {},
+        },
+        intent: this.INTENTS.UNKNOWN,
+        entities: {},
       };
     }
   }
@@ -83,18 +190,50 @@ class ChatService {
    */
   async handleHealthQuery(message, intentResult, context, authToken) {
     try {
+      const symptoms = intentResult.entities.symptoms || [];
+      const specialization =
+        intentResult.entities.specialization ||
+        intentDetectionService.extractSpecialization(message) ||
+        intentDetectionService.inferSpecializationFromSymptoms(
+          message,
+          symptoms,
+        );
+
+      if (config.chat.doctorLookupMode === "deferred") {
+        const normalizedSpecialization =
+          intentDetectionService.normalizeSpecialization(specialization) ||
+          "General Medicine";
+        const symptomText = symptoms.length
+          ? symptoms.join(", ")
+          : "your symptoms";
+
+        return {
+          message: `${symptoms.length ? `For ${symptomText}, a` : "A"} ${normalizedSpecialization} doctor can help assess ${symptoms.length ? "you" : "this"}. Would you like to view matching doctors?`,
+          actionType: "SEARCH_DOCTOR",
+          payload: {
+            specialization: normalizedSpecialization,
+            symptoms,
+            count: 0,
+            total: 0,
+            doctors: [],
+          },
+          disclaimer:
+            "This is not a substitute for professional medical advice. Please consult with a healthcare provider.",
+        };
+      }
+
       // Generate response using RAG
-      const aiResponse = await ragService.generateResponseWithRAG(message, context);
+      const aiResponse = await ragService.generateResponseWithRAG(
+        message,
+        context,
+      );
 
       // Extract specialization if mentioned
-      const specialization = intentResult.entities.specialization || 
-                           intentDetectionService.extractSpecialization(message);
-
-      let actionType = 'NONE';
+      let actionType = "NONE";
       let payload = {};
 
       if (specialization) {
-        actionType = 'SEARCH_DOCTOR';
+        actionType = "SEARCH_DOCTOR";
         payload = { specialization };
       }
 
@@ -102,14 +241,16 @@ class ChatService {
         message: aiResponse,
         actionType,
         payload,
-        disclaimer: 'This is not a substitute for professional medical advice. Please consult with a healthcare provider.'
+        disclaimer:
+          "This is not a substitute for professional medical advice. Please consult with a healthcare provider.",
       };
     } catch (error) {
-      logger.error('Error handling health query:', error);
+      logger.error("Error handling health query:", error);
       return {
-        message: 'I can help you understand your symptoms and recommend specialists. Could you describe what you\'re experiencing?',
-        actionType: 'NONE',
-        payload: {}
+        message:
+          "I can help you understand your symptoms and recommend specialists. Could you describe what you're experiencing?",
+        actionType: "NONE",
+        payload: {},
       };
     }
   }
@@ -119,25 +260,48 @@ class ChatService {
    */
   async handleSearchDoctor(message, intentResult, authToken) {
     try {
-      let specialization = intentResult.entities.specialization || 
-                           intentDetectionService.extractSpecialization(message);
-      const location = intentResult.entities.location;
-      const symptoms = intentResult.entities.symptoms;
+      let specialization =
+        intentResult.entities.specialization ||
+        intentDetectionService.extractSpecialization(message) ||
+        null;
+      const location = intentResult.entities.location || null;
+      const symptoms = intentResult.entities.symptoms || [];
 
       // Normalize specialization to match database format
       if (specialization) {
-        specialization = intentDetectionService.normalizeSpecialization(specialization);
-        logger.info('Normalized specialization for search:', { 
+        specialization =
+          intentDetectionService.normalizeSpecialization(specialization);
+        logger.info("Normalized specialization for search:", {
           original: intentResult.entities.specialization,
-          normalized: specialization 
+          normalized: specialization,
         });
       }
 
-      if (!specialization && !location && !symptoms) {
+      if (config.chat.doctorLookupMode === "deferred") {
+        const searchText =
+          [specialization, location ? `in ${location}` : null]
+            .filter(Boolean)
+            .join(" ") || "doctors";
+
         return {
-          message: 'I can help you find a doctor. Which type of specialist are you looking for? (e.g., Cardiologist, Dermatologist, Pediatrician)',
-          actionType: 'NONE',
-          payload: {}
+          message: `I can show you ${searchText}. Would you like to view matching doctors?`,
+          actionType: "SEARCH_DOCTOR",
+          payload: {
+            specialization,
+            location,
+            count: 0,
+            total: 0,
+            doctors: [],
+          },
+        };
+      }
+
+      if (!specialization && !location && symptoms.length === 0) {
+        return {
+          message:
+            "I can help you find a doctor. Which type of specialist are you looking for? (e.g., Cardiologist, Dermatologist, Pediatrician)",
+          actionType: "NONE",
+          payload: {},
         };
       }
 
@@ -145,15 +309,15 @@ class ChatService {
       const searchFilters = {
         limit: 10,
         page: 1,
-        sortBy: 'rating',
-        sortOrder: 'desc'
+        sortBy: "rating",
+        sortOrder: "desc",
       };
 
       // Add available filters with normalized specialization
       if (specialization) searchFilters.specialization = specialization;
       if (location) {
         // Try to split location into city and state if possible
-        const locationParts = location.split(',').map(p => p.trim());
+        const locationParts = location.split(",").map((p) => p.trim());
         if (locationParts.length > 1) {
           searchFilters.city = locationParts[0];
           searchFilters.state = locationParts[1];
@@ -164,10 +328,10 @@ class ChatService {
 
       // Build cache key from filters
       const cacheKey = JSON.stringify(searchFilters);
-      
+
       // Check cache first
       const cachedDoctors = await redisClient.getCachedDoctorSearch(cacheKey);
-      
+
       let doctors;
       let totalCount = 0;
 
@@ -181,7 +345,7 @@ class ChatService {
         try {
           const response = await doctorClient.searchDoctors(
             searchFilters,
-            authToken
+            authToken,
           );
 
           if (response.success && response.doctors) {
@@ -191,15 +355,16 @@ class ChatService {
             await redisClient.cacheDoctorSearch(cacheKey, doctors);
           }
         } catch (error) {
-          logger.error('Error calling doctor service:', error);
+          logger.error("Error calling doctor service:", error);
           doctorServiceError = true;
           doctors = [];
         }
         if (doctorServiceError) {
           return {
-            message: 'I can help you search for doctors. What type of specialist do you need?',
-            actionType: 'NONE',
-            payload: {}
+            message:
+              "I can help you search for doctors. What type of specialist do you need?",
+            actionType: "NONE",
+            payload: {},
           };
         }
       }
@@ -210,56 +375,71 @@ class ChatService {
       let searchDescription = [];
       if (specialization) searchDescription.push(specialization);
       if (location) searchDescription.push(`in ${location}`);
-      
-      const searchText = searchDescription.join(' ') || 'doctors';
+
+      const searchText = searchDescription.join(" ") || "doctors";
 
       // Limit doctors to top 5 for display in chat
-      const displayDoctors = doctors ? doctors.slice(0, 5).map(doctor => {
-        // Log doctor data for debugging
-        logger.info('Mapping doctor data:', {
-          id: doctor.id,
-          hasFirstName: !!doctor.firstName,
-          hasLastName: !!doctor.lastName,
-          hasSpecializations: !!doctor.specializations,
-          hasAddress: !!doctor.address
-        });
+      const displayDoctors = doctors
+        ? doctors.slice(0, 5).map((doctor) => {
+            // Log doctor data for debugging
+            logger.info("Mapping doctor data:", {
+              id: doctor.id,
+              hasFirstName: !!doctor.firstName,
+              hasLastName: !!doctor.lastName,
+              hasSpecializations: !!doctor.specializations,
+              hasAddress: !!doctor.address,
+            });
 
-        const doctorName = `${doctor.firstName || ''} ${doctor.lastName || ''}`.trim() || doctor.name || 'Unknown Doctor';
-        const doctorSpec = Array.isArray(doctor.specializations) && doctor.specializations.length > 0
-          ? doctor.specializations[0]
-          : (doctor.specialization || 'General Practitioner');
+            const doctorName =
+              `${doctor.firstName || ""} ${doctor.lastName || ""}`.trim() ||
+              doctor.name ||
+              "Unknown Doctor";
+            const doctorSpec =
+              Array.isArray(doctor.specializations) &&
+              doctor.specializations.length > 0
+                ? doctor.specializations[0]
+                : doctor.specialization || "General Practitioner";
 
-        return {
-          id: doctor.id || doctor.doctor_id || '',
-          name: doctorName,
-          specialization: doctorSpec,
-          rating: parseFloat(doctor.average_rating || doctor.rating || 0),
-          consultationFee: parseFloat(doctor.consultation_fee || doctor.consultationFee || 0),
-          city: doctor.address?.city || doctor.city || '',
-          state: doctor.address?.state || doctor.state || '',
-          street: doctor.address?.street || doctor.street || '',
-          languages: Array.isArray(doctor.languages) ? doctor.languages : [],
-          experience: parseInt(doctor.experience_years || doctor.experience || 0, 10)
-        };
-      }) : [];
+            return {
+              id: doctor.id || doctor.doctor_id || "",
+              name: doctorName,
+              specialization: doctorSpec,
+              rating: parseFloat(doctor.average_rating || doctor.rating || 0),
+              consultationFee: parseFloat(
+                doctor.consultation_fee || doctor.consultationFee || 0,
+              ),
+              city: doctor.address?.city || doctor.city || "",
+              state: doctor.address?.state || doctor.state || "",
+              street: doctor.address?.street || doctor.street || "",
+              languages: Array.isArray(doctor.languages)
+                ? doctor.languages
+                : [],
+              experience: parseInt(
+                doctor.experience_years || doctor.experience || 0,
+                10,
+              ),
+            };
+          })
+        : [];
 
       return {
         message: `I found ${doctorCount} ${searchText} available. Would you like to view them?`,
-        actionType: 'SEARCH_DOCTOR',
+        actionType: "SEARCH_DOCTOR",
         payload: {
           specialization,
           location,
           count: doctorCount,
           total: totalCount,
-          doctors: displayDoctors
-        }
+          doctors: displayDoctors,
+        },
       };
     } catch (error) {
-      logger.error('Error handling search doctor:', error);
+      logger.error("Error handling search doctor:", error);
       return {
-        message: 'I can help you search for doctors. What type of specialist do you need?',
-        actionType: 'NONE',
-        payload: {}
+        message:
+          "I can help you search for doctors. What type of specialist do you need?",
+        actionType: "NONE",
+        payload: {},
       };
     }
   }
@@ -269,6 +449,14 @@ class ChatService {
    */
   async handleShowAppointments(userId, message, authToken) {
     try {
+      if (config.chat.doctorLookupMode === "deferred") {
+        return {
+          message: "I can show your appointments. Would you like to view them?",
+          actionType: "SHOW_APPOINTMENTS",
+          payload: {},
+        };
+      }
+
       // Check cache first
       let appointments = await redisClient.getCachedUserAppointments(userId);
 
@@ -280,7 +468,7 @@ class ChatService {
             authToken,
             null,
             10,
-            1
+            1,
           );
 
           if (response.success && response.appointments) {
@@ -288,15 +476,19 @@ class ChatService {
             // Cache the results
             await redisClient.cacheUserAppointments(userId, appointments);
           } else {
-            appointments = [];
+            return {
+              message: "I can help you view your appointments. Let me check...",
+              actionType: "SHOW_APPOINTMENTS",
+              payload: {},
+            };
           }
         } catch (error) {
-          logger.error('Error calling appointment service:', error);
+          logger.error("Error calling appointment service:", error);
           // If the appointment service errors out, return a helpful message
           return {
-            message: 'I can help you view your appointments. Let me check...',
-            actionType: 'SHOW_APPOINTMENTS',
-            payload: {}
+            message: "I can help you view your appointments. Let me check...",
+            actionType: "SHOW_APPOINTMENTS",
+            payload: {},
           };
         }
       }
@@ -305,90 +497,50 @@ class ChatService {
       let responseMessage;
 
       if (appointmentCount === 0) {
-        responseMessage = 'You don\'t have any appointments scheduled. Would you like to book one?';
+        responseMessage =
+          "You don't have any appointments scheduled. Would you like to book one?";
       } else {
-        responseMessage = `You have ${appointmentCount} appointment${appointmentCount !== 1 ? 's' : ''}. Would you like to view them?`;
+        responseMessage = `You have ${appointmentCount} appointment${appointmentCount !== 1 ? "s" : ""}. Would you like to view them?`;
       }
 
-      // Limit appointments to top 5 for display in chat
-      // Fetch doctor details for each appointment
-      const displayAppointments = await Promise.all(
-        appointments.slice(0, 5).map(async (appointment) => {
-          let doctorInfo = {
-            name: appointment.doctor?.name || 'Unknown Doctor',
-            specialization: appointment.doctor?.specialization || '',
-            city: '',
-            state: ''
-          };
-
-          // Fetch doctor details if we have doctorId
-          if (appointment.doctor_id) {
-            try {
-              const doctorResponse = await doctorClient.getDoctorDetails(
-                appointment.doctor_id,
-                authToken
-              );
-              
-              if (doctorResponse.success && doctorResponse.data) {
-                const doctor = doctorResponse.data;
-                doctorInfo = {
-                  name: `${doctor.firstName || ''} ${doctor.lastName || ''}`.trim() || appointment.doctor?.name || 'Unknown Doctor',
-                  specialization: Array.isArray(doctor.specializations) ? doctor.specializations[0] : appointment.doctor?.specialization || 'General Practitioner',
-                  city: doctor.address?.city || '',
-                  state: doctor.address?.state || ''
-                };
-              }
-            } catch (error) {
-              logger.warn('Failed to fetch doctor details for appointment:', {
-                appointmentId: appointment.id,
-                doctorId: appointment.doctorId,
-                error: error.message
-              });
-            }
-          }
-
-          logger.info('Mapped appointment data:', {
-            id: appointment.id,
-            doctorId: appointment.doctorId,
-            doctorName: doctorInfo.name,
-            specialization: doctorInfo.specialization,
-            date: appointment.date,
-            startTime: appointment.startTime,
-            endTime: appointment.endTime,
-            status: appointment.status
-          });
-
-          return {
-            id: appointment.appointment_id || appointment.id,
-            doctorId: appointment.doctorId,
-            doctorName: doctorInfo.name,
-            specialization: doctorInfo.specialization,
-            city: doctorInfo.city,
-            state: doctorInfo.state,
-            date: appointment.appointment_date || appointment.date,
-            startTime: appointment.start_time || appointment.startTime,
-            endTime: appointment.end_time || appointment.endTime,
-            status: appointment.status,
-            type: appointment.appointment_type || appointment.type
-          };
-        })
-      );
+      const displayAppointments = appointments
+        .slice(0, 5)
+        .map((appointment) => ({
+          id: appointment.appointment_id || appointment.id,
+          doctorId: appointment.doctor_id || appointment.doctorId,
+          doctorName:
+            appointment.doctor?.name ||
+            appointment.doctor_name ||
+            appointment.doctorName ||
+            "Doctor",
+          specialization:
+            appointment.doctor?.specialization ||
+            appointment.specialization ||
+            "",
+          city: appointment.doctor?.city || appointment.city || "",
+          state: appointment.doctor?.state || appointment.state || "",
+          date: appointment.appointment_date || appointment.date,
+          startTime: appointment.start_time || appointment.startTime,
+          endTime: appointment.end_time || appointment.endTime,
+          status: appointment.status,
+          type: appointment.appointment_type || appointment.type,
+        }));
 
       return {
         message: responseMessage,
-        actionType: 'SHOW_APPOINTMENTS',
+        actionType: "SHOW_APPOINTMENTS",
         payload: {
           count: appointmentCount,
           hasAppointments: appointmentCount > 0,
-          appointments: displayAppointments
-        }
+          appointments: displayAppointments,
+        },
       };
     } catch (error) {
-      logger.error('Error handling show appointments:', error);
+      logger.error("Error handling show appointments:", error);
       return {
-        message: 'I can help you view your appointments. Let me check...',
-        actionType: 'SHOW_APPOINTMENTS',
-        payload: {}
+        message: "I can help you view your appointments. Let me check...",
+        actionType: "SHOW_APPOINTMENTS",
+        payload: {},
       };
     }
   }
@@ -397,20 +549,26 @@ class ChatService {
    * Handle appointment booking request
    */
   async handleBookAppointment(message, intentResult) {
-    const specialization = intentResult.entities.specialization;
+    const specialization =
+      intentResult.entities.specialization ||
+      intentDetectionService.extractSpecialization(message);
 
     if (specialization) {
+      const normalizedSpecialization =
+        intentDetectionService.normalizeSpecialization(specialization);
+
       return {
-        message: `To book an appointment with a ${specialization}, I'll help you find available doctors. Let's search for ${specialization}s.`,
-        actionType: 'SEARCH_DOCTOR',
-        payload: { specialization }
+        message: `To book an appointment with a ${normalizedSpecialization}, I'll help you find available doctors.`,
+        actionType: "BOOK_APPOINTMENT",
+        payload: { specialization: normalizedSpecialization },
       };
     }
 
     return {
-      message: 'I can help you book an appointment. First, let me know what type of doctor you need to see.',
-      actionType: 'NONE',
-      payload: {}
+      message:
+        "I can help you book an appointment. Let's start by choosing a doctor.",
+      actionType: "BOOK_APPOINTMENT",
+      payload: {},
     };
   }
 
@@ -419,11 +577,12 @@ class ChatService {
    */
   async handleCancelAppointment(message, intentResult) {
     return {
-      message: 'To cancel an appointment, let me show you your scheduled appointments.',
-      actionType: 'SHOW_APPOINTMENTS',
+      message:
+        "To cancel an appointment, let me show you your scheduled appointments.",
+      actionType: "SHOW_APPOINTMENTS",
       payload: {
-        action: 'cancel'
-      }
+        action: "cancel",
+      },
     };
   }
 
@@ -433,18 +592,24 @@ class ChatService {
   async handleUnknown(message, context) {
     try {
       // Generate a helpful response using RAG
-      const response = await ragService.generateResponseWithRAG(message, context);
+      const response = await ragService.generateResponseWithRAG(
+        message,
+        context,
+      );
 
       return {
-        message: response || 'I\'m here to help you with health queries and appointments. You can ask me about symptoms, search for doctors, or view your appointments.',
-        actionType: 'NONE',
-        payload: {}
+        message:
+          response ||
+          "I'm here to help you with health queries and appointments. You can ask me about symptoms, search for doctors, or view your appointments.",
+        actionType: "NONE",
+        payload: {},
       };
     } catch (error) {
       return {
-        message: 'I\'m here to help you with:\n- Health questions and symptoms\n- Finding doctors\n- Viewing appointments\n- Booking appointments\n\nWhat would you like help with?',
-        actionType: 'NONE',
-        payload: {}
+        message:
+          "I'm here to help you with:\n- Health questions and symptoms\n- Finding doctors\n- Viewing appointments\n- Booking appointments\n\nWhat would you like help with?",
+        actionType: "NONE",
+        payload: {},
       };
     }
   }

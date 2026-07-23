@@ -20,6 +20,7 @@
   "license": "ISC",
   "dependencies": {
     "@apollo/gateway": "^2.13.0",
+    "@aws-sdk/client-servicediscovery": "^3.1093.0",
     "@graphql-tools/load-files": "^7.0.0",
     "@graphql-tools/merge": "^9.0.0",
     "@graphql-tools/schema": "^10.0.0",
