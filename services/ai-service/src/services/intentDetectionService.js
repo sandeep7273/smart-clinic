@@ -2,6 +2,20 @@ const Groq = require("groq-sdk");
 const config = require("../config");
 const logger = require("../utils/logger");
 
+function withTimeout(promise, timeoutMs, label) {
+  let timeout;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeout = setTimeout(
+      () => reject(new Error(`${label} timed out after ${timeoutMs}ms`)),
+      timeoutMs,
+    );
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() =>
+    clearTimeout(timeout),
+  );
+}
+
 class IntentDetectionService {
   constructor() {
     this.groq = new Groq({
@@ -347,13 +361,17 @@ Respond in strict JSON format:
         { role: "user", content: userQuery },
       ];
 
-      const response = await this.groq.chat.completions.create({
-        model: config.groq.model,
-        messages,
-        temperature: 0.3,
-        max_tokens: 500,
-        response_format: { type: "json_object" },
-      });
+      const response = await withTimeout(
+        this.groq.chat.completions.create({
+          model: config.groq.model,
+          messages,
+          temperature: 0.3,
+          max_tokens: 500,
+          response_format: { type: "json_object" },
+        }),
+        config.groq.timeoutMs,
+        "Groq intent detection",
+      );
 
       const result = JSON.parse(response.choices[0].message.content);
       logger.info("Intent detected (LLM):", result);

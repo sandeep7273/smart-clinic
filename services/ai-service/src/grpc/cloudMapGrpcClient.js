@@ -1,22 +1,26 @@
-const dns = require('dns');
-const net = require('net');
-const grpc = require('@grpc/grpc-js');
+const dns = require("dns");
+const net = require("net");
+const grpc = require("@grpc/grpc-js");
 const {
   DiscoverInstancesCommand,
   ServiceDiscoveryClient,
-} = require('@aws-sdk/client-servicediscovery');
+} = require("@aws-sdk/client-servicediscovery");
 
 const serviceDiscoveryClient = new ServiceDiscoveryClient({});
+const GRPC_CALL_TIMEOUT_MS = parseInt(
+  process.env.GRPC_CALL_TIMEOUT_MS || "8000",
+  10,
+);
 
 function parseTarget(target) {
   const normalized = target
-    .replace(/^dns:\/\//, '')
-    .replace(/^dns:/, '')
-    .replace(/^\/\//, '');
-  const separatorIndex = normalized.lastIndexOf(':');
+    .replace(/^dns:\/\//, "")
+    .replace(/^dns:/, "")
+    .replace(/^\/\//, "");
+  const separatorIndex = normalized.lastIndexOf(":");
 
   if (separatorIndex === -1) {
-    return { host: normalized, port: '50051' };
+    return { host: normalized, port: "50051" };
   }
 
   return {
@@ -28,15 +32,15 @@ function parseTarget(target) {
 function getResolutionHosts(host) {
   const hosts = [host];
 
-  if (host.includes('-grpc.')) {
-    hosts.push(host.replace('-grpc.', '.'));
+  if (host.includes("-grpc.")) {
+    hosts.push(host.replace("-grpc.", "."));
   }
 
   return [...new Set(hosts)];
 }
 
 function parseCloudMapHost(host) {
-  const parts = host.split('.');
+  const parts = host.split(".");
 
   if (parts.length < 3) {
     return null;
@@ -44,7 +48,7 @@ function parseCloudMapHost(host) {
 
   return {
     serviceName: parts[0],
-    namespaceName: parts.slice(1).join('.'),
+    namespaceName: parts.slice(1).join("."),
   };
 }
 
@@ -128,12 +132,17 @@ function isRetryableResolutionError(error) {
   return (
     error?.code === grpc.status.UNAVAILABLE &&
     /Name resolution failed|ENETUNREACH|EHOSTUNREACH|No connection established/i.test(
-      error.message || '',
+      error.message || "",
     )
   );
 }
 
-function createCloudMapGrpcClient({ configuredTarget, createClient, logger, logPrefix }) {
+function createCloudMapGrpcClient({
+  configuredTarget,
+  createClient,
+  logger,
+  logPrefix,
+}) {
   let client = createClient(configuredTarget);
   let activeTarget = configuredTarget;
   let fallbackClientPromise;
@@ -144,13 +153,15 @@ function createCloudMapGrpcClient({ configuredTarget, createClient, logger, logP
     }
 
     if (!fallbackClientPromise) {
-      fallbackClientPromise = resolveIpv4Target(configuredTarget, logger, logPrefix).then(
-        (target) => {
-          activeTarget = target;
-          client = createClient(target);
-          return client;
-        },
-      );
+      fallbackClientPromise = resolveIpv4Target(
+        configuredTarget,
+        logger,
+        logPrefix,
+      ).then((target) => {
+        activeTarget = target;
+        client = createClient(target);
+        return client;
+      });
     }
 
     return fallbackClientPromise;
@@ -158,7 +169,16 @@ function createCloudMapGrpcClient({ configuredTarget, createClient, logger, logP
 
   function callGrpc(grpcClient, methodName, request) {
     return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        const error = new Error(
+          `${methodName} timed out after ${GRPC_CALL_TIMEOUT_MS}ms`,
+        );
+        error.code = grpc.status.UNAVAILABLE;
+        reject(error);
+      }, GRPC_CALL_TIMEOUT_MS);
+
       grpcClient[methodName].call(grpcClient, request, (error, response) => {
+        clearTimeout(timeout);
         if (error) {
           logger.error(`${logPrefix}: gRPC call error`, {
             target: activeTarget,
@@ -196,13 +216,18 @@ function createCloudMapGrpcClient({ configuredTarget, createClient, logger, logP
           throw fallbackError;
         }
 
-        logger.warn(`${logPrefix}: Refreshing fallback target after connection failure`, {
-          methodName,
-          staleTarget: activeTarget,
-          error: fallbackError.message,
-        });
+        logger.warn(
+          `${logPrefix}: Refreshing fallback target after connection failure`,
+          {
+            methodName,
+            staleTarget: activeTarget,
+            error: fallbackError.message,
+          },
+        );
 
-        const refreshedFallbackClient = await getFallbackClient({ forceRefresh: true });
+        const refreshedFallbackClient = await getFallbackClient({
+          forceRefresh: true,
+        });
         return callGrpc(refreshedFallbackClient, methodName, request);
       }
     }

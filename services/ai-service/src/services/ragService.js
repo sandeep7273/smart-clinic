@@ -1,5 +1,5 @@
-const Groq = require('groq-sdk');
-const { ChromaClient } = require('chromadb');
+const Groq = require("groq-sdk");
+const { ChromaClient } = require("chromadb");
 let pipeline = null;
 try {
   // Some transformer packages are ESM-only and can cause Jest to throw
@@ -7,20 +7,37 @@ try {
   // load this module and the runtime can optionally use the pipeline
   // when available.
   // eslint-disable-next-line global-require
-  const transformers = require('@xenova/transformers');
-  pipeline = transformers && (transformers.pipeline || (transformers.default && transformers.default.pipeline));
+  const transformers = require("@xenova/transformers");
+  pipeline =
+    transformers &&
+    (transformers.pipeline ||
+      (transformers.default && transformers.default.pipeline));
 } catch (err) {
   pipeline = null;
 }
-const config = require('../config');
-const logger = require('../utils/logger');
+const config = require("../config");
+const logger = require("../utils/logger");
+
+function withTimeout(promise, timeoutMs, label) {
+  let timeout;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeout = setTimeout(
+      () => reject(new Error(`${label} timed out after ${timeoutMs}ms`)),
+      timeoutMs,
+    );
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() =>
+    clearTimeout(timeout),
+  );
+}
 
 class RAGService {
   constructor() {
     this.groq = new Groq({
-      apiKey: config.groq.apiKey
+      apiKey: config.groq.apiKey,
     });
-    
+
     this.chromaClient = null;
     this.collection = null;
     this.embedder = null;
@@ -33,31 +50,37 @@ class RAGService {
     try {
       // Initialize embedding model
       try {
-        logger.info('Loading embedding model...');
-        this.embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
-        logger.info('Embedding model loaded successfully');
+        logger.info("Loading embedding model...");
+        this.embedder = await pipeline(
+          "feature-extraction",
+          "Xenova/all-MiniLM-L6-v2",
+        );
+        logger.info("Embedding model loaded successfully");
       } catch (error) {
-        logger.warn('Failed to load embedding model:', error.message);
+        logger.warn("Failed to load embedding model:", error.message);
         this.embedder = null;
       }
       // Initialize ChromaDB client
       this.chromaClient = new ChromaClient({
-        path: `http://${config.chroma.host}:${config.chroma.port}`
+        path: `http://${config.chroma.host}:${config.chroma.port}`,
       });
 
       // Get or create collection
       try {
         this.collection = await this.chromaClient.getOrCreateCollection({
           name: config.chroma.collectionName,
-          metadata: { description: 'Medical knowledge base for RAG' }
+          metadata: { description: "Medical knowledge base for RAG" },
         });
-        logger.info('ChromaDB collection initialized');
+        logger.info("ChromaDB collection initialized");
       } catch (error) {
-        logger.warn('ChromaDB not available, RAG will be disabled:', error.message);
+        logger.warn(
+          "ChromaDB not available, RAG will be disabled:",
+          error.message,
+        );
         this.collection = null;
       }
     } catch (error) {
-      logger.error('Failed to initialize RAG service:', error);
+      logger.error("Failed to initialize RAG service:", error);
       this.chromaClient = null;
       this.collection = null;
     }
@@ -69,15 +92,18 @@ class RAGService {
   async generateEmbedding(text) {
     try {
       if (!this.embedder) {
-        throw new Error('Embedding model not initialized');
+        throw new Error("Embedding model not initialized");
       }
 
-      const output = await this.embedder(text, { pooling: 'mean', normalize: true });
+      const output = await this.embedder(text, {
+        pooling: "mean",
+        normalize: true,
+      });
       // Normalize and round float32 results to stable decimal precision
       // to avoid brittle equality assertions in tests.
-      return Array.from(output.data).map(n => Math.round(n * 1e6) / 1e6);
+      return Array.from(output.data).map((n) => Math.round(n * 1e6) / 1e6);
     } catch (error) {
-      logger.error('Error generating embedding:', error);
+      logger.error("Error generating embedding:", error);
       throw error;
     }
   }
@@ -87,18 +113,18 @@ class RAGService {
    */
   async addDocuments(documents) {
     if (!this.collection) {
-      logger.warn('ChromaDB collection not available');
+      logger.warn("ChromaDB collection not available");
       return false;
     }
 
     try {
       const ids = documents.map((_, idx) => `doc_${Date.now()}_${idx}`);
-      const texts = documents.map(doc => doc.text);
-      const metadatas = documents.map(doc => doc.metadata || {});
+      const texts = documents.map((doc) => doc.text);
+      const metadatas = documents.map((doc) => doc.metadata || {});
 
       // Generate embeddings
       const embeddings = await Promise.all(
-        texts.map(text => this.generateEmbedding(text))
+        texts.map((text) => this.generateEmbedding(text)),
       );
 
       // Add to collection
@@ -106,13 +132,13 @@ class RAGService {
         ids,
         embeddings,
         documents: texts,
-        metadatas
+        metadatas,
       });
 
       logger.info(`Added ${documents.length} documents to vector database`);
       return true;
     } catch (error) {
-      logger.error('Error adding documents to vector database:', error);
+      logger.error("Error adding documents to vector database:", error);
       return false;
     }
   }
@@ -122,7 +148,7 @@ class RAGService {
    */
   async searchSimilarDocuments(query, numResults = 3) {
     if (!this.collection) {
-      logger.warn('ChromaDB collection not available, skipping RAG');
+      logger.warn("ChromaDB collection not available, skipping RAG");
       return [];
     }
 
@@ -133,20 +159,20 @@ class RAGService {
       // Search in vector database
       const results = await this.collection.query({
         queryEmbeddings: [queryEmbedding],
-        nResults: numResults
+        nResults: numResults,
       });
 
       if (results.documents && results.documents[0]) {
         return results.documents[0].map((doc, idx) => ({
           text: doc,
           metadata: results.metadatas[0][idx],
-          distance: results.distances[0][idx]
+          distance: results.distances[0][idx],
         }));
       }
 
       return [];
     } catch (error) {
-      logger.error('Error searching similar documents:', error);
+      logger.error("Error searching similar documents:", error);
       return [];
     }
   }
@@ -160,16 +186,17 @@ class RAGService {
       const relevantDocs = await this.searchSimilarDocuments(query);
 
       // Build context from retrieved documents
-      let ragContext = '';
+      let ragContext = "";
       if (relevantDocs.length > 0) {
-        ragContext = '\n\nRelevant medical information:\n' +
-          relevantDocs.map(doc => doc.text).join('\n\n');
+        ragContext =
+          "\n\nRelevant medical information:\n" +
+          relevantDocs.map((doc) => doc.text).join("\n\n");
       }
 
       // Build conversation context
-      const contextMessages = context.map(msg => ({
+      const contextMessages = context.map((msg) => ({
         role: msg.role,
-        content: msg.content
+        content: msg.content,
       }));
 
       const systemPrompt = `You are a helpful medical assistant AI for a healthcare appointment system.
@@ -184,27 +211,25 @@ IMPORTANT GUIDELINES:
 ${ragContext}`;
 
       const messages = [
-        { role: 'system', content: systemPrompt },
+        { role: "system", content: systemPrompt },
         ...contextMessages,
-        { role: 'user', content: query }
+        { role: "user", content: query },
       ];
 
-      // Debugging aid: inspect the create function directly.
-      // eslint-disable-next-line no-console
-      console.log('DEBUG create fn:', this.groq && this.groq.chat && this.groq.chat.completions && this.groq.chat.completions.create);
-      // eslint-disable-next-line no-console
-      console.log('DEBUG is mock fn:', this.groq && this.groq.chat && this.groq.chat.completions && this.groq.chat.completions.create && this.groq.chat.completions.create._isMockFunction);
-
-      const response = await this.groq.chat.completions.create({
-        model: config.groq.model,
-        messages,
-        temperature: config.groq.temperature,
-        max_tokens: config.groq.maxTokens
-      });
+      const response = await withTimeout(
+        this.groq.chat.completions.create({
+          model: config.groq.model,
+          messages,
+          temperature: config.groq.temperature,
+          max_tokens: config.groq.maxTokens,
+        }),
+        config.groq.timeoutMs,
+        "Groq RAG response",
+      );
 
       return response.choices[0].message.content;
     } catch (error) {
-      logger.error('Error generating response with RAG:', error);
+      logger.error("Error generating response with RAG:", error);
       throw error;
     }
   }
@@ -214,12 +239,12 @@ ${ragContext}`;
    */
   async enrichQuery(query) {
     const relevantDocs = await this.searchSimilarDocuments(query, 2);
-    
+
     if (relevantDocs.length === 0) {
       return query;
     }
 
-    const enrichedQuery = `${query}\n\nContext: ${relevantDocs.map(d => d.text).join(' ')}`;
+    const enrichedQuery = `${query}\n\nContext: ${relevantDocs.map((d) => d.text).join(" ")}`;
     return enrichedQuery;
   }
 }
