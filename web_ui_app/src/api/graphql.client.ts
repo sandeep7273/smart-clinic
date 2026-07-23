@@ -489,6 +489,11 @@ export const getPatientAppointmentsGraphQL = async (
             status
             reason
             notes
+            doctor {
+              id
+              name
+              specialization
+            }
             createdAt
             updatedAt
           }
