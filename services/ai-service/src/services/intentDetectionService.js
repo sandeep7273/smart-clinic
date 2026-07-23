@@ -149,6 +149,7 @@ class IntentDetectionService {
    */
   detectIntentFallback(userQuery) {
     const q = userQuery.toLowerCase().trim();
+    const extractedSpec = this.extractSpecialization(q);
 
     // ── SHOW_APPOINTMENTS ─────────────────────────────────────────
     const appointmentViewPatterns = [
@@ -202,8 +203,13 @@ class IntentDetectionService {
     // ── BOOK_APPOINTMENT ──────────────────────────────────────────
     if (
       /\bbook\b.{0,30}\bappointment\b/.test(q) ||
+      /\bbook\b.{0,30}\b(doctors?|physicians?|specialists?)\b/.test(q) ||
       /\bschedule\b.{0,30}\bappointment\b/.test(q) ||
-      /\bmake\b.{0,30}\bappointment\b/.test(q)
+      /\bschedule\b.{0,30}\b(doctors?|physicians?|specialists?)\b/.test(q) ||
+      /\bmake\b.{0,30}\bappointment\b/.test(q) ||
+      /\bappointment\b.{0,30}\bwith\b.{0,30}\b(doctors?|physicians?|specialists?|cardiologist|dermatologist|orthopedist|neurologist|pediatrician|ophthalmologist|psychiatrist|endocrinologist|gynecologist)\b/.test(
+        q,
+      )
     ) {
       const specialization = this.extractSpecialization(q);
       return {
@@ -246,15 +252,21 @@ class IntentDetectionService {
 
     const hasSearchPattern = searchPatterns.some((p) => p.test(q));
     const hasSpecialistName = specialistNamePattern.test(q);
-    const extractedSpec = this.extractSpecialization(q);
+    const extractedSymptoms = this.extractSymptoms(q);
+    const inferredSymptomSpecialization = this.inferSpecializationFromSymptoms(
+      q,
+      extractedSymptoms,
+    );
 
     if (hasSearchPattern || (hasSpecialistName && extractedSpec)) {
       return {
         intent: this.INTENTS.SEARCH_DOCTOR,
         confidence: 0.9,
         entities: {
-          specialization: this.normalizeSpecialization(extractedSpec),
-          symptoms: [],
+          specialization: this.normalizeSpecialization(
+            extractedSpec || inferredSymptomSpecialization,
+          ),
+          symptoms: extractedSymptoms,
           date: null,
           location: null,
         },
@@ -287,12 +299,16 @@ class IntentDetectionService {
       /\bhurt\b/,
     ];
     if (healthPatterns.some((p) => p.test(q))) {
+      const symptoms = this.extractSymptoms(q);
+      const inferredSpecialization =
+        extractedSpec || this.inferSpecializationFromSymptoms(q, symptoms);
+
       return {
         intent: this.INTENTS.HEALTH_QUERY,
         confidence: 0.75,
         entities: {
-          specialization: this.normalizeSpecialization(extractedSpec),
-          symptoms: [],
+          specialization: this.normalizeSpecialization(inferredSpecialization),
+          symptoms,
           date: null,
           location: null,
         },
@@ -424,6 +440,86 @@ Respond in strict JSON format:
     }
 
     return null;
+  }
+
+  extractSymptoms(query) {
+    const lowerQuery = query.toLowerCase();
+    const symptomKeywords = [
+      "fever",
+      "cough",
+      "chest pain",
+      "shortness of breath",
+      "headache",
+      "migraine",
+      "rash",
+      "acne",
+      "joint pain",
+      "back pain",
+      "bone pain",
+      "stomach pain",
+      "abdominal pain",
+      "ear pain",
+      "throat pain",
+      "eye pain",
+      "anxiety",
+      "depression",
+      "diabetes",
+      "thyroid",
+      "pregnancy",
+    ];
+
+    return symptomKeywords.filter((symptom) => {
+      const pattern = new RegExp(
+        `\\b${symptom.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
+      );
+      return pattern.test(lowerQuery);
+    });
+  }
+
+  inferSpecializationFromSymptoms(query, symptoms = []) {
+    const symptomText = `${query} ${symptoms.join(" ")}`.toLowerCase();
+    const mappings = [
+      {
+        pattern: /\b(chest pain|shortness of breath|heart)\b/,
+        specialization: "Cardiology",
+      },
+      { pattern: /\b(rash|acne|skin)\b/, specialization: "Dermatology" },
+      {
+        pattern: /\b(joint pain|back pain|bone pain|arthritis|fracture)\b/,
+        specialization: "Orthopedics",
+      },
+      { pattern: /\b(headache|migraine|brain)\b/, specialization: "Neurology" },
+      {
+        pattern: /\b(child|children|baby|infant)\b/,
+        specialization: "Pediatrics",
+      },
+      { pattern: /\b(eye pain|vision|eye)\b/, specialization: "Ophthalmology" },
+      {
+        pattern: /\b(ear pain|throat pain|sinus|hearing)\b/,
+        specialization: "ENT",
+      },
+      {
+        pattern: /\b(anxiety|depression|stress|mental)\b/,
+        specialization: "Psychiatry",
+      },
+      {
+        pattern: /\b(diabetes|thyroid|hormone|insulin)\b/,
+        specialization: "Endocrinology",
+      },
+      {
+        pattern: /\b(pregnancy|women|gynecology)\b/,
+        specialization: "Gynecology",
+      },
+      {
+        pattern: /\b(fever|cough|infection|sick|stomach pain|abdominal pain)\b/,
+        specialization: "General Medicine",
+      },
+    ];
+
+    return (
+      mappings.find(({ pattern }) => pattern.test(symptomText))
+        ?.specialization || null
+    );
   }
 
   /**

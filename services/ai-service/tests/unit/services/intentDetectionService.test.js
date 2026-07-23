@@ -259,6 +259,61 @@ describe("IntentDetectionService", () => {
       expect(result.entities.specialization).toBe(null);
       expect(mockGroqInstance.chat.completions.create).not.toHaveBeenCalled();
     });
+
+    it("should detect generic appointment booking from rules", () => {
+      const result = intentDetectionService.detectIntentFallback(
+        "book an appointment",
+      );
+
+      expect(result.intent).toBe("BOOK_APPOINTMENT");
+      expect(result.entities.specialization).toBe(null);
+    });
+
+    it("should detect appointment booking with a specialist from rules", () => {
+      const result = intentDetectionService.detectIntentFallback(
+        "book appointment with cardiologist",
+      );
+
+      expect(result.intent).toBe("BOOK_APPOINTMENT");
+      expect(result.entities.specialization).toBe("Cardiology");
+    });
+
+    it("should detect appointment viewing from rules", () => {
+      const result = intentDetectionService.detectIntentFallback(
+        "show my appointments",
+      );
+
+      expect(result.intent).toBe("SHOW_APPOINTMENTS");
+    });
+
+    it("should infer General Medicine from fever and cough symptoms", () => {
+      const result = intentDetectionService.detectIntentFallback(
+        "I have fever and cough",
+      );
+
+      expect(result.intent).toBe("HEALTH_QUERY");
+      expect(result.entities.specialization).toBe("General Medicine");
+      expect(result.entities.symptoms).toEqual(["fever", "cough"]);
+    });
+
+    it("should infer Cardiology from chest pain symptoms", () => {
+      const result =
+        intentDetectionService.detectIntentFallback("I have chest pain");
+
+      expect(result.intent).toBe("HEALTH_QUERY");
+      expect(result.entities.specialization).toBe("Cardiology");
+      expect(result.entities.symptoms).toEqual(["chest pain"]);
+    });
+
+    it("should infer specialization when searching doctors by symptoms", () => {
+      const result = intentDetectionService.detectIntentFallback(
+        "find doctors for fever and cough",
+      );
+
+      expect(result.intent).toBe("SEARCH_DOCTOR");
+      expect(result.entities.specialization).toBe("General Medicine");
+      expect(result.entities.symptoms).toEqual(["fever", "cough"]);
+    });
   });
 
   describe("extractSpecialization", () => {

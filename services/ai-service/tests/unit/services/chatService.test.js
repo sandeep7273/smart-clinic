@@ -43,6 +43,16 @@ describe("ChatService", () => {
     redisClient.cacheDoctorSearch.mockResolvedValue(true);
     redisClient.getCachedUserAppointments.mockResolvedValue(null);
     redisClient.cacheUserAppointments.mockResolvedValue(true);
+    intentDetectionService.detectIntentFallback.mockReturnValue({
+      intent: "UNKNOWN",
+      confidence: 0.3,
+      entities: {
+        specialization: null,
+        symptoms: [],
+        date: null,
+        location: null,
+      },
+    });
   });
 
   describe("processMessage", () => {
@@ -153,6 +163,108 @@ describe("ChatService", () => {
       expect(redisClient.getContext).not.toHaveBeenCalled();
       expect(intentDetectionService.detectIntent).not.toHaveBeenCalled();
       expect(doctorClient.searchDoctors).not.toHaveBeenCalled();
+    });
+
+    it("should handle appointment viewing before external lookups", async () => {
+      const ruleBasedIntent = {
+        intent: "SHOW_APPOINTMENTS",
+        confidence: 0.9,
+        entities: {
+          specialization: null,
+          symptoms: [],
+          date: null,
+          location: null,
+        },
+      };
+      const appointments = [
+        { id: "apt1", doctor_id: "doc1", date: "2026-07-30" },
+      ];
+
+      intentDetectionService.detectIntentFallback.mockReturnValue(
+        ruleBasedIntent,
+      );
+      appointmentClient.getUserAppointments.mockResolvedValue({
+        success: true,
+        appointments,
+      });
+
+      const result = await chatService.processMessage(
+        mockUserId,
+        "show my appointments",
+        mockAuthToken,
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.intent).toBe("SHOW_APPOINTMENTS");
+      expect(result.data.actionType).toBe("SHOW_APPOINTMENTS");
+      expect(result.data.payload.count).toBe(1);
+      expect(redisClient.getContext).not.toHaveBeenCalled();
+      expect(intentDetectionService.detectIntent).not.toHaveBeenCalled();
+    });
+
+    it("should route generic booking requests to appointment booking action", async () => {
+      const ruleBasedIntent = {
+        intent: "BOOK_APPOINTMENT",
+        confidence: 0.85,
+        entities: {
+          specialization: null,
+          symptoms: [],
+          date: null,
+          location: null,
+        },
+      };
+
+      intentDetectionService.detectIntentFallback.mockReturnValue(
+        ruleBasedIntent,
+      );
+      intentDetectionService.extractSpecialization.mockReturnValue(null);
+
+      const result = await chatService.processMessage(
+        mockUserId,
+        "book an appointment",
+        mockAuthToken,
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.intent).toBe("BOOK_APPOINTMENT");
+      expect(result.data.actionType).toBe("BOOK_APPOINTMENT");
+      expect(redisClient.getContext).not.toHaveBeenCalled();
+      expect(intentDetectionService.detectIntent).not.toHaveBeenCalled();
+    });
+
+    it("should route symptom queries to doctor search before external lookups", async () => {
+      config.chat.doctorLookupMode = "deferred";
+      const ruleBasedIntent = {
+        intent: "HEALTH_QUERY",
+        confidence: 0.75,
+        entities: {
+          specialization: "General Medicine",
+          symptoms: ["fever", "cough"],
+          date: null,
+          location: null,
+        },
+      };
+
+      intentDetectionService.detectIntentFallback.mockReturnValue(
+        ruleBasedIntent,
+      );
+      intentDetectionService.normalizeSpecialization.mockReturnValue(
+        "General Medicine",
+      );
+
+      const result = await chatService.processMessage(
+        mockUserId,
+        "I have fever and cough",
+        mockAuthToken,
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.intent).toBe("HEALTH_QUERY");
+      expect(result.data.actionType).toBe("SEARCH_DOCTOR");
+      expect(result.data.payload.specialization).toBe("General Medicine");
+      expect(redisClient.getContext).not.toHaveBeenCalled();
+      expect(intentDetectionService.detectIntent).not.toHaveBeenCalled();
+      expect(ragService.generateResponseWithRAG).not.toHaveBeenCalled();
     });
   });
 
@@ -368,6 +480,7 @@ describe("ChatService", () => {
       expect(result.message).toContain("You have 2 appointments");
       expect(result.payload.count).toBe(2);
       expect(result.payload.hasAppointments).toBe(true);
+      expect(doctorClient.getDoctorDetails).not.toHaveBeenCalled();
     });
 
     it("should use cached appointments", async () => {
@@ -425,13 +538,16 @@ describe("ChatService", () => {
         intent: "BOOK_APPOINTMENT",
         entities: { specialization: "Cardiology" },
       };
+      intentDetectionService.normalizeSpecialization.mockReturnValue(
+        "Cardiology",
+      );
 
       const result = await chatService.handleBookAppointment(
         message,
         intentResult,
       );
 
-      expect(result.actionType).toBe("SEARCH_DOCTOR");
+      expect(result.actionType).toBe("BOOK_APPOINTMENT");
       expect(result.payload.specialization).toBe("Cardiology");
       expect(result.message).toContain("book an appointment");
     });
@@ -448,8 +564,8 @@ describe("ChatService", () => {
         intentResult,
       );
 
-      expect(result.actionType).toBe("NONE");
-      expect(result.message).toContain("what type of doctor");
+      expect(result.actionType).toBe("BOOK_APPOINTMENT");
+      expect(result.message).toContain("choosing a doctor");
     });
   });
 
