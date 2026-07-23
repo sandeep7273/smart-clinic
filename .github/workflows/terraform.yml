@@ -29,6 +29,10 @@ env:
   TF_VERSION: "1.15.8"
   ENVIRONMENT: ${{ github.event.inputs.environment || 'dev' }}
 
+concurrency:
+  group: terraform-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
 jobs:
   terraform:
     name: Terraform ${{ github.event.inputs.action || (github.event_name == 'pull_request' && 'plan') || 'apply' }}
@@ -143,6 +147,7 @@ jobs:
           terraform plan \
             -var-file="environments/${{ env.ENVIRONMENT }}/terraform.tfvars" \
             -out=tfplan \
+            -lock-timeout=10m \
             -no-color 2>&1 | tee plan-output.txt
 
       - name: Post plan output to PR
@@ -172,7 +177,7 @@ jobs:
           )
         run: |
           test -f tfplan
-          terraform apply -auto-approve tfplan
+          terraform apply -lock-timeout=10m -auto-approve tfplan
 
       - name: Upload errored Terraform state
         if: failure() && hashFiles('infrastructure/terraform/errored.tfstate') != ''
@@ -187,4 +192,5 @@ jobs:
         run: |
           terraform destroy \
             -var-file="environments/${{ env.ENVIRONMENT }}/terraform.tfvars" \
+            -lock-timeout=10m \
             -auto-approve

@@ -6,6 +6,7 @@ const protoLoader = require('@grpc/proto-loader');
 const path = require('path');
 const config = require('../config');
 const logger = require('../utils/logger');
+const { createCloudMapGrpcClient } = require('./cloudMapGrpcClient');
 
 class DoctorGrpcClient {
   constructor() {
@@ -28,10 +29,15 @@ class DoctorGrpcClient {
 
       const address = `${config.services.doctor.grpcHost}:${config.services.doctor.grpcPort}`;
       
-      this.client = new doctorProto.DoctorService(
-        address,
-        grpc.credentials.createInsecure()
-      );
+      this.client = createCloudMapGrpcClient({
+        configuredTarget: address,
+        createClient: (target) => new doctorProto.DoctorService(
+          target,
+          grpc.credentials.createInsecure()
+        ),
+        logger,
+        logPrefix: 'AI Doctor gRPC Client',
+      });
 
       logger.info(`Doctor gRPC client initialized at ${address}`);
     } catch (error) {
@@ -44,18 +50,9 @@ class DoctorGrpcClient {
    * Get doctor details by ID
    */
   async getDoctorDetails(doctorId, authToken) {
-    return new Promise((resolve, reject) => {
-      this.client.GetDoctorDetails(
-        { doctor_id: doctorId, auth_token: authToken },
-        (error, response) => {
-          if (error) {
-            logger.error('Error getting doctor details:', error);
-            reject(error);
-          } else {
-            resolve(response);
-          }
-        }
-      );
+    return this.client.call('GetDoctorDetails', {
+      doctor_id: doctorId,
+      auth_token: authToken,
     });
   }
 
@@ -63,24 +60,12 @@ class DoctorGrpcClient {
    * Check doctor availability
    */
   async checkAvailability(doctorId, date, startTime, endTime, authToken) {
-    return new Promise((resolve, reject) => {
-      this.client.CheckAvailability(
-        {
-          doctor_id: doctorId,
-          date,
-          start_time: startTime,
-          end_time: endTime,
-          auth_token: authToken
-        },
-        (error, response) => {
-          if (error) {
-            logger.error('Error checking availability:', error);
-            reject(error);
-          } else {
-            resolve(response);
-          }
-        }
-      );
+    return this.client.call('CheckAvailability', {
+      doctor_id: doctorId,
+      date,
+      start_time: startTime,
+      end_time: endTime,
+      auth_token: authToken
     });
   }
 
@@ -88,23 +73,11 @@ class DoctorGrpcClient {
    * Get doctors by specialization
    */
   async getDoctorsBySpecialization(specialization, authToken, limit = 10, page = 1) {
-    return new Promise((resolve, reject) => {
-      this.client.GetDoctorsBySpecialization(
-        {
-          specialization,
-          auth_token: authToken,
-          limit,
-          page
-        },
-        (error, response) => {
-          if (error) {
-            logger.error('Error getting doctors by specialization:', error);
-            reject(error);
-          } else {
-            resolve(response);
-          }
-        }
-      );
+    return this.client.call('GetDoctorsBySpecialization', {
+      specialization,
+      auth_token: authToken,
+      limit,
+      page
     });
   }
 
@@ -130,19 +103,19 @@ class DoctorGrpcClient {
 
       logger.info('AI Service: Calling SearchDoctors gRPC', { filters: request });
 
-      this.client.SearchDoctors(request, (error, response) => {
-        if (error) {
-          logger.error('Error searching doctors via gRPC:', error);
-          reject(error);
-        } else {
+      this.client.call('SearchDoctors', request)
+        .then((response) => {
           logger.info('AI Service: SearchDoctors response', {
             success: response.success,
             count: response.doctors?.length,
             total: response.total_count
           });
           resolve(response);
-        }
-      });
+        })
+        .catch((error) => {
+          logger.error('Error searching doctors via gRPC:', error);
+          reject(error);
+        });
     });
   }
 }

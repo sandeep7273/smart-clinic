@@ -6,6 +6,7 @@ const protoLoader = require('@grpc/proto-loader');
 const path = require('path');
 const config = require('../config');
 const logger = require('../utils/logger');
+const { createCloudMapGrpcClient } = require('./cloudMapGrpcClient');
 
 class AppointmentGrpcClient {
   constructor() {
@@ -28,10 +29,15 @@ class AppointmentGrpcClient {
 
       const address = `${config.services.appointment.grpcHost}:${config.services.appointment.grpcPort}`;
       
-      this.client = new appointmentProto.AppointmentService(
-        address,
-        grpc.credentials.createInsecure()
-      );
+      this.client = createCloudMapGrpcClient({
+        configuredTarget: address,
+        createClient: (target) => new appointmentProto.AppointmentService(
+          target,
+          grpc.credentials.createInsecure()
+        ),
+        logger,
+        logPrefix: 'AI Appointment gRPC Client',
+      });
 
       logger.info(`Appointment gRPC client initialized at ${address}`);
     } catch (error) {
@@ -50,24 +56,12 @@ class AppointmentGrpcClient {
       return { success: false, message: 'Appointment service unavailable', appointments: [] };
     }
 
-    return new Promise((resolve, reject) => {
-      this.client.GetUserAppointments(
-        {
-          user_id: userId,
-          auth_token: authToken,
-          status: status || '',
-          limit,
-          page
-        },
-        (error, response) => {
-          if (error) {
-            logger.error('Error getting user appointments:', error);
-            reject(error);
-          } else {
-            resolve(response);
-          }
-        }
-      );
+    return this.client.call('GetUserAppointments', {
+      user_id: userId,
+      auth_token: authToken,
+      status: status || '',
+      limit,
+      page
     });
   }
 
@@ -80,21 +74,9 @@ class AppointmentGrpcClient {
       return { success: false, message: 'Appointment service unavailable' };
     }
 
-    return new Promise((resolve, reject) => {
-      this.client.GetAppointmentById(
-        {
-          appointment_id: appointmentId,
-          auth_token: authToken
-        },
-        (error, response) => {
-          if (error) {
-            logger.error('Error getting appointment by ID:', error);
-            reject(error);
-          } else {
-            resolve(response);
-          }
-        }
-      );
+    return this.client.call('GetAppointmentById', {
+      appointment_id: appointmentId,
+      auth_token: authToken
     });
   }
 }
